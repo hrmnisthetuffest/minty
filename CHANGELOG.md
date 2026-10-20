@@ -433,3 +433,13 @@ when it is good enough.
   spoken "Yes, sir?" (or the chime) is skipped, because pressing a button needs no acknowledgement. Saying the name still gets it. Pressing
   Listen while muted shows the notice "Muted. Press M to unmute." instead of doing nothing silently.
 - Tests: new cases in `tests/test_listen_now.py` and `tests/test_hotkeys.py`.
+
+## 1.0.0-alpha.22 (2026-10-20)
+
+### A finer clock
+- The header clock is drawn three times finer: each digit is a 9 x 15 pixel grid (it was 3 x 5), still pixel art, with the outer corners
+  stepped by a pixel so the shapes read as proper numbers (the old 1, 6 and 0 could look alike). Pixels are drawn with half blocks, so they
+  stay square. The colon is two small squares that blink as before, and the shading from the song's colour at the top to a deeper tone at the
+  bottom is kept.
+- The header is three rows taller when the clock is shown (screens 112 columns and wider); narrower screens are unchanged.
+- Tests: `tests/test_tui.py` checks the grid size, that all ten digits differ, that only block characters are used and that every row has the same width.

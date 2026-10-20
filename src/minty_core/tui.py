@@ -441,27 +441,60 @@ def working(st: dict) -> Text | None:
 
 
 
-FONT = {  # 3 pixels wide, 5 tall; each pixel is drawn two cells wide and one tall, which makes it square on screen
+FONT = {  # the shapes, 3 pixels wide and 5 tall; digit_pixels() draws each one three times finer
     "0": ("111", "101", "101", "101", "111"), "1": ("010", "110", "010", "010", "111"),
     "2": ("111", "001", "111", "100", "111"), "3": ("111", "001", "111", "001", "111"),
     "4": ("101", "101", "111", "001", "001"), "5": ("111", "100", "111", "001", "111"),
     "6": ("111", "100", "111", "101", "111"), "7": ("111", "001", "001", "010", "010"),
     "8": ("111", "101", "111", "101", "111"), "9": ("111", "101", "111", "001", "111"),
 }
-CLOCK_W = 30  # HH:MM at two cells per pixel: 13 + 4 + 13
+SCALE = 3  # each shape pixel is 3 x 3 clock pixels
+DIGIT_W, DIGIT_H = 3 * SCALE, 5 * SCALE
+CLOCK_ROWS = (DIGIT_H + 1) // 2  # a text row holds two pixels (half blocks), which are square on screen
+COLON_W = 2  # two pixels square, on a text-row boundary so it is two clean blocks
+CLOCK_W = 4 * DIGIT_W + COLON_W + 4  # four digits and the colon, one cell between each
+
+
+def digit_pixels(ch: str) -> list[str]:
+    """A digit as DIGIT_H rows of "0"/"1": the 3 x 5 shape enlarged three times, with each outer corner cut by one pixel
+    so the edges step like pixel art instead of ending in sharp squares."""
+    big = [[px == "1" for px in row for _ in range(SCALE)] for row in FONT[ch] for _ in range(SCALE)]
+
+    def on(y: int, x: int) -> bool:
+        return 0 <= y < DIGIT_H and 0 <= x < DIGIT_W and big[y][x]
+
+    out = []
+    for y in range(DIGIT_H):
+        row = ""
+        for x in range(DIGIT_W):
+            keep = big[y][x]
+            if keep:
+                for dy, dx in ((-1, -1), (-1, 1), (1, -1), (1, 1)):  # a pixel with nothing above/below, beside or across it
+                    if not on(y + dy, x) and not on(y, x + dx) and not on(y + dy, x + dx):
+                        keep = False
+            row += "1" if keep else "0"
+        out.append(row)
+    return out
+
+
+def _blocks(pixels: list[str]) -> list[str]:
+    """Pixel rows to text rows: two pixels per cell as space, upper half, lower half or full block."""
+    rows = []
+    for top in range(0, len(pixels), 2):
+        upper = pixels[top]
+        lower = pixels[top + 1] if top + 1 < len(pixels) else "0" * len(upper)
+        rows.append("".join({"00": " ", "10": "\u2580", "01": "\u2584", "11": "\u2588"}[u + d] for u, d in zip(upper, lower)))
+    return rows
 
 
 def clock_block(wall: datetime, colon: bool = True) -> list[str]:
-    """HH:MM as five rows of solid blocks, all the same width; the colon is two squares (blank when `colon` is False)."""
-    rows = []
-    for r in range(5):
-        def glyph(ch: str) -> str:
-            return "".join("\u2588\u2588" if px == "1" else "  " for px in FONT[ch][r])
-
-        mid = ("\u2588\u2588" if colon and r in (1, 3) else "  ")
-        h, m = f"{wall:%H}", f"{wall:%M}"
-        rows.append(f"{glyph(h[0])} {glyph(h[1])} {mid} {glyph(m[0])} {glyph(m[1])}")
-    return rows
+    """HH:MM as CLOCK_ROWS rows of half blocks, all the same width; the colon is two squares (blank when `colon` is False)."""
+    h, m = f"{wall:%H}", f"{wall:%M}"
+    dot = ["1" * COLON_W if colon and y in (4, 5, 10, 11) else "0" * COLON_W for y in range(DIGIT_H)]
+    digits = [digit_pixels(c) for c in h + m]
+    pixels = ["".join((digits[0][y], "0", digits[1][y], "0", dot[y], "0", digits[2][y], "0", digits[3][y]))
+              for y in range(DIGIT_H)]
+    return _blocks(pixels)
 
 
 def clock_text(wall: datetime, rgb: tuple[float, float, float], blink: bool, reduced: bool) -> Text:
@@ -469,7 +502,7 @@ def clock_text(wall: datetime, rgb: tuple[float, float, float], blink: bool, red
     that blinks each second, and the day and date in small spaced capitals."""
     out = Text(justify="center")
     for n, row in enumerate(clock_block(wall, colon=reduced or blink)):
-        out.append(row + "\n", style=f"bold {_shade(rgb, 1.0 - 0.1 * n)}")
+        out.append(row + "\n", style=f"bold {_shade(rgb, 1.0 - 0.4 * n / (CLOCK_ROWS - 1))}")
     out.append(" ".join(f"{wall:%a}".upper()) + "  \u00b7  " + " ".join(f"{wall:%d}") + "  \u00b7  " + " ".join(f"{wall:%b}".upper()),
                style="grey58")
     return out
@@ -868,9 +901,10 @@ def render(model: TuiModel, width: int = 80, height: int = 30, now: float | None
         face.add_column(no_wrap=False, **({"width": w} if w else {"ratio": 1}))
     face.add_row(*[c for c, _ in cols])
     layout = Layout()
+    header = max(8, CLOCK_ROWS + 3) if show_clock else 8  # the clock, the date under it and the two border lines
     edge = _shade(model.accent_rgb, 0.45) if model.state == "idle" and model.accent_rgb else color  # waiting: the song's tone
-    parts = [Layout(Panel(face, title=title_text(), border_style=edge, box=box.ROUNDED), name="voice", size=8)]
-    used = 8
+    parts = [Layout(Panel(face, title=title_text(), border_style=edge, box=box.ROUNDED), name="voice", size=header)]
+    used = header
     if st:
         parts.append(Layout(Padding(status_strip(st, accent), (0, 2)), name="strip", size=1))
         used += 1

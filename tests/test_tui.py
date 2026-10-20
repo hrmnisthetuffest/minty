@@ -272,14 +272,36 @@ def test_noting_mode_lists_the_notes_in_the_conversation_panel_until_it_ends():
 
 
 def test_the_clock_and_date_show_on_wide_screens_only():
-    from minty_core.tui import clock_block
+    from minty_core.tui import CLOCK_ROWS, CLOCK_W, clock_block
     rows = clock_block(WALL)
-    from minty_core.tui import CLOCK_W
-    assert len(rows) == 5 and {len(r) for r in rows} == {CLOCK_W}  # five equal-width rows of solid digits
-    assert clock_block(WALL, colon=False)[1] != rows[1] and len({len(r) for r in clock_block(WALL, colon=False)}) == 1  # the colon blinks
-    wide = look(TuiModel(status=lambda: FULL_STATUS), width=120)
+    assert len(rows) == CLOCK_ROWS and {len(r) for r in rows} == {CLOCK_W}  # equal-width rows of solid pixels
+    assert clock_block(WALL, colon=False) != rows and len({len(r) for r in clock_block(WALL, colon=False)}) == 1  # the colon blinks
+    wide = look(TuiModel(status=lambda: FULL_STATUS), width=130)
     assert "M O N" in wide and "1 9" in wide and "O C T" in wide
     assert "M O N" not in look(TuiModel(status=lambda: FULL_STATUS), width=70)
+
+
+def test_clock_digits_are_three_times_finer_pixel_art():
+    from minty_core.tui import CLOCK_ROWS, DIGIT_H, DIGIT_W, digit_pixels
+    assert (DIGIT_W, DIGIT_H) == (9, 15)  # the old font was 3 x 5 pixels
+    assert CLOCK_ROWS == 8  # two pixels per text row (half blocks), so squares stay square
+    shapes = {}
+    for d in "0123456789":
+        px = digit_pixels(d)
+        assert len(px) == DIGIT_H and {len(r) for r in px} == {DIGIT_W}
+        shapes[d] = tuple(px)
+        assert sum(r.count("1") for r in px) > 40  # a real glyph, not a sliver
+    assert len(set(shapes.values())) == 10  # every digit is its own shape
+    # pixel art, not a smooth font: the outline has stepped corners (a corner pixel is cut) rather than sharp squares
+    zero = digit_pixels("0")
+    assert zero[0][0] == "0" and zero[0][4] == "1"
+
+
+def test_clock_uses_only_block_characters():
+    from minty_core.tui import clock_block
+    for hour in (0, 7, 12, 23):
+        for row in clock_block(WALL.replace(hour=hour, minute=hour + 5)):
+            assert set(row) <= set(" \u2588\u2580\u2584")
 
 
 def test_nothing_overflows_at_any_width():
