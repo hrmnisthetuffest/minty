@@ -1,0 +1,7 @@
+name = "journal"
+description = "Voice journal stored as local markdown files."
+default_enabled = true
+
+[settings.directory]
+type = "string"
+label = "Journal folder (default ~/Documents/Minty-Journal)"

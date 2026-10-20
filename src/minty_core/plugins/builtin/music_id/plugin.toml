@@ -1,0 +1,7 @@
+name = "music_id"
+description = "Tells you what song is playing: from your music apps, the computer's sound, or by listening to the room (Shazam)."
+default_enabled = true
+
+[settings.listen_seconds]
+type = "number"
+label = "How long to listen when recognising (default 8 seconds)"

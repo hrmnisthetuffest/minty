@@ -1,0 +1,8 @@
+name = "web_search"
+description = "Search the web (DuckDuckGo, or Brave Search with an API key)."
+default_enabled = true
+
+[settings.brave_key]
+type = "string"
+label = "Brave Search API key (optional)"
+secret = true

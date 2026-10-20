@@ -1,0 +1,3 @@
+name = "scenes"
+description = "Open a named set of web pages and apps you listed (a study layout, a gaming setup)."
+default_enabled = true

@@ -1,0 +1,7 @@
+name = "installer"
+description = "Install or remove software on command with pip, pipx or npm, without root. System package managers (apt, dnf, pacman, flatpak, snap) are never run: I give you the command to run yourself."
+default_enabled = false
+
+[settings.allowed_managers]
+type = "string"
+label = "Managers I may run, comma separated (default pip,pipx,npm)"

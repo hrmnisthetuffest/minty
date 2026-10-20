@@ -1,0 +1,3 @@
+name = "display"
+description = "Shows text, tables and web pages on the Minty screen (terminal and panel) when you ask to see something."
+default_enabled = true

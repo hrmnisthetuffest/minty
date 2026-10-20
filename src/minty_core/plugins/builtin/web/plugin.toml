@@ -1,0 +1,3 @@
+name = "web"
+description = "Price and page watchers, safe link opening, read-later, download quarantine, captions, saved sessions and page helpers."
+default_enabled = true

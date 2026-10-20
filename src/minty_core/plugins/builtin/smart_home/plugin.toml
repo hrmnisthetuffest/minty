@@ -1,0 +1,12 @@
+name = "smart_home"
+description = "Control Home Assistant devices (lights, switches, scenes, locks)."
+default_enabled = false
+
+[settings.url]
+type = "string"
+label = "Home Assistant URL, e.g. http://homeassistant.local:8123"
+
+[settings.token]
+type = "string"
+label = "Long-lived access token"
+secret = true

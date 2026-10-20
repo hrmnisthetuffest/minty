@@ -1,0 +1,27 @@
+name = "agents"
+description = "Start and watch coding-agent jobs (Claude Code, Hermes, OpenClaw) in your project folder."
+default_enabled = false
+
+[settings.root]
+type = "string"
+label = "Project root (default ~/Documents/project); jobs run here, but tools like python/npm can still reach other folders"
+
+[settings.max_concurrent]
+type = "number"
+label = "Max jobs at once"
+
+[settings.max_runtime_s]
+type = "number"
+label = "Max seconds per job"
+
+[settings.claude_permission_mode]
+type = "string"
+label = "Claude Code permission mode: default, acceptEdits (default) or plan"
+
+[settings.openclaw_agent]
+type = "string"
+label = "OpenClaw agent id (default main)"
+
+[settings.auto_start]
+type = "boolean"
+label = "Start jobs without asking first (default off). Jobs still run only in the project root, with the runtime cap"

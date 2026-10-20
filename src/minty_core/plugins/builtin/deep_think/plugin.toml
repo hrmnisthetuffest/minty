@@ -1,0 +1,7 @@
+name = "deep_think"
+description = "Hand hard questions to a slower reasoning model (the 'deep' provider tier)."
+default_enabled = true
+
+[settings.timeout_s]
+type = "number"
+label = "Give up after this many seconds"

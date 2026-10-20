@@ -1,0 +1,3 @@
+name = "butler"
+description = "Chores, follow-ups, where things are, documents and renewals."
+default_enabled = true

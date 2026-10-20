@@ -1,0 +1,3 @@
+name = "apis"
+description = "Use any web API you name: register it once, then call it safely, with a catalog of free no-key APIs. Requests are checked to reach public addresses only, and each connection is pinned to the address that was checked (the real host name is kept for the Host header and TLS verification), so DNS rebinding cannot redirect it."
+default_enabled = true

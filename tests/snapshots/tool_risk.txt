@@ -1,0 +1,259 @@
+agents_list_agents                 0 read
+agents_list_projects               0 read
+agents_start_project               2 visible
+agents_start_task                  2 visible
+agents_stop_task                   1 change
+agents_task_status                 0 read
+apis_call                          0 read
+apis_list                          0 read
+apis_read_url                      0 read     egress
+apis_register                      2 visible
+apis_search_catalog                0 read
+apis_send                          2 visible  +args
+apis_unregister                    2 visible
+briefing_now                       0 read     sensitive
+browser_back                       0 read
+browser_click                      0 read     +args
+browser_close                      0 read
+browser_fill_form                  1 change
+browser_look                       0 read
+browser_macro_run                  2 visible
+browser_macro_save                 1 change
+browser_note                       1 change
+browser_open                       0 read     egress
+browser_press                      0 read     +args
+browser_profile_set                1 change
+browser_read                       0 read
+browser_screenshot                 0 read
+browser_scroll                     0 read
+browser_search                     0 read     egress
+browser_select                     1 change
+browser_tabs                       0 read     +args
+browser_task                       0 read
+browser_type                       1 change   +args
+browser_wait                       0 read
+butler_add                         1 change
+butler_apply                       1 change
+butler_delete                      2 visible  +args
+butler_done                        1 change
+butler_export                      0 read
+butler_find                        0 read
+butler_list                        0 read
+butler_sort                        0 read
+butler_undo                        1 change
+clock_get_time                     0 read
+coach_air                          0 read
+coach_eat_next                     0 read     sensitive
+coach_food                         0 read     sensitive
+coach_foods                        1 change   sensitive
+coach_injury                       1 change   sensitive
+coach_lift                         0 read     sensitive
+coach_next                         0 read     sensitive
+coach_plan                         0 read     sensitive
+coach_readiness                    0 read     sensitive
+coach_review                       0 read     sensitive
+coach_week                         0 read     sensitive
+coach_wellbeing                    0 read     sensitive
+create_evidence                    0 read
+create_image                       1 change   egress
+create_inbox                       0 read     +args sensitive
+create_make                        1 change
+create_media                       0 read     +args sensitive
+create_news                        0 read     +args sensitive
+create_papers                      0 read     +args
+create_sources                     0 read     +args sensitive
+create_translate                   0 read     +args
+deep_think_think_deeply            0 read
+deep_think_think_in_background     0 read
+dev_explain                        0 read
+dev_idea                           0 read     +args sensitive
+dev_plugin                         0 read     +args
+dev_repo                           0 read     +args sensitive
+dev_review                         2 visible  sensitive
+dev_snippet                        0 read     +args sensitive
+dev_trends                         0 read     +args
+display_clear                      0 read
+display_open_url                   0 read     egress
+display_show                       0 read
+files_delete                       2 visible
+files_download                     1 change   egress
+files_list                         0 read
+files_move                         1 change
+files_read                         0 read     sensitive
+files_upload                       2 visible  egress
+files_write                        1 change   +args
+finance_add                        1 change   sensitive
+finance_afford                     0 read     sensitive
+finance_correct                    1 change   sensitive
+finance_delete_data                3 critical
+finance_export                     1 change   sensitive
+finance_insight                    0 read     sensitive
+finance_scam                       0 read
+finance_set                        1 change   sensitive
+finance_show                       0 read     sensitive local-only
+finance_summary                    0 read     sensitive
+health_check                       0 read     sensitive
+health_consent                     1 change
+health_delete_data                 3 critical
+health_set_profile                 1 change   sensitive
+health_show                        0 read     sensitive local-only
+health_status                      0 read     sensitive
+health_summary                     0 read     sensitive
+history_list_days                  0 read     sensitive
+history_recall_day                 0 read     sensitive
+history_search                     0 read     sensitive
+installer_install                  3 critical
+installer_uninstall                2 visible
+integrations_calendar              0 read     +args sensitive
+integrations_home                  0 read     +args sensitive
+integrations_lan                   2 visible  +args sensitive
+integrations_n8n                   0 read     +args
+integrations_sleep                 0 read     +args
+integrations_weather               0 read
+jobs_cancel                        1 change
+jobs_status                        0 read
+journal_add_entry                  1 change
+journal_read_entries               0 read     sensitive
+journal_search_entries             0 read     sensitive
+learn_approve                      2 visible
+learn_forget                       1 change
+learn_list                         0 read
+learn_remember                     1 change
+learn_review                       0 read
+life_briefing                      0 read     sensitive
+life_checkin                       1 change   sensitive
+life_goal                          1 change   sensitive
+life_review                        0 read     sensitive
+life_view                          0 read     sensitive
+mail_read                          0 read     sensitive
+mail_search                        0 read     sensitive
+mail_triage                        0 read     sensitive
+mail_unread                        0 read     sensitive
+mcp_call                           2 visible  +args sensitive
+mcp_directory                      0 read
+mcp_servers                        0 read     sensitive
+memory_audit                       0 read     sensitive
+memory_correct                     1 change
+memory_forget                      3 critical
+memory_forget_item                 2 visible
+memory_forget_preview              0 read     sensitive
+memory_learned                     0 read     sensitive
+memory_recall                      0 read     sensitive
+memory_remember                    1 change
+memory_resolve                     1 change
+music_id_identify                  0 read
+n8n_activate_workflow              2 visible
+n8n_create_workflow                1 change
+n8n_deactivate_workflow            1 change
+n8n_delete_workflow                3 critical
+n8n_get_workflow                   0 read
+n8n_list_executions                0 read
+n8n_list_workflows                 0 read
+n8n_trigger_webhook                2 visible
+productivity_alarm                 0 read     +args
+productivity_day                   0 read     sensitive
+productivity_habit                 0 read     +args
+productivity_meal                  0 read     +args
+productivity_person                0 read     +args sensitive
+productivity_record                0 read     +args
+productivity_todo                  0 read     +args
+productivity_trip                  0 read     +args
+prompts_add_instruction            2 visible
+prompts_create_command             2 visible
+prompts_forget                     1 change
+prompts_forget_command             1 change
+prompts_learn                      1 change
+prompts_list                       0 read
+reminders_cancel                   1 change
+reminders_list                     0 read
+reminders_set                      1 change
+reminders_snooze                   1 change
+research_ask                       0 read
+research_blueprint                 3 critical
+research_dispute                   1 change
+research_list                      0 read
+research_move                      1 change
+research_open                      0 read
+research_resume                    1 change
+research_start                     3 critical
+scenes_launch                      2 visible
+scenes_list                        0 read
+school_add                         1 change   sensitive
+school_check                       0 read     sensitive
+school_done                        1 change   sensitive
+school_homework                    0 read     sensitive
+school_notices                     0 read     sensitive
+school_set_portal                  2 visible
+selfcheck_report                   0 read     +args
+selfcheck_timeline                 0 read     sensitive
+smart_home_control_secure          3 critical
+smart_home_get_state               0 read
+smart_home_list_devices            0 read
+smart_home_run_scene               1 change
+smart_home_set_brightness          1 change
+smart_home_set_device              1 change
+spotify_next                       0 read
+spotify_now_playing                0 read
+spotify_pause                      0 read
+spotify_play                       0 read
+spotify_previous                   0 read
+spotify_resume                     0 read
+spotify_shuffle                    0 read
+spotify_volume                     0 read
+study_cards                        0 read     +args
+study_check                        0 read
+study_class_bag                    0 read
+study_exam                         0 read     +args
+study_mistake                      0 read     +args
+study_note                         0 read     +args
+study_notices                      0 read
+study_pace                         0 read
+study_paper                        0 read     +args
+study_plan                         0 read     sensitive
+study_rehearse                     0 read
+study_review                       0 read     sensitive
+study_summarise                    0 read
+subagents_spawn_subagent           0 read
+subagents_stop_subagent            1 change
+subagents_subagent_status          0 read
+system_control                     1 change   +args
+system_diagnose                    0 read     sensitive
+system_info                        0 read     sensitive
+system_notifications               0 read     sensitive
+system_script                      1 change
+system_usb                         0 read     +args sensitive
+timers_cancel_timer                0 read
+timers_list_timers                 0 read
+timers_set_timer                   0 read
+timers_start_focus                 1 change
+timers_stop_focus                  1 change
+vault_append                       1 change
+vault_ask                          0 read
+vault_bookmark                     1 change
+vault_daily                        1 change
+vault_decision_log                 1 change
+vault_decision_weigh               0 read     +args
+vault_find                         0 read     sensitive
+vault_glossary                     1 change
+vault_inbox_decide                 2 visible  +args
+vault_inbox_review                 0 read
+vault_note                         1 change
+vault_open                         0 read
+vault_private_add                  1 change
+vault_private_find                 0 read     local-only
+vault_private_open                 0 read     local-only
+vault_resume                       0 read     sensitive
+vault_resurface                    0 read
+vault_review                       1 change
+vault_status                       0 read
+weather_get_weather                0 read
+web_captions                       0 read     egress
+web_download                       0 read     +args
+web_formlog                        0 read     +args sensitive
+web_later                          0 read     +args egress sensitive
+web_open                           0 read     egress
+web_page                           0 read
+web_search_search                  0 read
+web_session                        0 read     +args sensitive
+web_show                           0 read     +args
+web_watch                          0 read     +args egress sensitive

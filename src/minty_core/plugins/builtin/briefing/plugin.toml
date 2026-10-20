@@ -1,0 +1,3 @@
+name = "briefing"
+description = "A short spoken brief of your day: weather, reminders, homework, mail. Said by itself each morning (if you allow it) or when you ask."
+default_enabled = true

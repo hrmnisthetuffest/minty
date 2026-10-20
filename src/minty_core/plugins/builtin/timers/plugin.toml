@@ -1,0 +1,3 @@
+name = "timers"
+description = "Set, list and cancel spoken timers."
+default_enabled = true

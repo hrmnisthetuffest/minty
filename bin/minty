@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Start Minty from this checkout: `bin/minty`, `bin/minty --no-panel`, `bin/minty set-key groq`.
+# Uses ./.venv (or the interpreter in $MINTY_PYTHON) and never needs an install step.
+here="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+python="${MINTY_PYTHON:-$here/.venv/bin/python}"
+if [ ! -x "$python" ]; then
+  echo "minty: no Python at $python; run ./install.sh from the checkout, or set MINTY_PYTHON" >&2
+  exit 1
+fi
+PYTHONPATH="$here/src${PYTHONPATH:+:$PYTHONPATH}" exec "$python" -m minty_core "$@"

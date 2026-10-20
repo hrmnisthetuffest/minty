@@ -1,0 +1,11 @@
+name = "mail"
+description = "Reads your e-mail over IMAP, read-only: unread digest, search, open one message. Never sends, deletes or marks anything."
+default_enabled = false
+
+[settings.host]
+type = "string"
+label = "IMAP server (default imap.gmail.com)"
+
+[settings.user]
+type = "string"
+label = "E-mail address to read"

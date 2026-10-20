@@ -1,0 +1,15 @@
+name = "research"
+description = "Researches a topic across many sources (light, normal or deep), keeps cited notes in a library by category, and answers later questions from them. Always asks before it starts."
+default_enabled = true
+
+[settings.model]
+type = "string"
+label = "Model for planning, reading and writing research (empty: the one you're talking to)"
+
+[settings.deny_domains]
+type = "string"
+label = "Sites never to use as sources, comma-separated"
+
+[settings.allow_domains]
+type = "string"
+label = "Sites to trust more, comma-separated"

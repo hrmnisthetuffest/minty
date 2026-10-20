@@ -1,0 +1,11 @@
+name = "spotify"
+description = "Plays and controls Spotify by voice: play a song, artist, album or playlist, pause, skip, volume, what is playing."
+default_enabled = true
+
+[settings.player]
+type = "string"
+label = "Player name as seen by playerctl (default spotify)"
+
+[settings.playlist]
+type = "string"
+label = "Your playlist (link, spotify:playlist: URI or id). Songs are played from it first; only if a song is not in it does Minty search all of Spotify"

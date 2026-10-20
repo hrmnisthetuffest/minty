@@ -1,0 +1,173 @@
+# Getting started
+
+## 1. Install
+
+```bash
+git clone https://github.com/YOUR-USER/minty.git
+cd minty
+./install.sh
+```
+
+You need Python 3.10 or newer. On Debian, Ubuntu and Linux Mint: `sudo apt install python3 python3-venv git`. On Arch:
+`sudo pacman -S python git`. The installer creates `.venv` inside the checkout, links `~/.local/bin/minty`, and starts the setup.
+Use `./install.sh --no-onboard` to install without starting the setup.
+
+Doing it by hand:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e .
+bin/minty onboard
+```
+
+## 2. The guided setup
+
+`minty onboard` has eight short steps (see the table in the [README](../README.md)). Rules it follows:
+
+- **One question at a time**, with arrow keys and Enter (or numbers when your terminal can't do arrow keys).
+- **Skip anything** with Enter. Nothing is required.
+- **Nothing is downloaded or installed without asking**, and it tells you the size first.
+- **Stop and come back.** `Ctrl+C` stops safely; the next `minty onboard` offers to continue where you were.
+- **Redo a part**: `minty onboard --step brain` (steps: `system`, `brain`, `voice`, `you`, `safety`, `phone`, `extras`, `finish`).
+
+Your answers are ordinary settings. You can change every one later in the web panel or in `~/.config/minty/config.toml`.
+
+### Get a free key (about two minutes)
+
+The easiest brain is **Groq**: sign in at <https://console.groq.com/keys>, create a key and paste it when the setup asks (it is
+hidden as you type). Groq also does the speech recognition, so one key covers thinking and listening. Other free providers are
+listed in [providers.md](providers.md). You can add or replace a key any time with `minty set-key groq`.
+
+## 3. Use it
+
+```bash
+minty                # starts the voice assistant, the local API and the web panel
+```
+
+- **Voice:** say "Minty", then ask. Say "stop" while it talks to interrupt it.
+- **Web panel:** <http://127.0.0.1:7778>. Set its password first with `minty set-password`.
+- **Telegram:** after the setup's phone step, run `minty telegram-pair` and send the printed `/pair CODE` to your bot.
+- **Text from a terminal:**
+
+  ```bash
+  curl -s -H "Authorization: Bearer $(cat ~/.config/minty/api_token)" -H 'content-type: application/json' \
+       -d '{"text":"what time is it"}' http://127.0.0.1:7777/ask
+  ```
+
+### Make it fit your computer
+
+Minty looks and works the same on every computer; on a slower one it just takes longer and the display redraws less often. `minty tune`
+says what kind of computer this is (processor, memory, disk, graphics) and how Minty adapts, and changes nothing. If it still feels
+slow, `minty tune --lite --apply` switches to a simpler profile (the light voice and recogniser, no live captions, a still display, no
+terminal pictures) after asking, and `minty tune --full --apply` goes back. `minty tune --system` adds operating-system tips such as
+compressed swap. The reasoning and the plan for making everything faster are in [performance-plan.md](performance-plan.md).
+
+### The terminal display and album covers
+
+`minty` fills the terminal with a calm display meant to stay open on a second screen: state, a clock, grouped status, the
+conversation and a music card. In a terminal that can show pictures (GNOME Terminal and other VTE terminals via sixel; kitty,
+WezTerm and Ghostty via the kitty protocol) the card shows the album cover as a real picture; elsewhere it uses a pixel-art cover
+made of half-block characters. The card is tall and narrow (cover on top, title and progress under it), and the headings, clock and
+progress bar take the colour of the cover. Minty asks the terminal which it speaks, once at start. Override with `terminal_images` in
+`config.toml` (`"auto"`, `"off"`, `"sixel"`, `"kitty"`) or the environment (`MINTY_IMAGES=off`). Anything that goes wrong (a terminal that cannot show pictures, one that stops answering) falls back to the pixel-block
+cover by itself, for that run. **Best terminal for the real cover: kitty** (`sudo pacman -S kitty` on Arch, `sudo apt install kitty`
+on Debian, Ubuntu and Mint): GPU-fast, its own picture protocol, X11 and Wayland. WezTerm and Ghostty are good alternatives. Check
+what a terminal can do with `python scripts/term_check.py`. Preview it with sample data:
+`python scripts/tui_preview.py --live`. Covers need `ffmpeg` and a player that reports its cover (Spotify, Firefox, VLC and most
+others do through MPRIS).
+
+### The chat bar
+
+The bar at the bottom of the display shows your words as you speak them and Minty's words as it speaks. You can also type in it:
+press Enter to send, Backspace to correct, Ctrl+U to clear the line. A typed line is answered as text (it is not spoken) and
+appears in the conversation; if Minty is in the middle of speaking, ask again in a moment.
+
+### Mute and Listen buttons
+
+Two buttons sit on the top edge of the chat bar: **M Mute** and **Space Listen**.
+
+- **Mute** (key `M`, or click it) turns the microphone off and on. While it is off the whole display turns red and the button says
+  *Muted*; press it again to turn the microphone back on.
+- **Listen** (key `Space`, or click it) starts listening at once, the same as saying "Minty". Saying the name still works. If Minty is
+  in the middle of an answer, Listen interrupts it and listens.
+- The keys work when nothing is typed. To type a message that starts with `M` or a space, press **Enter** first (Enter or Backspace
+  on the empty line closes it again); any other letter just starts typing as before.
+- Change the keys in the panel (Voice, audio, safety & updates) or with `terminal_mute_key` and `terminal_listen_key` in
+  `config.toml`: one character, or the word `space`. `terminal_hotkeys = false` turns the keys off; `terminal_mouse = false` turns
+  clicking off (the mouse then selects text as usual).
+- The panel's dashboard has the same two buttons, and the local API has `POST /mute` and `POST /listen`.
+
+### Quick answers and commands (no waiting)
+
+Questions that need no thinking are answered the moment you finish speaking, by Minty itself, with no model call and no internet:
+"what time is it", "what is 15 percent of 240", "convert 5 miles to kilometres", "roll two dice", "capital of Japan", "how much
+battery is left", "what song is this", "say that again". A few commands also skip the model: "set a timer for 5 minutes", "remind me
+in an hour to drink water", "volume up", "pause". The whole list is in [instant-answers.md](instant-answers.md); try one without
+speaking with `minty instant "your phrase"`. A request is answered this way only when all of it is a known question, so anything
+longer or different still goes to the model. Settings: `instant.enabled`, `instant.actions`, and `instant.skip` (categories to leave
+to the model).
+
+### Faster replies
+
+Three things make the wait after you stop speaking shorter, all adjustable in the panel's Settings:
+
+- `audio.speculative_stt` (on): while you pause, the words so far are already being recognised, so they are ready when the pause ends.
+- `audio.early_finish_ms` (600): a sentence that is plainly finished (it ends with a full stop or question mark and does not trail
+  off) ends your turn after 600 ms of quiet instead of the usual `audio.silence_ms` (900). If it ever cuts you off mid-thought, set it to 0.
+- `turn.first_clause_words` (8): Minty starts speaking at the first comma of a long first sentence instead of waiting for the whole sentence.
+
+`router.fast_reasoning = "low"` (off by default) also asks reasoning models for less deliberation on simple questions. See where the
+time goes with `python scripts/trace_report.py`.
+
+### Take notes by voice
+
+Say **"Minty, note for me"**. Minty starts listening and writes down everything you say, with no wake word and no answers, until you
+say **"Minty, stop noting"** (the whole phrase). Silence does not end it. Each note is saved the moment it is heard, in
+`~/.config/minty/voice-notes.md` (one dated heading per session), and the latest notes are listed at the bottom of the on-screen HUD
+while you work in other windows (turn the HUD on with `overlay.hud`; `voice.notes_hud_lines` sets how many show, `voice.notes = false`
+turns the feature off). Note: with the default cloud speech recognition everything you say while noting is sent to Groq; set
+`stt.provider = "local"` to keep it on your computer.
+
+Keep it running in the background and start it at login (Linux, systemd): `scripts/install_service.sh`.
+
+## 4. Updates
+
+Minty can update itself from its GitHub repository.
+
+- Once a day it asks GitHub whether there is a newer release and, if there is, shows a notice on the display (nothing is installed, and
+  nothing is spoken). Turn that off with `update.check = false`.
+- `minty update` shows what is new and, after you say yes, moves this checkout to the release, installs changed dependencies and checks
+  that the new version starts; if it does not, it goes back to the version that worked. `minty update --check` only looks, `--yes`
+  skips the question.
+- It only ever updates a git checkout (the one `install.sh` makes), from the repository it was cloned from, and never over local
+  changes or commits of your own. To update a copy that is not a git checkout, clone again and run `install.sh`.
+- `update.auto_install = true` installs a newer release by itself. Code from the internet then runs on your computer without you
+  reading it, so use it only for a repository whose owner you trust completely; with `update.verify_signed = true` it also requires a
+  signed git tag. It is off by default.
+- Which repository: `update.repo` (`owner/name`), or by default the one your checkout's `origin` points at.
+- Maintainers: see [releasing.md](releasing.md).
+
+## 5. Where things are
+
+| What | Where |
+|---|---|
+| Settings | `~/.config/minty/config.toml` |
+| Keys (mode 0600, never printed) | `~/.config/minty/secrets.toml` |
+| Memory notes (plain text, yours to edit) | `~/.config/minty/memory.md` |
+| Notes you took by voice | `~/.config/minty/voice-notes.md` |
+| Setup progress | `~/.config/minty/onboard.json` |
+| Voices and models | `~/.local/share/minty/voices/` |
+
+Use another folder for everything with `MINTY_CONFIG_DIR=/some/folder minty`.
+
+## 6. Problems
+
+| Symptom | Try |
+|---|---|
+| `minty: command not found` | add `export PATH="$HOME/.local/bin:$PATH"` to your shell profile |
+| No sound or no microphone | `minty onboard --step voice` runs the microphone test; install `libportaudio2` and `ffmpeg` |
+| "Replies are slow" | the free tiers have limits; add a second provider key, or use `minty claude-brain on` |
+| Only basic tools are available | Minty is in safe mode (`--safe`); start it normally with `minty` |
+| Start from scratch | stop Minty and move `~/.config/minty` aside; the next `minty` offers the setup again |
+
+To remove Minty: delete the checkout, `~/.local/bin/minty`, `~/.config/minty` and `~/.local/share/minty`.

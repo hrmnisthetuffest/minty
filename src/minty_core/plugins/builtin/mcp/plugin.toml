@@ -1,0 +1,3 @@
+name = "mcp"
+description = "Call tools on MCP servers you added at the terminal; each tool is allowed by you and pinned against later changes."
+default_enabled = true

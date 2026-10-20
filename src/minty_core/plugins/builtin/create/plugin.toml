@@ -1,0 +1,3 @@
+name = "create"
+description = "Research and creation: news brief, arXiv watcher, idea review, mind maps, slides, images, translation glossary, claim evidence, media clips and show notes."
+default_enabled = true

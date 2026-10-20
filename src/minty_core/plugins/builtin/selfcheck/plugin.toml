@@ -1,0 +1,3 @@
+name = "selfcheck"
+description = "What happened (timeline), the weekly self-report, failure proposals you approve, the daily tip and card."
+default_enabled = true

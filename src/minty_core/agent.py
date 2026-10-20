@@ -1,0 +1,717 @@
+import asyncio
+import time
+import contextlib
+import logging
+import re
+from dataclasses import replace
+from typing import AsyncIterator, Awaitable, Callable
+
+from minty_core.config import ConfigStore
+from minty_core.agentloop import trim_old_observations
+from minty_core.toolbreaker import ToolBreaker
+from minty_core import promptlib
+from minty_core.claude_pick import parse_pick
+from minty_core.llm.types import REQUEST_SHAPED, LLMError, Message, TextDelta, ToolCall, ToolCallEvent, ToolNotOffered
+from minty_core.memory import MemoryStore
+from minty_core.personality import PersonalityStore, compile_prompt
+from minty_core.prompts import section as prompt_section
+from minty_core.policy import Guard, destinations_in
+from minty_core.residency import LOCAL_STUB, LocalResult
+from minty_core.text import SentenceSplitter
+from minty_core.toolkits import CORE_TOOLS, NEED_TOOLKIT, ToolkitRouter
+from minty_core.trace import annotate_turn, current_turn_id, transcript_hash
+from minty_core.webpage import stub_old_pages
+
+log = logging.getLogger(__name__)
+FALLBACK_PERSONALITY = "You are Minty, a helpful voice assistant."
+MAX_RESULT_CHARS = 6000  # a tool result longer than this is cut before it enters the conversation
+SHRUNK_RESULT_CHARS = 2500  # per result, when a provider said the request was too large
+SHRUNK_HISTORY = 8  # messages kept (from a user turn on) in that case
+
+
+def shape_result(text: str, limit: int = MAX_RESULT_CHARS) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + f"\n… ({len(text) - limit} more characters not shown; ask for a narrower result)"
+
+
+def _one_line(text: str, limit: int) -> str:
+    flat = " ".join((text or "").split()).replace('"', "'")
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
+
+
+def collapse_history(history: list[Message], keep: int) -> tuple[str, list[Message]]:
+    """(note, recent): the last `keep` user turns stay as they are; each older turn becomes one line of the note
+    (what was asked, which tools ran, what was answered). No model call. keep <= 0 changes nothing."""
+    starts = [i for i, m in enumerate(history) if m.role == "user"]
+    if keep <= 0 or len(starts) <= keep:
+        return "", history
+    cut = starts[-keep]
+    lines = []
+    for a, b in zip(starts, starts[1:] + [len(history)]):
+        if a >= cut:
+            break
+        tools = sorted({c.name for m in history[a:b] for c in m.tool_calls})
+        reply = next((m.content for m in reversed(history[a:b]) if m.role == "assistant" and m.content), "")
+        line = f'- You asked: "{_one_line(history[a].content, 90)}"'
+        if tools:
+            line += f" → used {', '.join(tools)[:60]}"
+        if reply:
+            line += f' → replied: "{_one_line(reply, 90)}"'
+        lines.append(line)
+    note = "Earlier in this conversation (one line per turn):\n" + "\n".join(lines)
+    if len(note) >= sum(len(m.content or "") for m in history[:cut]):
+        return "", history  # short turns: the lines would cost more than the turns themselves
+    return note, history[cut:]
+
+
+def _is_chat_message(m: Message) -> bool:
+    """What a person sees in the chat: what they sent and what was answered (not tool plumbing)."""
+    return m.role == "user" or (m.role == "assistant" and bool(m.content))
+
+
+def _chat_turn(turn: list[Message]) -> bool:
+    """A turn that belongs to a Telegram chat and is not private (private turns follow the short voice window)."""
+    return turn[0].chat and not any(m.private for m in turn)
+
+
+def _turn_line(history: list[Message], a: int, b: int) -> str:
+    tools = sorted({c.name for m in history[a:b] for c in m.tool_calls})
+    reply = next((m.content for m in reversed(history[a:b]) if m.role == "assistant" and m.content), "")
+    line = f'- You asked: "{_one_line(history[a].content, 90)}"'
+    if tools:
+        line += f" → used {', '.join(tools)[:60]}"
+    if reply:
+        line += f' → replied: "{_one_line(reply, 90)}"'
+    return line
+
+
+SUPER_ITEM_CHARS = 36
+SUPER_MAX_CHARS = 1500
+
+
+def _very_short(history: list[Message], a: int, b: int) -> str:
+    tools = sorted({c.name for m in history[a:b] for c in m.tool_calls})
+    return _one_line(history[a].content, SUPER_ITEM_CHARS) + (f" [{tools[0]}]" if tools else "")
+
+
+def tier_history(history: list[Message], full: int, compressed: int) -> tuple[str, list[Message]]:
+    """(note, recent) for a long chat, counting messages back from the newest (no model call):
+    the newest `full` messages stay as they are; turns that began up to `compressed` messages ago become one line
+    each (what was asked, tools used, what was answered); older turns shrink to a few words of what was asked."""
+    starts = [i for i, m in enumerate(history) if m.role == "user"]
+    if not starts:
+        return "", history
+    after = [0] * (len(history) + 1)  # chat messages from here to the newest, counted from the end
+    for i in range(len(history) - 1, -1, -1):
+        after[i] = after[i + 1] + _is_chat_message(history[i])
+    cut = next((a for a in starts if after[a] <= full), len(history))
+    older = [a for a in starts if a < cut]
+    if not older:
+        return "", history
+    ends = dict(zip(starts, starts[1:] + [len(history)]))
+    lines = [_turn_line(history, a, ends[a]) for a in older if after[a] <= compressed]
+    items = [_very_short(history, a, ends[a]) for a in older if after[a] > compressed]
+    parts = []
+    if items:
+        kept, size = [], 0
+        for item in reversed(items):  # the newest of the old ones first; the oldest are the ones that fall off
+            if size + len(item) + 2 > SUPER_MAX_CHARS:
+                break
+            kept.append(item)
+            size += len(item) + 2
+        left_out = "(older ones left out) " if len(kept) < len(items) else ""
+        parts.append("Long ago in this chat, a few words each (oldest first): " + left_out + "; ".join(reversed(kept)))
+    if lines:
+        parts.append("Earlier in this conversation (one line per turn):\n" + "\n".join(lines))
+    note = "\n\n".join(parts)
+    if len(note) >= sum(len(m.content or "") for m in history[:cut]):
+        return "", history  # short turns: the lines would cost more than the turns themselves
+    return note, history[cut:]
+
+
+_SECRET_KEY = re.compile(r"key|token|secret|password", re.IGNORECASE)
+_PROMPT_MAX = 160
+
+
+def _confirmation_prompt(tool, call: ToolCall) -> str:
+    """The spoken question before a risky tool runs: the tool's own wording, else its name and arguments."""
+    describe = getattr(tool, "describe", None)
+    if describe is not None:
+        try:
+            described = describe(call.arguments)
+            if isinstance(described, str) and described.strip():
+                return described.strip()
+        except Exception:
+            log.warning("describe() for %s failed; using the generic prompt", call.name, exc_info=True)
+    parts = []
+    for key, value in (call.arguments if isinstance(call.arguments, dict) else {}).items():
+        shown = "…" if _SECRET_KEY.search(str(key)) else " ".join(str(value).split())
+        parts.append(f"{key} {shown}")
+    prompt = f"Should I run {call.name.replace('_', ' ')}" + (f" with {', '.join(parts)}?" if parts else "?")
+    return prompt if len(prompt) <= _PROMPT_MAX else prompt[: _PROMPT_MAX - 1] + "…"
+
+
+class Agent:
+    def __init__(
+        self,
+        router,
+        host,
+        store: ConfigStore,
+        personalities: PersonalityStore,
+        memory: MemoryStore,
+        confirm: Callable[[str], Awaitable[bool]],
+        *,
+        max_rounds: int = 5,
+        max_history: int = 20,
+        tier: str = "fast",
+        private_probe: Callable[[], bool] | None = None,
+        archive=None,
+    ):
+        self._router = router
+        self._host = host
+        self._store = store
+        self._personalities = personalities
+        self._memory = memory
+        self.confirm = confirm
+        self._max_rounds = max_rounds
+        self._max_history = max_history
+        self.tier = tier
+        self.history: list[Message] = []
+        self._chat_turn, self._turn_start = False, 0
+        self.force_private: bool = False
+        self.quick_only: bool = False  # "just the quick answer": no background thinking for this conversation
+        self.private_probe = private_probe  # live "is the user in a private conversation?" check, asked per round
+        self._lock = asyncio.Lock()
+        self.archive = archive  # ConversationArchive or None
+        self.prompt_extras: list[Callable[[], str]] = []  # extra system-prompt sections (history, learned rules)
+        # sections that depend on this request (a matched skill); they go last so the front stays byte-stable
+        self.turn_extras: list[Callable[[str], str]] = []
+        self.toolkits: ToolkitRouter | None = None  # set by the app: which tools this request is offered
+        self.skills = None  # skills.SkillIndex or None: a matched skill switches on the tool groups it names
+        self._skill_memo: tuple[str | None, object] = (None, None)
+        self.turn_done: list[Callable[[str, str], None]] = []  # (request, reply) after every finished answer
+        self.on_tool: Callable[[str | None], None] | None = None  # tool name while one runs, then None
+        self.tracer = getattr(router, "tracer", None)
+        self.breaker = ToolBreaker()  # a tool that keeps failing is not offered for a few minutes
+        self.guard = None  # policy.Guard; set by the app (with the audit log) or made on first use
+        self.safety = None  # safety.SafetyKit: checks that run before the gate and can only block
+        self.provenance = None  # provenance.Provenance: what untrusted content this request read
+        self.receipts = None  # receipts.ReceiptStore: every change, with why
+        self.on_reset: list[Callable[[], None]] = []  # called when the conversation is started over
+        # (text) -> a fixed reply or None: asked before any model call (the coach's safety gate); a reply ends the turn
+        self.input_gates: list[Callable[[str], str | None]] = []
+        self.offline = None  # offline.OfflineHandler: local answers when there is no internet
+        # request -> FastAction for simple page commands ("click Store"), or None: run with no model call (fastpath.py)
+        self.fastpath: Callable[[str], object] | None = None
+        # request -> instant.Hit or None: a question the computer can answer by itself (the time, a sum): no model call
+        self.local_answer: Callable[[str], object] | None = None
+        self.terse_prompts: Callable[[], bool] = lambda: False  # frugal mode: the terse fixed sections (if gated in)
+        self.reply_started = False  # this reply's model has begun to answer (the pipeline skips "one moment" then)
+
+    def _system_prompt(self, request: str = "") -> str:
+        cfg = self._store.config
+        try:
+            base = self._personalities.get(cfg.personality.active)
+        except (FileNotFoundError, ValueError):
+            base = FALLBACK_PERSONALITY
+        base_rules = prompt_section("BASE_RULES", self.terse_prompts())
+        library = ""
+        if cfg.personality.prompt_library:
+            off = cfg.personality.prompt_modules_off
+            channel = "telegram" if self._chat_turn else "voice"
+            if channel == "telegram" and "telegram_rules" in promptlib.GATES and "telegram_rules" not in off:
+                base_rules = promptlib.TELEGRAM_RULES
+            try:
+                kits = tuple(self.toolkits.select(request)) if self.toolkits is not None and request else ()
+            except Exception:  # noqa: BLE001 — a failed tool-group guess only means fewer modules
+                kits = ()
+            modules = promptlib.select(channel=channel, tier=self.tier, kits=kits, off=off)
+            library = promptlib.render(modules)
+            annotate_turn(prompt_modules=[m.name for m in modules], prompt_version=promptlib.version(modules, base_rules))
+        prompt = compile_prompt(base, cfg.personality, self._memory.text(), base_rules=base_rules) + library
+        extras = []
+        for provider in self.prompt_extras:
+            try:
+                extras.append(provider())
+            except Exception:
+                log.warning("a prompt section failed and was skipped", exc_info=True)
+        for provider in self.turn_extras:
+            try:
+                extras.append(provider(request))
+            except Exception:
+                log.warning("a request-specific prompt section failed and was skipped", exc_info=True)
+        live = getattr(self._host, "prompt_context", None)  # e.g. the open web page; changes every turn, so last
+        if live is not None:
+            try:
+                block = live()
+            except Exception:
+                log.warning("the live prompt context failed and was skipped", exc_info=True)
+                block = ""
+            if block:
+                extras.append("\n\n" + block)
+        return prompt + "".join(e for e in extras if e)
+
+    def _outgoing(self, request: str) -> list[Message]:
+        """What one model call sends: the system prompt and the conversation (on a diet, when that is on)."""
+        turn = self._store.config.turn
+        history = stub_old_pages(self.history) if turn.request_diet else self.history
+        if any(m.chat for m in history):  # a Telegram chat: tiers by message count, not the few-turns diet
+            note, history = tier_history(history, turn.chat_full_messages,
+                                         max(turn.chat_compressed_messages, turn.chat_full_messages))
+        else:
+            note, history = collapse_history(history, turn.keep_full_turns)
+        broken = self.breaker.note()
+        return [Message("system", self._system_prompt(request) + ("\n\n" + note if note else "")
+                        + ("\n\n" + broken if broken else "")), *history]
+
+    def _tool_specs(self, request: str):
+        resting = self.breaker.resting()  # tools that keep failing are not offered for a while
+        specs = [s for s in self._host.tool_specs() if s.name not in resting]
+        if self.toolkits is None or not self._store.config.toolkit_routing:
+            return specs
+        skill = self._matched_skill(request)
+        offered = self.toolkits.tool_names(request, self._skill_toolkits(skill), strict=skill is not None)
+        annotate_turn(toolkits=list(getattr(self.toolkits, "last_selected", [])))
+        return [s for s in specs if s.name in offered] + [self.toolkits.spec()]
+
+    def _matched_skill(self, request: str):
+        """The skill for this request; matched once and reused by the prompt and the tool choice."""
+        if self.skills is None:
+            return None
+        if self._skill_memo[0] != request:
+            self._skill_memo = (request, self.skills.match(request))
+        return self._skill_memo[1]
+
+    def _skill_toolkits(self, skill) -> tuple[str, ...]:
+        if skill is None or self.toolkits is None or not skill.allowed_tools:
+            return ()
+        wanted = set(skill.allowed_tools)
+        return tuple(kit for kit, tools in self.toolkits.kits().items() if wanted & set(tools))
+
+    def _tool_state(self, name: str | None) -> None:
+        if self.on_tool is not None:
+            try:
+                self.on_tool(name)
+            except Exception:
+                log.warning("tool state hook failed", exc_info=True)
+
+    def _after_turn(self, request: str, reply: str) -> None:
+        for hook in self.turn_done:
+            try:
+                hook(request, reply)
+            except Exception:
+                log.warning("a turn hook failed", exc_info=True)
+
+    def reset_conversation(self) -> int:
+        """Start fresh now. The conversation is already in the archive; it moves to 'earlier today'."""
+        count = len(self.history)
+        self.history.clear()
+        for hook in self.on_reset:
+            try:
+                hook()
+            except Exception:  # noqa: BLE001
+                log.warning("a reset hook failed", exc_info=True)
+        self.quick_only = False
+        if self.toolkits is not None:
+            self.toolkits.reset()
+        if self.archive is not None:
+            self.archive.mark_reset()
+        return count
+
+    def _age_out(self) -> None:
+        """Drop conversation older than the memory window; the archive still has it (and summarises it later).
+        A Telegram chat that is not private is kept for turn.chat_keep_hours instead."""
+        now, turn = time.time(), self._store.config.turn
+        voice_cutoff = now - self._store.config.memory.window_min * 60
+        chat_cutoff = now - turn.chat_keep_hours * 3600
+
+        def expired(t: list[Message]) -> bool:
+            return t[0].role != "user" or t[0].ts < (chat_cutoff if _chat_turn(t) else voice_cutoff)
+
+        self._keep_turns(lambda turns: [t for t in turns if not expired(t)])
+
+    def _keep_turns(self, choose) -> None:
+        """Rewrite the history turn by turn (a turn is a user message and what followed it)."""
+        turns: list[list[Message]] = []
+        for m in self.history:
+            if m.role == "user" or not turns:
+                turns.append([])
+            turns[-1].append(m)
+        kept = choose(turns)
+        if len(kept) != len(turns):
+            self.history[:] = [m for t in kept for m in t]
+
+    def _mark_chat(self) -> None:
+        if self._chat_turn:
+            for m in self.history[self._turn_start:]:
+                m.chat = m.chat or not m.private
+
+    def _trim(self) -> None:
+        """The voice window keeps `max_history` messages; a Telegram chat keeps up to turn.chat_keep_messages besides."""
+        self._mark_chat()
+        self._age_out()
+        cap = self._store.config.turn.chat_keep_messages
+
+        def newest(turns):
+            chat = [t for t in turns if _chat_turn(t)]
+            voice = [t for t in turns if not _chat_turn(t)]
+            for group, limit in ((chat, cap), (voice, self._max_history)):
+                while group and sum(len(t) for t in group) > limit:
+                    group.pop(0)
+            keep = {id(t) for t in chat + voice}
+            return [t for t in turns if id(t) in keep]
+
+        self._keep_turns(newest)
+
+    def _log(self, role: str, text: str, private: bool = False) -> None:
+        if self.archive is not None:
+            try:
+                self.archive.log(role, text, private)
+            except Exception:
+                log.warning("could not write to the conversation archive", exc_info=True)
+
+    def _probe_private(self) -> bool:
+        if self.private_probe is None:
+            return False
+        try:
+            return bool(self.private_probe())
+        except Exception:
+            log.warning("private_probe failed; treating the conversation as not private", exc_info=True)
+            return False
+
+    async def _run_call(self, call: ToolCall) -> tuple[str, bool]:
+        if call.name == NEED_TOOLKIT and self.toolkits is not None:
+            asked = call.arguments.get("name") if isinstance(call.arguments, dict) else ""
+            wanted_for = next((m.content for m in reversed(self.history) if m.role == "user"), "")
+            return self.toolkits.need(str(asked or ""), wanted_for), False
+        tool = self._host.get_tool(call.name)
+        approval_id = None
+        if tool is not None and self.safety is not None:
+            blocked = self.safety.precheck(call.name, call.arguments, tool)
+            if blocked:
+                self._receipt(tool, call, "blocked", detail=blocked)
+                return f"Blocked by a safety check: {blocked}.", False
+        if tool is not None:
+            if self.guard is None:
+                self.guard = Guard(self._store, tracer=self.tracer)
+            known = set().union(*(destinations_in(m.content) for m in self.history if m.role == "user"))
+            prompt, extra = _confirmation_prompt(tool, call), 0
+            if self.provenance is not None:
+                mine = " ".join(m.content for m in self.history if m.role == "user")
+                note = self.provenance.note_for(call.arguments, mine, call.name)
+                if note:
+                    prompt = f"{prompt} {note}."
+                    extra = self.provenance.extra_risk(call.arguments, mine, call.name)
+            if self.safety is not None:
+                advice = await self.safety.advise(call.name, call.arguments)
+                if advice:
+                    prompt = f"{prompt} {advice}"
+            decision = await self.guard.authorize(tool, call.name, call.arguments, self.confirm,
+                                                  prompt=prompt, extra_risk=extra, known=known)
+            approval_id = decision.approval_id
+            if not decision.allowed:
+                blocked_by_rule = decision.reason == "blocked by a safety rule" or not decision.asked
+                self._receipt(tool, call, "blocked" if blocked_by_rule else "declined", approval_id,
+                              detail=decision.reason)
+                return ("Blocked by the user's safety rules." if decision.reason == "blocked by a safety rule"
+                        else "The user declined."), False
+        standing_note = decision.reason if tool is not None and decision.allowed and \
+            decision.reason.startswith("standing approval") else ""
+        if tool is not None and self.safety is not None:
+            self.safety.executing(call.name, call.arguments, tool)
+        self._tool_state(call.name)
+        try:
+            result = shape_result(await self._host.call(call.name, call.arguments))
+        finally:
+            self._tool_state(None)
+        if self.toolkits is not None:
+            self.toolkits.used(call.name)
+        self.breaker.record(call.name, result.startswith("Error"))
+        if self.provenance is not None:
+            self.provenance.note_result(call.name, result)
+        if tool is not None:
+            failed = result.startswith("Error")
+            self._receipt(tool, call, "failed" if failed else "ok", approval_id,
+                          detail=result[:160] if failed else standing_note)
+        if tool is not None and tool.local_only and not result.startswith("Error"):
+            return LocalResult(result), True
+        return result, bool(tool is not None and tool.sensitive)
+
+    def _receipt(self, tool, call: ToolCall, outcome: str, approval_id: int | None = None, detail: str = "") -> None:
+        """A receipt for anything that changes something (class 1 and up); reads leave none."""
+        if self.receipts is None:
+            return
+        try:
+            from minty_core.policy import classify
+            risk = classify(tool, call.arguments if isinstance(call.arguments, dict) else {})
+            if risk < 1:
+                return
+            args = call.arguments if isinstance(call.arguments, dict) else {}
+            shown = ", ".join(f"{k} {str(v)[:40]}" for k, v in list(args.items())[:3])
+            summary = call.name.replace("_", " ") + (f" with {shown}" if shown else "")
+            request = next((m.content for m in reversed(self.history) if m.role == "user"), "")
+            self.receipts.record(call.name, risk, summary, request=" ".join(request.split()), approval_id=approval_id,
+                                 outcome=outcome, detail=detail, turn_id=current_turn_id() or "")
+        except Exception:  # noqa: BLE001 — a receipt failing must never stop the action or hide its result
+            log.warning("could not write a receipt", exc_info=True)
+
+    async def offline_reply(self, user_text: str) -> str | None:
+        """After a model call failed: if the network itself is down, the local answer (or the honest no); None when
+        the network is fine and the models are the problem."""
+        if self.offline is None or not self._store.config.offline.enabled:
+            return None
+        self.offline.probe.note_failure()
+        try:
+            if await self.offline.probe.online(refresh=True):
+                return None
+            return await self.offline.answer(user_text)
+        except Exception:  # noqa: BLE001 — the fallback must not make a failure worse
+            log.warning("offline fallback failed", exc_info=True)
+            return None
+
+    async def _fast(self, user_text: str) -> str | None:
+        """Run a simple page command without the model. Returns what to say, or None to let the model answer
+        (also after a failed attempt, which stays in the history so the model sees it)."""
+        if self.fastpath is None:
+            return None
+        try:
+            action = self.fastpath(user_text)
+        except Exception:
+            log.warning("fast path matching failed; asking the model", exc_info=True)
+            return None
+        if action is None:
+            return None
+        call = ToolCall(f"fast_{int(time.time() * 1000) % 10**8}", action.tool, action.args)
+        result, private = await self._run_call(call)  # the same Guard/policy path as a model's tool call
+        self.history.append(Message("assistant", "", tool_calls=[call]))
+        self.history.append(Message("tool", result, tool_call_id=call.id, name=call.name, private=private))
+        failed = result.startswith("Error")
+        if self.tracer is not None:
+            self.tracer.event("fastpath", tool=action.tool, outcome="fallback" if failed else "ok")
+        if failed:
+            return None
+        if result == "The user declined.":
+            reply = "Okay, I left it."
+        elif result.startswith("Blocked by"):
+            reply = "Your safety rules block that."
+        else:
+            reply = action.say(result) if callable(action.say) else action.say
+        self.history.append(Message("assistant", reply))
+        self._log("assistant", reply)
+        self._trim()
+        self._after_turn(user_text, reply)
+        return reply
+
+    def _instant(self, user_text: str, untrusted: str) -> str | None:
+        """Answer from the instant rules (the time, a sum, a conversion): nothing is sent anywhere and no model is asked. Text
+        that came from outside is never answered this way."""
+        if self.local_answer is None or untrusted:
+            return None
+        try:
+            hit = self.local_answer(user_text)
+        except Exception:  # noqa: BLE001 - a broken rule must not cost the user an answer
+            log.warning("instant answer failed; asking the model", exc_info=True)
+            return None
+        if hit is None:
+            return None
+        self.history.append(Message("assistant", hit.reply))
+        self._log("assistant", hit.reply)
+        if self.tracer is not None:
+            self.tracer.event("instant", rule=hit.rule, category=hit.category)
+        self._trim()
+        self._after_turn(user_text, hit.reply)
+        return hit.reply
+
+    def _can_recover(self) -> bool:
+        return bool(getattr(self._router, "supports_request_errors", False)
+                    and self._store.config.router.recover_request_errors)
+
+    def _stream(self, messages, specs, sensitive: bool, *, prefer: str | None, raise_request_errors: bool):
+        kwargs: dict = {"sensitive": sensitive, "tier": self.tier}
+        if prefer:
+            kwargs["prefer"] = prefer
+        if raise_request_errors:
+            kwargs["request_errors"] = "raise"
+        return self._router.stream(messages, specs, **kwargs)
+
+    def _repair(self, err: LLMError, request: str, messages: list[Message], specs: list):
+        """Fix a request a provider rejected for its shape; returns (messages, specs, provider to retry)."""
+        before = (sum(len(m.content or "") for m in messages), len(specs))
+        note: dict = {}
+        prefer = err.provider or None
+        if isinstance(err, ToolNotOffered):
+            kit = self.toolkits.kit_of(err.tool) if self.toolkits is not None and err.tool else None
+            note = {"tool": err.tool, "kit": kit}
+            if kit is not None and self.toolkits.load(kit):
+                specs = self._tool_specs(request)
+            else:
+                prefer = None  # nothing to load: let another provider try
+        else:
+            messages, specs = self._shrink(messages, specs)
+        if self.tracer is not None:
+            self.tracer.event("agent_recovery", error_kind=err.kind, provider=err.provider, **note,
+                              chars_before=before[0], chars_after=sum(len(m.content or "") for m in messages),
+                              tools_before=before[1], tools_after=len(specs))
+        log.info("provider %s rejected the request (%s); retrying repaired", err.provider or "?", err.kind)
+        return messages, specs, prefer
+
+    def _shrink(self, messages: list[Message], specs: list) -> tuple[list[Message], list]:
+        """A smaller version of a request that was too large: older readings stubbed, results cut, fewer turns,
+        and only the core tools plus the toolkits this conversation has used."""
+        system, rest = messages[0], trim_old_observations(messages[1:], keep=1)
+        rest = [replace(m, content=shape_result(m.content, SHRUNK_RESULT_CHARS)) if m.role == "tool" else m
+                for m in rest]
+        last_user = max((i for i, m in enumerate(rest) if m.role == "user"), default=0)
+        cut = next((i for i in range(max(0, len(rest) - SHRUNK_HISTORY), len(rest)) if rest[i].role == "user"),
+                   last_user)
+        rest = rest[min(cut, last_user):]
+        if self.toolkits is not None:
+            called = {c.name for m in rest for c in m.tool_calls}
+            kits = {self.toolkits.kit_of(n) for n in called} - {None}
+            keep = set(CORE_TOOLS) | {NEED_TOOLKIT} | called
+            keep |= {t for kit, tools in self.toolkits.kits().items() if kit in kits for t in tools}
+            specs = [s for s in specs if s.name in keep]
+        return [system, *rest], specs
+
+    async def respond(self, user_text: str, *, sensitive: bool = False,
+                      untrusted: str = "", chat: bool = False) -> AsyncIterator[str]:
+        """One request. "use opus on high effort ..." names the Claude model and effort for this request, or, said
+        alone, for the next one (claude_pick.py); everything else is _respond."""
+        router = self._router
+        pick, rest = parse_pick(user_text)
+        if pick is not None:
+            if not getattr(router, "has_claude", lambda: False)():
+                yield "Claude isn't switched on. Run: minty claude-brain on, then restart me."
+                return
+            if not rest:
+                router.arm_claude(pick)
+                yield f"{pick.model.capitalize()}{f' on {pick.effort} effort' if pick.effort else ''} for your next request."
+                return
+            user_text = rest
+        elif hasattr(router, "take_armed_claude"):
+            pick = router.take_armed_claude()
+        if pick is not None:
+            router.claude_pick = pick
+        try:
+            async with contextlib.aclosing(
+                    self._respond(user_text, sensitive=sensitive, untrusted=untrusted, chat=chat)) as sentences:
+                async for sentence in sentences:  # closing this closes that, so an interrupted answer still rolls back
+                    yield sentence
+        finally:
+            if pick is not None:
+                router.claude_pick = None
+
+    async def _respond(self, user_text: str, *, sensitive: bool = False,
+                       untrusted: str = "", chat: bool = False) -> AsyncIterator[str]:
+        """untrusted: text that came from outside (a forwarded message) and sits inside user_text as quoted data; the
+        safety layer treats it like a page that was read."""
+        async with self._lock:
+            self._age_out()
+            self.reply_started = False
+            for gate in self.input_gates:
+                try:
+                    fixed = gate(user_text)
+                except Exception:
+                    log.warning("an input gate failed; carrying on without it", exc_info=True)
+                    fixed = None
+                if fixed:
+                    self.history.append(Message("user", user_text, private=True))
+                    self.history.append(Message("assistant", fixed, private=True))
+                    self._log("user", user_text, True)
+                    self._log("assistant", fixed, True)
+                    self._trim()
+                    yield fixed
+                    return
+            start = len(self.history)
+            self._chat_turn, self._turn_start = chat, start  # a Telegram chat turn is kept longer (_mark_chat)
+            turn_private = False
+            self.history.append(Message("user", user_text))
+            if self.provenance is not None:
+                self.provenance.reset()  # what the last request read does not follow into this one
+                if untrusted:
+                    self.provenance.note_result("telegram_forward", untrusted)
+            self._log("user", user_text)
+            annotate_turn(transcript_hash=transcript_hash(user_text))
+            if self.toolkits is not None:
+                self.toolkits.next_turn()
+            try:
+                fast = await self._fast(user_text)
+                if fast is not None:
+                    yield fast
+                    return
+                instant = self._instant(user_text, untrusted)
+                if instant is not None:
+                    yield instant
+                    return
+                if (self.offline is not None and self._store.config.offline.enabled
+                        and self.offline.probe.known_offline()):
+                    reply = await self.offline.answer(user_text)  # no waiting on providers that cannot be reached
+                    self.history.append(Message("assistant", reply))
+                    self._log("assistant", reply)
+                    self._trim()
+                    self._after_turn(user_text, reply)
+                    yield reply
+                    return
+                for _ in range(self._max_rounds):
+                    sensitive = (sensitive or self.force_private or self._store.config.safety.privacy_mode
+                                 or self._probe_private()
+                                 or any(m.private for m in self.history))
+                    annotate_turn(private=sensitive)  # e.g. the answer cache keeps nothing from a private turn
+                    messages = self._outgoing(user_text)
+                    specs = self._tool_specs(user_text)
+                    splitter = SentenceSplitter(self._store.config.turn.first_clause_words)
+                    parts: list[str] = []
+                    calls: list[ToolCall] = []
+                    recover = self._can_recover()
+                    prefer = None
+                    while True:
+                        stream = self._stream(messages, specs, sensitive, prefer=prefer, raise_request_errors=recover)
+                        try:
+                            async with contextlib.aclosing(stream) as events:
+                                async for event in events:
+                                    if isinstance(event, TextDelta):
+                                        self.reply_started = True
+                                        parts.append(event.text)
+                                        for sentence in splitter.feed(event.text):
+                                            yield sentence
+                                    elif isinstance(event, ToolCallEvent):
+                                        calls.append(event.call)
+                            break
+                        except LLMError as e:
+                            if not recover or parts or calls or e.kind not in REQUEST_SHAPED:
+                                raise
+                            recover = False  # one repair per round; after that the router fails over as before
+                            messages, specs, prefer = self._repair(e, user_text, messages, specs)
+                    tail = splitter.flush()
+                    if tail:
+                        yield tail
+                    self.history.append(Message("assistant", "".join(parts), tool_calls=calls, private=turn_private))
+                    self._log("assistant", "".join(parts), turn_private or sensitive)
+                    if not calls:
+                        self._trim()
+                        self._after_turn(user_text, "".join(parts))
+                        return
+                    local_texts: list[str] = []
+                    for call in calls:
+                        result, private = await self._run_call(call)
+                        sensitive = sensitive or private
+                        turn_private = turn_private or private
+                        if isinstance(result, LocalResult):  # for the user only: shown, never kept or sent on
+                            local_texts.append(str(result))
+                            result = LOCAL_STUB
+                        self.history.append(
+                            Message("tool", result, tool_call_id=call.id, name=call.name, private=turn_private)
+                        )
+                    if local_texts:
+                        yield "\n".join(local_texts)
+                        self.history.append(Message("assistant", LOCAL_STUB, private=True))
+                        self._log("assistant", LOCAL_STUB, True)
+                        self._trim()
+                        self._after_turn(user_text, LOCAL_STUB)
+                        return
+                yield "I couldn't finish that request."
+                self._trim()
+            except BaseException:
+                del self.history[start:]
+                raise

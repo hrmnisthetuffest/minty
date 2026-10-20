@@ -1,0 +1,3 @@
+name = "jobs"
+description = "See and cancel background work (browser jobs, helpers, deep thinking, coding jobs)."
+default_enabled = true

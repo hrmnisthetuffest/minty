@@ -1,0 +1,3 @@
+name = "vault"
+description = "Your notes folder: capture, find, cite, decisions, bookmarks, inbox review."
+default_enabled = true

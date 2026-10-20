@@ -1,0 +1,11 @@
+name = "weather"
+description = "Current weather and today's forecast from Open-Meteo (no API key)."
+default_enabled = true
+
+[settings.location]
+type = "string"
+label = "Default city"
+
+[settings.units]
+type = "string"
+label = "Units: metric or imperial"

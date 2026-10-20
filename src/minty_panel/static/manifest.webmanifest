@@ -1,0 +1,11 @@
+{
+  "name": "Minty",
+  "short_name": "Minty",
+  "description": "Your Minty control panel, on your own network.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0d10",
+  "theme_color": "#0b0d10",
+  "icons": [{"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+}

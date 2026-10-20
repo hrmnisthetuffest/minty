@@ -1,0 +1,7 @@
+name = "school"
+description = "School inbox: checks the SchoolPad web portal (you log in once yourself in the browser window), keeps a homework list and notices, and nudges you about homework that is due soon."
+default_enabled = true
+
+[settings.portal_url]
+type = "string"
+label = "Your SchoolPad web address (the page you log in at)"

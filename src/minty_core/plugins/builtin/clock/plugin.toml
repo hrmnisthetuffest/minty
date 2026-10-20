@@ -1,0 +1,3 @@
+name = "clock"
+description = "Tells the current date and time."
+default_enabled = true

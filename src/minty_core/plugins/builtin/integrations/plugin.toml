@@ -1,0 +1,3 @@
+name = "integrations"
+description = "Calendar feeds, Home Assistant scenes and energy, sleep timer, weather alerts, network inventory, n8n templates."
+default_enabled = true

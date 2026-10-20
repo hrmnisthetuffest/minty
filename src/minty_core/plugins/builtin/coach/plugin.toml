@@ -1,0 +1,3 @@
+name = "coach"
+description = "Explains your own training, food and sleep numbers; off until you switch it on."
+default_enabled = true

@@ -1,0 +1,3 @@
+name = "history"
+description = "Looks up the full original transcripts of past conversations, only when you ask for them."
+default_enabled = true

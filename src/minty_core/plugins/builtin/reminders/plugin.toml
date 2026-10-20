@@ -1,0 +1,3 @@
+name = "reminders"
+description = "Reminders for a time of day or a date. They survive restarts and always speak at the time you set."
+default_enabled = true

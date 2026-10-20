@@ -1,0 +1,3 @@
+name = "study"
+description = "Homework plan, exams, flashcards, checked tutoring, summaries, practice papers, mistakes."
+default_enabled = true

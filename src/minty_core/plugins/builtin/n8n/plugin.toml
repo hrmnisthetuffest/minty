@@ -1,0 +1,7 @@
+name = "n8n"
+description = "Builds and manages n8n automations for you: creates workflows (inactive until you approve), lists, activates, triggers webhooks, reads executions."
+default_enabled = false
+
+[settings.base_url]
+type = "string"
+label = "n8n address (default http://127.0.0.1:5678). Set the API key with: minty-core set-key plugin.n8n.api_key"

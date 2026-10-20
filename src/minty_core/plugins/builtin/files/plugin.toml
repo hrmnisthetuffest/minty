@@ -1,0 +1,11 @@
+name = "files"
+description = "A workspace folder Minty can read, write, download into and upload from. It cannot leave that folder."
+default_enabled = true
+
+[settings.folder]
+type = "string"
+label = "Workspace folder (default ~/Minty-Workspace); Minty can only touch files inside it"
+
+[settings.max_download_mb]
+type = "number"
+label = "Largest download in MB (default 200)"

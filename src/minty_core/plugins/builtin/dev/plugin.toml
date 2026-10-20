@@ -1,0 +1,3 @@
+name = "dev"
+description = "Developer help: repo summary, git digest, tests, CI, dependency radar, review, command explainer, snippets, plugin kit, trends, ideas."
+default_enabled = true

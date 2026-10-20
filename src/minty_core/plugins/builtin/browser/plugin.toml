@@ -1,0 +1,47 @@
+name = "browser"
+description = "Uses a real Chrome window like a person: open pages, read them, click, type, scroll. Asks before buying, sending, deleting or posting, and never types passwords."
+default_enabled = true
+
+[settings.headless]
+type = "boolean"
+label = "Hide the browser window (default off, so you can watch it work)"
+
+[settings.allow_local]
+type = "boolean"
+label = "Allow pages on this computer and your home network (default off)"
+
+[settings.folder]
+type = "string"
+label = "Folder for screenshots (default ~/Minty-Workspace)"
+
+[settings.agent_model]
+type = "string"
+label = "Model for whole browser jobs: a provider name such as gemini or nvidia-deep (empty: the one you're talking to)"
+
+[settings.planner_model]
+type = "string"
+label = "Model that plans and double-checks browser jobs (empty: same as the model above)"
+
+[settings.strong_model]
+type = "string"
+label = "Stronger model tried once when a step keeps failing (empty: none)"
+
+[settings.page_budget]
+type = "number"
+label = "Most characters of one page reading sent to the model; longer pages are cut, the rest is one scroll or browser_read away (default 3500, 0 = no limit)"
+
+[settings.prompt_state]
+type = "boolean"
+label = "Tell the model which page is open and what is on it, so follow-ups like 'click Store' work (default on)"
+
+[settings.fastpath]
+type = "boolean"
+label = "Do simple page commands (click X, scroll down, go back, search for Y) without asking the model; risky clicks still ask (default on)"
+
+[settings.wall_wait_s]
+type = "number"
+label = "On a CAPTCHA or bot check: seconds to wait while you clear it in the window, then carry on by itself (default 180, 0 = stop and ask)"
+
+[settings.min_gap_s]
+type = "number"
+label = "Seconds between page loads on the same site, so jobs do not hammer it (default 2, 0 = none)"

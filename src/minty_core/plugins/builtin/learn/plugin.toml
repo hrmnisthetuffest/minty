@@ -1,0 +1,3 @@
+name = "learn"
+description = "Remember how a finished browser job was done as a routine: draft, test run, your approval, then it can be replayed without thinking. Failing routines are quarantined, never silently rewritten."
+default_enabled = true

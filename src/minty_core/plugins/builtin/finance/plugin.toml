@@ -1,0 +1,3 @@
+name = "finance"
+description = "A private, read-only money tracker: quick add, budgets, goals, subscriptions, bills, reports."
+default_enabled = true

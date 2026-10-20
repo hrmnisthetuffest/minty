@@ -1,0 +1,11 @@
+name = "subagents"
+description = "Run background helper agents that work on a task and report back by voice."
+default_enabled = true
+
+[settings.max_concurrent]
+type = "number"
+label = "Max subagents at once (default 3)"
+
+[settings.max_runtime_s]
+type = "number"
+label = "Max seconds per subagent (default 600)"

@@ -1,0 +1,14 @@
+{
+  "about": "The browser follow-ups that failed on 2026-10-11, as utterances only. 'expect' is what a working turn does: a browser tool on the named element, or a short question when the request names nothing.",
+  "turns": [
+    {"say": "Could you open Chrome?", "expect": {"tool": "browser_open"}},
+    {"say": "Click on I'm feeling lucky", "expect": {"tool": "browser_click", "label": "I'm Feeling Lucky"}},
+    {"say": "Open Chrome", "expect": {"tool": "browser_open"}},
+    {"say": "you should click on", "expect": {"question": true}},
+    {"say": "Store", "expect": {"tool": "browser_click", "label": "Store"}},
+    {"say": "Now you should click on phones", "expect": {"tool": "browser_click", "label": "Phones"}},
+    {"say": "search for cats", "expect": {"tool": "browser_type", "label": "Search"}},
+    {"say": "click the first result", "expect": {"tool": "browser_click", "label": "Result: Cats - Wikipedia"}},
+    {"say": "click Store", "expect": {"tool": "browser_click", "label": "Store"}}
+  ]
+}

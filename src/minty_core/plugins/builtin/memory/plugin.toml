@@ -1,0 +1,3 @@
+name = "memory"
+description = "Long-term notes about the user."
+default_enabled = true

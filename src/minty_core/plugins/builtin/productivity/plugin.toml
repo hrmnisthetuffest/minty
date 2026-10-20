@@ -1,0 +1,3 @@
+name = "productivity"
+description = "Habits, people, trips, meals, alarms, the day's plan and the recorder."
+default_enabled = true

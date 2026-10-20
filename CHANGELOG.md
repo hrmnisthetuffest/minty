@@ -1,0 +1,425 @@
+# Changelog
+
+Every change, with the version it shipped in. **Every change bumps the alpha number** (`1.0.0-alpha.1`, `.2`, ...) in
+`src/minty_core/__init__.py` and `pyproject.toml` (`1.0.0a1`, `a2`, ...) and adds an entry here; `tests/test_version.py` checks
+that the two versions agree and that this file has a heading for the current one. The maintainer moves from alpha to beta by hand,
+when it is good enough.
+
+## 1.0.0-alpha.1 (2026-10-19, first public release)
+
+### Guided setup
+- `minty onboard`: an eight-step, one-question-at-a-time setup with a banner, progress dots, arrow-key menus, hidden key
+  entry and live key checks (`src/minty_core/onboard/`). Steps: check this computer, choose a brain, voice, you and your
+  assistant, safety, your phone (Telegram), skills and extras, test and start.
+- It resumes where it stopped (`~/.config/minty/onboard.json`), can run one step (`--step NAME`) or start again (`--again`), and
+  never downloads or installs anything without asking and stating the size.
+- `minty setup` is an alias for `minty onboard`. The first plain `minty` in a terminal on a clean install offers the setup
+  (`MINTY_NO_ONBOARD=1` skips it).
+- Install hints in the setup come from the `system/osinfo.py` tables (a test forbids hard-coded `apt` commands).
+- Tests: `tests/test_onboard.py` (20 tests: whole run, resume, single step, old Python, Claude on/off, voice installs and
+  downloads, failed download, Telegram good and bad token, extras, the terminal UI with arrow keys and without a terminal).
+
+### Install and project files
+- `install.sh` (private `.venv`, `minty` link in `~/.local/bin`, then the setup; no `sudo`; `--no-onboard`).
+- `LICENSE` (MIT), `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue and pull request templates, a CI
+  workflow (`.github/workflows/ci.yml`, Python 3.12), `docs/getting-started.md`, `docs/providers.md`, `docs/privacy-and-safety.md`.
+- `.gitignore` excludes keys, tokens, `config.toml`, `memory.md` and `*.enc`.
+- `minty --version` and the version in the terminal title; `pyproject.toml` metadata.
+
+### Privacy
+- The speech test fixtures (`tests/fixtures/speech_weather.wav`, `speech_stop.wav`) are synthesized with the Kokoro model
+  (Apache-2.0), saying "What is the weather like today?" and "Stop.".
+- Test data uses made-up names, places and e-mail addresses only; the tree was scanned for key-shaped strings (`gsk_`, `sk-`,
+  `AIza`, Telegram tokens, SSH keys, private-key headers).
+
+### Known gaps
+- Internal work-package labels (`WP-16`, "Wave 16") remain in some docstrings; they are harmless history.
+
+## 1.0.0-alpha.2 (2026-10-19)
+
+### Added: "note for me" (noting mode)
+- Saying **"Minty, note for me"** (also "start noting", "take notes for me", "noting mode") starts noting mode: Minty listens with
+  no wake word and writes down every utterance, never answering and never sending it to the assistant, until you say the whole
+  phrase **"Minty, stop noting"** (also "stop taking notes"). Silence does not end it. Works in classic and in Gemini Live mode
+  (Live hands over after its one reply). Filler such as "um" is not noted; a long sentence that merely contains the phrase is a note.
+- Notes are saved the moment they are heard in `~/.config/minty/voice-notes.md` (private file, a dated heading per session).
+- The HUD lists the latest notes as its last block, at the bottom of the window ("✎ Noting" and a bullet per note), so a card
+  placed below it (a now-playing card) stays under the list. New bus event `notes`, new overlay fields `noting` and `notes`.
+- Settings: `voice.notes` (on) and `voice.notes_hud_lines` (6). Spoken confirmation never contains the stop phrase, so a
+  microphone that hears it cannot end the mode by accident.
+- Code: `voice/notes.py` (phrases and `NoteTaker`), `VoiceExtras.intercept` (`Intercept.start_noting`), `VoicePipeline._note_loop`,
+  `LiveMode.start_noting`, `OverlayFeed`, `OverlayModel.Frame`, `HudWindow`. Tests: `tests/test_voice_notes.py` (23 tests) and two
+  in `tests/test_live.py`.
+- Docs: `docs/getting-started.md` (voice notes, where the file is), `docs/privacy-and-safety.md` (everything said while noting goes
+  to the cloud recogniser unless `stt.provider = "local"`), README.
+- Not included: the now-playing "music card" itself does not exist in this repository (it was only proposed); the notes block is
+  placed so it can sit above it.
+
+## 1.0.0-alpha.3 (2026-10-19)
+
+### Changed: the terminal display, redesigned to be left open all day (from your sketch)
+- **Title**: the release stage is red (`Minty v1.0.0-`**alpha.3**), and turns into "beta" the day you change the version.
+- **Bottom red line removed.** A clean start-up self-check is no longer shown at all; a real problem or an error appears for 12
+  seconds inside the header panel, then fades.
+- **Status panel reorganised** into three cards under accent headings: BRAIN (model, thinking, brain, capacity bar), VOICE (mode,
+  speech, mic, music) and TODAY (day, private, working, memory). Two columns on narrower screens, one on narrow ones; rounded
+  borders; the "say switch to ..." line stays below.
+- **Music card** in the Conversation panel, on the right: title, artist, album, progress bar with times, an equaliser while it
+  plays, "paused", and "Nothing playing" when idle. Dropped below 92 columns so the conversation never loses space.
+- **Header clock and date** on screens 100 columns wide or more (large light digits), for a second display or a laptop on the side.
+- **Conversation** wraps under its label ("You" / "Minty") and shows the newest turns that fit; while "note for me" is on, the panel
+  becomes "Noting" and lists the notes.
+- Code: `tui.py` (`title_text`, `clock_block`, `music_card`, `conversation`, grouped `chips`, measured `status_rows`),
+  `audio/music.py` (`MusicWatcher.now_playing`: title, artist, album, position and length from `playerctl`, cached, never blocks,
+  hung players skipped), `statusline.snapshot` (`now_playing`). The status "MEMORY" row no longer lists custom commands.
+- New `scripts/tui_preview.py` draws the display with sample data at any size (`--svg out.svg`, `--live`, `--noting`, `--paused`).
+- Tests: 10 new in `tests/test_tui.py`, 4 in `tests/test_music.py`, 1 in `tests/test_statusline.py`. Two older tests were updated to the
+  new wording (`tests/test_model_switch.py`: "★" marks your pick and "(x unavailable)"; `tests/test_brownout.py`: the capacity bar,
+  with the call count or, when running low, the time it runs out, on the row below).
+
+## 1.0.0-alpha.4 (2026-10-19)
+
+### Added: the album cover in the music card
+- The music card now shows the album cover (12 by 12 pixels, drawn in half-block cells, so it works in any terminal) to the left of
+  the title, artist and equaliser; the progress bar and times run under both. The card is 36 columns wide and is dropped below 96.
+- The picture's address comes from the media player (`mpris:artUrl`). A web address goes through the same public-address check
+  as every other fetch (a player cannot point Minty at localhost or your network), only `image/*` answers are used and the download
+  is capped at 3 MB; a local file must be an image (png, jpg, webp, gif, bmp) of at most 5 MB. ffmpeg (already used for voice notes)
+  crops it square and shrinks it, so there is no new Python dependency. Without ffmpeg, while it loads, or when it fails (retried
+  after a minute), a steady coloured tile with a note on it is shown, a different colour per track. The display never waits for it.
+- Code: `audio/cover.py` (`art_bytes`, `decode`, `to_text`, `tile`, `CoverCache`), `MusicWatcher.now_playing` adds `art_url`,
+  `TuiModel.covers`, `tui.music_card`. `scripts/tui_preview.py` draws a sample cover.
+- Tests: `tests/test_cover.py` (10, including a real ffmpeg run on a generated PNG), plus new cases in `tests/test_tui.py` and
+  `tests/test_music.py`.
+
+## 1.0.0-alpha.5 (2026-10-19)
+
+### Added: the album cover as a real picture where the terminal can show one
+- New `gfx.py`: asks the terminal once which picture protocol it speaks (kitty graphics, or sixel via the device-attributes reply
+  that GNOME Terminal and other VTE terminals, foot, xterm, Konsole and Windows Terminal give), reads the cell size in pixels, and
+  draws pictures over a block of cells the layout keeps blank. Sixel is painted again after every frame (text paints over it) inside
+  one synchronized-output update; a kitty picture is sent once and only moves or changes when it has to. Everything is removed on
+  exit. A terminal that speaks neither keeps the half-block cover.
+- With pictures on, the cover block is 18 by 9 cells (about 162 by 162 pixels, square) and the card is 40 columns wide (shown from
+  100 columns). The cover is cut square and resized by ffmpeg with Lanczos from the full-size file the player gave, so it is a real
+  picture, not blocks. While it loads a tile of the same size is shown, so nothing moves when it arrives.
+- A purpose-built sixel encoder (numpy, 96 colours, run-length compressed): a 162 by 162 cover is about 16 KB and encodes once, off the
+  display's loop, in under 0.3 s; the round trip through a decoder differs from the source by 4 of 255 on average.
+- Settings: `terminal_images` = `auto` (default), `off`, `sixel` or `kitty`; `MINTY_IMAGES` in the environment does the same.
+  `scripts/tui_preview.py --live [--images ...]` shows it with sample data.
+- Not verified: drawing in a real GNOME Terminal, kitty or WezTerm. The detection, the encoders, the placement maths and the cover
+  loading are tested; whether your terminal build has sixel switched on is answered by the detection at start.
+- Tests: `tests/test_gfx.py` (15), more in `tests/test_cover.py` and `tests/test_tui.py`.
+
+## 1.0.0-alpha.6 (2026-10-19)
+
+### Added: cover size, your own art in the preview, and a terminal check
+- New setting `terminal_cover_size` (10 to 36, default 18): the real cover's width in cells, about 9 pixels each, so 28 is about
+  256 by 256 pixels. The card widens with it (the cover plus 22 columns) and is only shown when the conversation keeps 60 columns.
+- `scripts/tui_preview.py --art FILE_OR_URL --cover-size 28` shows any image of yours as the sample cover. No album art is bundled in
+  the repository: the music card shows whatever your player reports for the track that is playing.
+- New `scripts/term_check.py`: asks your terminal whether it draws pictures, prints its raw answer and the cell size, and draws a
+  test gradient if it can. Useful when Minty shows the block cover instead of a real picture.
+- Tests: two more in `tests/test_tui.py`.
+- The preview now follows the song that is really playing (`playerctl`, any MPRIS player: Spotify, Firefox, VLC); with no player
+  running it keeps the sample so the card can still be previewed (`--sample-music` forces the sample). The real display always follows
+  the player. Fixed: the "music: playing" flag and the track come from separate refreshes and could disagree for a moment; a
+  playing track now always counts as music (`statusline.snapshot`). A player that gives no cover address (Firefox does not) gets the
+  coloured tile.
+
+## 1.0.0-alpha.7 (2026-10-20)
+
+### Added: a failsafe for pictures
+- Any error while drawing a picture (a terminal that claimed support and cannot show it, a closed pipe, a broken answer) now turns
+  pictures off for that run: the picture is removed, and the display carries on with the pixel-block cover. The synchronized-update
+  mode is always closed first, so the terminal is never left frozen. Terminals that do not answer the detection question, or answer
+  "no", never get pictures in the first place (this was already so; it is now also tested end to end).
+- Docs: kitty is the recommended terminal for the real cover (WezTerm and Ghostty as alternatives); `scripts/term_check.py` explains
+  what a terminal can do and that the block cover is expected, not a fault, where pictures are not supported.
+- Tests: two more in `tests/test_tui.py` (`safe_paint_images`).
+
+## 1.0.0-alpha.8 (2026-10-20)
+
+### Changed: a tall music card, and the colours follow the song
+- **The music card is now vertical**: the square cover on top, then the title (two rows), artist and album, a progress bar with the
+  times on one line, and the equaliser. It is as narrow as its cover (at least 22 columns wide) instead of a wide banner, so the
+  conversation keeps almost all the width. It is only shown when the conversation keeps 50 columns beside it.
+- **The cover size adapts to the height**: the cover is as big as the setting asks (`terminal_cover_size` for real pictures, 18 by 9
+  cells for the block cover) and as the rows left allow; a short terminal gets a smaller square cover, a very short one a card
+  without a cover, a tiny one no card. The block cover is now 18 by 18 pixels (it was 12 by 12).
+- **The accent colour follows the song.** The most vivid area of the cover (greys and near-black do not count) becomes the accent
+  of the headings, the clock, "Minty" in the conversation, the progress bar, the equaliser and the card's border, lifted to a
+  brightness that reads on a dark screen. A track with no cover gets the colour of its placeholder tile; a grey cover or nothing
+  playing keeps the default ember. The colour fades to a new song over about a second (at once with reduced motion). The red
+  "alpha" in the title, the state colours and the status colours (green, yellow, red) do not change.
+- Code: `audio/cover.py` (`dominant_color`, `tile_accent`, `CoverCache.accent`, covers keyed by size), `tui.py` (`card_plan`,
+  vertical `music_card`, `TuiModel.follow_accent`).
+- Tests: 8 new in `tests/test_cover.py` and `tests/test_tui.py`; the card layout tests were rewritten for the vertical card.
+
+## 1.0.0-alpha.9 (2026-10-20)
+
+### Changed: a bolder clock, a bigger play icon and equaliser, no player name
+- **Clock**: solid block digits, five rows tall with square pixels (2 cells wide, 1 tall), shaded from the song's colour at the top to
+  a deeper tone at the bottom; the colon is two squares that blink each second (steady with reduced motion); the day and date
+  underneath in small spaced capitals (`M O N · 1 9 · O C T`). It is 30 columns wide and shown from 112 columns.
+- **Music card**: the player's name ("spotify") is gone from the card. The play icon is a three-row triangle in the song's colour,
+  and the equaliser beside it is three rows tall with moving two-cell bars (flat and still with reduced motion). Paused shows a
+  three-row pause icon and the word "paused". The card keeps its shape on short terminals; the cover gives up two rows for the
+  bigger icon.
+- Tests: the Rich colour tests now read the colours from the SVG export instead of ANSI codes (Rich caches a style's ANSI codes after
+  its first render, so a test that used another colour mode earlier made one of them fail in the full suite, not alone); new tests
+  for the clock, the icon, the equaliser and the pause icon. The alpha.8 commit contained that one order-dependent test failure;
+  this release fixes it.
+
+## 1.0.0-alpha.10 (2026-10-20)
+
+### Changed: a quieter screen, a chat bar, more of the cover's colour (from your annotated screenshot)
+- **The Status panel is gone.** In its place one quiet line under the header: the model, the voice mode and the microphone
+  (`claude · haiku · classic · mic on`). It only grows when something needs attention: muted, private, privacy mode, deep thinking,
+  models resting (`7/9 models ready`), running low (`10% left` and when it runs out), or work in the background. The switch-to
+  list, the capacity bar, memory counts, the speech engine and the rest are no longer drawn (the web panel still has them).
+- **A chat bar at the bottom.** While you speak, your words appear in it as they are recognised (`you › what is the weather like in
+  Paris…`); while Minty speaks, its words appear a few at a time at the pace of the voice and then stay for ten seconds (`Minty ›`);
+  idle it says how to use it. **You can also type**: letters appear in the bar, Enter sends the line, Backspace and Ctrl+U edit it,
+  arrow keys are ignored, Ctrl+C still stops Minty. A typed line goes through the same path as the local API (command phrases first,
+  then the assistant) and is answered as text on the display; if the voice is in the middle of something you are told to ask again.
+  (`typed.py`: `typed_chat`, `answer_text`, `command_router`, shared with the API.)
+- **The music card**: a strip of the cover's main colours between the picture and the title (tones of the tile colour for a track
+  with no cover); the title now sits directly above the artist (no reserved empty row; a long title wraps to two rows).
+- **More of the screen follows the cover**: the idle orb glows in the song's colour and the header border takes its tone while
+  waiting (listening, speaking, thinking and the other states keep their own colours); the chat bar's border and prompt, the clock,
+  headings, progress and equaliser already did.
+- Preview: `scripts/tui_preview.py --live` now accepts typing (it answers by repeating the line) so the bar can be tried;
+  `--typing "text"` and `--state listening` show a moment in the SVG.
+- Tests: 14 new in `tests/test_tui.py`, 3 in `tests/test_cover.py`, `tests/test_typed.py` (5); four tests of the removed Status grid
+  were deleted with it.
+
+## 1.0.0-alpha.11 (2026-10-20)
+
+### Changed: the card at the bottom right, a "Coming up" column, a narrower chat (from your annotated screenshot)
+- **The music card now sits at the bottom right** of the conversation panel with a little padding (one column on the right and
+  left, one row under it), as tall as its content, not stuck to the top. The real-picture overlay follows it.
+- **Reminders and more in the free space.** A new "COMING UP" column in the middle of the conversation panel lists your reminders
+  and running timers, soonest first: `⏱ 4:32  tea`, `23:59  call dad`, `tmrw 10:32  ...`, `Wed 10:02  ...`. Minty's own nudges are not
+  listed. When nothing is due it says so and shows how to ask. The data comes from the scheduler and the timers
+  (`statusline.coming_up`, a new `agenda` field in the status snapshot; a failing store gives a shorter list, never an error).
+- **The chat takes about half of the panel** (`column_widths`): chat, coming up, card. Below about 100 columns the middle column
+  is dropped and the chat takes its width, so nothing is squeezed.
+- The title in the header is explicitly white, so it stays readable when the border takes a dim tone of the song's colour.
+- The spoken "say switch to ..." list and its test were removed with the Status panel (the voice commands still work).
+- Tests: 6 new layout tests in `tests/test_tui.py`, 2 in `tests/test_statusline.py`; `tests/test_model_switch.py` no longer imports the
+  removed list. (The alpha.10 changes below were built and tested before this release but never committed on their own.)
+
+## 1.0.0-alpha.12 (2026-10-20)
+
+### Fixed: the accent colour now really is the cover's main colour
+- The accent used to be the most *vivid* hue, brightened and made more saturated, which could differ a lot from what the cover
+  looks like. It is now **the colour used by the most pixels, as it really is** (the average of that area), **skipping black, white
+  and grey**: if the most used colour is white, black or grey, the next most used one is chosen. Pixels are grouped by hue,
+  lightness and softness, so a sky blue and a navy are two colours while the tones of one blue are one.
+- Only a colour too dark to read on a dark screen is brightened (to a brightness of about 0.62, same hue); soft and light colours
+  are left as they are. A picture with almost no colour (under 4% of its pixels, which JPEG noise cannot reach) has no accent and
+  the default ember stays.
+- The colour strip under the cover uses the same counting: the colours used most first, true to the picture, one per hue.
+- Tests: the accent and palette tests in `tests/test_cover.py` were rewritten (most used wins, true colour, next colour when the
+  first is white, black or grey, dark colours lifted only as much as needed).
+
+## 1.0.0-alpha.13 (2026-10-20)
+
+### Fixed: first-token latency was never recorded
+- The trace writer masked any field whose name contains "token" as a credential, so **every `first_token_ms` in every trace was stored as
+  `"…"`** (194 events in seven days) and the trace report could not show a first-token time (it crashed on the text instead).
+  The pattern now treats `token` as a credential only when it is not `tokens` (a count) or `..._ms` (a duration); `access_token`,
+  `api_token`, `token`, `refresh_token`, keys, secrets, passwords, cookies and authorization stay masked. `trace_report` skips the
+  masks in old traces instead of crashing. Tests added to `tests/test_trace.py` and `tests/test_trace_report.py`.
+
+### Added: `docs/performance-plan.md`
+- Research (how the Linux kernel community optimises, what makes a conversation feel natural, speech and language models that fit old
+  hardware, Python on small machines) with sources, measurements of this code and of seven days of real traces (first spoken word p50
+  2.45 s and p95 12 s; 68% of output tokens were hidden reasoning; 2% prompt-cache hits; about 2,500 tokens in every request; a fixed
+  900 ms silence wait), fifteen findings, workstreams A to G with expected gain, effort and risk, the order of work, and how each step
+  is measured.
+
+### Removed
+- The colour strip under the album cover (you asked for it gone); a row of air keeps the picture and the title apart. The palette
+  code and its tests went with it.
+
+## 1.0.0-alpha.14 (2026-10-20)
+
+### Added: the first speed tranche (workstreams A, B and D of `docs/performance-plan.md`)
+- **`minty tune`**: describes this computer (processor and AVX2, threads, memory and what is free, swap, disk type, graphics cards and
+  their memory, battery), puts it in a tier (**t0** very old or small, **t1** ordinary, **t2** modern) and shows the settings that
+  suit it next to what they are now. Nothing changes until `minty tune --apply` (it asks; `--yes` does not). `--system` adds
+  operating-system tips as words only (zram and swappiness for small memory, a spinning disk, two threads, battery, real-time audio).
+  New `hwprobe.py` (reads /proc and /sys under a root folder so tests can describe any machine; asks `nvidia-smi` about an NVIDIA card)
+  and `tune.py`. Not knowing something never switches a feature off: an unreadable machine is t1.
+- What a t0 machine is set to: the Piper voice, live captions off, still display, no terminal pictures, the tiny local recogniser. A
+  machine without AVX2 gets Piper and is told why; a GPU with enough memory gets the larger local recogniser. A modern machine is
+  left as it is. A test checks that every recommended setting is a real setting with a valid value.
+- **The setup offers it**: the first step shows the computer and, on anything but a modern one, asks whether to use the settings that
+  suit it (default yes).
+- **Python runtime tuning at start** (`runtime.tune_gc`): after start-up the loaded objects are frozen and the collector's threshold
+  is raised, so a steady-state assistant stops rescanning its own settings and plugins. Cycles are still collected; a threshold someone
+  already chose is left alone.
+- **The service unit sets `MALLOC_ARENA_MAX=2`**: glibc keeps an allocation arena per core by default, which wastes memory on a small
+  machine.
+- **A circuit breaker for tools** (`toolbreaker.py`): a tool that fails three times in a row is not offered to the model for ten
+  minutes, and the model is told it is unavailable. In the traces one failing tool cost a whole model round trip six times. After the
+  rest it gets one try; a failure rests it again at once, a success clears the count.
+- **Loop-stall traces keep the frame that matters** (`loopwatch.compact_stack`): the stack of a frozen event loop was stored as full
+  file paths cut from the end, so on a long install path the innermost frame (the code that was running) was lost; it is now
+  `file.py:line function` for the last six frames, dropping the outermost first. This was also the cause of a test that failed on the
+  laptop and in a deep folder.
+- Tests: `tests/test_hwprobe.py` (15), `tests/test_tune.py` (7), `tests/test_runtime.py` (2), `tests/test_toolbreaker.py` (4), more in
+  `tests/test_onboard.py` and `tests/test_service.py`.
+- Not done yet from the plan (next): the measurement harness and per-stage latency in the trace (M1), the faster end-of-speech wait,
+  speculation, first-chunk voice, the prompt diet and stable prefix, the Live-mode interruption fix. None of the numbers in the plan
+  has been re-measured after these changes; this tranche removes costs (idle CPU on small machines, wasted round trips) but does not
+  yet change the time from speaking to hearing the answer.
+
+## 1.0.0-alpha.15 (2026-10-20)
+
+### Changed: the same look and features on every computer
+- **`minty tune` no longer changes how Minty looks or works.** By default it describes the computer and how Minty adapts to it and
+  changes nothing, even with `--apply`. The simpler profile (the light Piper voice, the tiny local recogniser, no live captions, a still
+  display, no terminal pictures) is a choice: `minty tune --lite` shows it, `--lite --apply` uses it after asking, `--full --apply` goes
+  back to the defaults. The setup's first step only says what kind of computer this is; it no longer offers to change settings.
+- **The display adapts its frame rate, not its look.** The delay before the next redraw is now `max(normal delay, frame time / share)`
+  with the frame time smoothed: at most a third of a core while something moves and a twentieth while waiting, never slower than one
+  frame in two seconds idle (0.4 s busy). On this PC (6 ms frames) nothing changes; on a machine ten times slower it redraws about once
+  a second while waiting and about six times a second while active, with the same screen.
+- **Live captions adapt too** (`pipeline.caption_every`): the refresh interval is at least twice the time one caption took, so a slow
+  recogniser is no longer kept busy back to back while you speak. Captions still appear, a little less often.
+- `docs/performance-plan.md`: the principle (same look and features everywhere; speed from cheaper work, not less work), updated work
+  items, and a section on whether to rewrite the project in Rust (no; the numbers are there).
+- Tests: `tests/test_hwprobe.py`, `tests/test_tune.py`, `tests/test_onboard.py` rewritten for the new rule; new cases in
+  `tests/test_tui.py` and `tests/test_captions.py`.
+
+## 1.0.0-alpha.16 (2026-10-20)
+
+### Wake word and names
+- **Wake word:** `minty`, with `mintee`, `minti` and `mindy` as common mis-hearings. The close-match rule compares with the name (the
+  first phrase) and never accepts real words that sound close ("mint", "mind", "mine", "mini").
+- The system prompt says `Your name is "Minty".` File formats start with `MINTYBK1` (backup), `MINTYEX1` (export) and `MINTYPV1`
+  (private vault); the Telegram relay envelope starts with `MINTY-RELAY/1`.
+- New: extra non-matches in `tests/test_wakewords.py`.
+
+## 1.0.0-alpha.17 (2026-10-20)
+
+### Instant answers (new): the quick things need no model
+- **`minty_core.instant`**: requests that are *wholly* a known question are answered by Minty itself, in about a tenth of a
+  millisecond, with no model call, no network and no quota. Everything else goes to the model exactly as before. 37 rule groups,
+  347 example phrases (each understands many more wordings), listed in [docs/instant-answers.md](docs/instant-answers.md), which is
+  written from the rules and checked by a test.
+  - **Time and date:** the time (said the way people say it: "noon", "4:32 PM"), the date, the day, the week number; tomorrow,
+    yesterday, "in 10 days", "3 weeks ago", "next Friday", Christmas and other fixed holidays; days until or since a date, a
+    weekday, the weekend or a holiday; days left in the year or month; "what time will it be in 2 hours", "how long until 6 pm";
+    the time in 145 cities, countries and zone names; leap years and the days in a month.
+  - **Maths:** sums with words or symbols ("twelve minus five", "2 to the power of 10", "(2 + 3) * 4"), percentages, discounts,
+    tips, GST and VAT, splitting a bill, roots, factorials, logs, trigonometry, primes, factors, gcd and lcm, averages, number
+    bases, Roman numerals, times tables, areas and volumes. A small safe calculator (no `eval`) does the arithmetic.
+  - **Conversions:** 62 units of length, weight, volume, speed, area, time, data, angle and temperature.
+  - **Facts that do not change:** 152 capitals, the 118 elements (symbol, number, name, the lighter ones' mass), 28 formulas, 89 full
+    forms (CPU, UPI, JEE, ...), constants, counts, planets, "how many lakh in a crore".
+  - **This computer:** battery, memory, disk space, processor load and temperature, uptime, address, user, system; what song is
+    playing (from the music watcher), "say that again", "what did I just ask".
+  - **Chat and games:** hello, thanks, who are you, are you there, the version; a coin, dice, a random number, card or colour,
+    "pick between a and b", the magic 8 ball, jokes, facts, quotes, tongue twisters, counting, spelling.
+- **Commands without a model** (`instant.actions`): "set a timer for 5 minutes", "how long is left on the timer", "remind me in an
+  hour to drink water", "remind me at 6 pm to ...", "volume up/down/40", "mute the sound", "brightness 50", "lock the screen",
+  "pause", "resume", "next song", "previous song". Each is one tool call through the usual safety checks; if the tool is not set up
+  the request goes to the model, so nothing is lost. The agent's fast path now takes these after the page commands.
+- **Safety of the idea:** a rule fires only when the whole request matches, so "what is the time complexity of quicksort", "remind me
+  tomorrow at 9", "pick up the kids and the dog" and 30 more look-alikes in the tests go to the model. Text that came from outside
+  (a forwarded message) is never answered locally. Praise like "perfect" is not treated as small talk, because it can be a "yes".
+- Settings: `instant.enabled`, `instant.actions`, `instant.skip = ["fun and games"]` (categories to leave to the model). They apply
+  at the next request. Trace: an `instant` event with the rule that answered.
+- `minty instant "phrase"` tries a phrase (exit 0 if answered here), `minty instant` lists everything.
+- Text helpers: spoken numbers become digits ("two thousand twenty six" is 2026, "twelve minus five" stays a subtraction); trailing
+  "please", "for me", "right now" are ignored; "what's" is "what is"; 1,200 is 1200.
+- Also: possessives broken by the rename ("Minty's words") fixed; the Hindi transliteration used in two tests follows the new name.
+- Tests: `tests/test_instant_*.py` (about 500 cases), including 36 requests that must *not* be answered locally.
+
+## 1.0.0-alpha.18 (2026-10-20)
+
+### Faster turns: hear the pause, finish early, speak sooner
+- **Recognition during the pause (`audio.speculative_stt`, on by default).** After `audio.spec_after_ms` (350 ms) of silence following
+  speech, the words so far are recognised in the background. When the pause turns out to be the end of your turn, the words are
+  already there, so the recognition time (about 0.3 to 1 s on the cloud or a small local model, longer on an old laptop) is spent
+  *inside* the pause instead of after it. If you carry on speaking, the guess is thrown away and nothing is lost (at most two
+  guesses a turn). Only the recognition runs early; the model, tools and voice wait for the real end of the turn.
+- **A finished sentence ends the turn early (`audio.early_finish_ms`, 600 ms; 0 turns it off).** When the guess is a sentence the
+  recogniser closed with a full stop, question mark or exclamation mark, and its last word is not one people stop on ("and", "to",
+  "um"), the turn ends after 600 ms of silence instead of 900. Anything doubtful ("so the plan is", "I was going to", a sentence
+  with no full stop) still waits the full pause. **This is the one change in this release that you have to judge with your ears:** if
+  it ever cuts you off, set `audio.early_finish_ms = 0` (nothing else changes).
+- **Captions stop re-reading a silent recording.** During a pause the audio is the same, so the live caption is no longer recognised
+  again every second; that CPU goes to the guess instead.
+- **The first spoken piece may stop at a comma (`turn.first_clause_words`, 8; 0 = whole sentences only).** A long first sentence no
+  longer has to be finished before speech starts: "The capital of France is Paris," is spoken while the rest is still arriving. Only
+  the very first piece of an answer is cut, never inside brackets, quotes or numbers like 1,200.
+- **`router.fast_reasoning` (off by default; `"low"` or `"medium"`).** Simple spoken turns can ask reasoning models (Groq's gpt-oss)
+  for less deliberation, which is faster to the first word. Hard turns, thinking mode and other providers are untouched. It is off
+  because answers are slightly less careful and the project's rule is to measure that before changing a default.
+- **Measuring (`minty` trace report, milestone M1).** Every classic turn now records `silence_ms` (the pause that ended it) and `spec`
+  (`used` or `early`); `scripts/trace_report.py` prints "Where the wait goes (p50)": the pause, the recognition, the time to the
+  first sentence, how often the guess was used, and how many answers were instant (no model).
+- Tests: `tests/test_speculative_turn.py` (24), `tests/test_first_clause.py`, `tests/test_fast_reasoning.py`, new cases in
+  `tests/test_trace_report.py`; `EnergyEndpointer.quiet_ms` is new.
+
+## 1.0.0-alpha.19 (2026-10-20)
+
+### Removed: the school-day mode
+- **The day model is gone** (`daymodel.py`): school days and hours, the SCHOOL / HOME mode on the display, the holiday calendar,
+  "I'm home today" / "school is off till Monday" / "quiet mode off" / "what mode am I in" by voice, the "5 conversations during
+  school time means I'm home" rule, and the `[school]` settings. Minty no longer keeps itself quiet because it is a school day;
+  an old `[school]` section in `config.toml` is simply ignored.
+- What stays the same: reminders you set, the night window (`proactive.night_from` / `night_to`), the hourly cap on things Minty
+  says by itself, and the holding of its own nudges when the policy says so (they are shown silently and said later as one digest,
+  now introduced with "Earlier:" instead of "After school:").
+- **Scheduler and proactive policy** no longer take a `quiet` function (`Scheduler(..., gate=...)`, `ProactivePolicy(cfg)`); the
+  gate alone decides say, hold or drop.
+- **Study planner** plans weekdays in `study.window_start/end` and weekends in `study.weekend_start/end` (it used to move the start
+  after school ended); the busy slots and the night window still cut time out.
+- **SchoolPad plugin** keeps its homework list and notices, but no longer reads the school calendar or holidays (the portal prompt no
+  longer asks for HOLIDAY lines), and the automatic check "at the end of school" is gone: say "check school" when you want one.
+- The morning brief no longer says "School day: ..."; a reminder's confirmation no longer mentions school time.
+- Date helpers (`find_date`, `parse_hhmm`) moved to `datewords.py`.
+- Tests: `test_daymodel.py` removed; `test_scheduler.py`, `test_proactive.py`, `test_school.py`, `test_plugin_reminders.py` and the study
+  planner tests rewritten for the smaller design. `test_statusline.py` no longer depends on the date it was written on.
+
+## 1.0.0-alpha.20 (2026-10-20)
+
+### Two buttons: Mute and Listen
+- **M Mute** and **Space Listen** on the top edge of the chat bar. Press the key or click the button (mouse reporting is switched on
+  while the display is open and restored on exit).
+- **Mute** turns the microphone off and on; while muted the whole display fades to red (the orb, borders, clock and status strip), the
+  button says *Muted* and the bar says how to unmute.
+- **Listen** starts a turn without the name (the next audio frame, about 80 ms later); saying the name still works. While Minty is
+  speaking or working on an answer it cuts in, like an interruption. It does nothing while muted or already listening.
+- The keys act only when nothing is typed, so Enter opens an empty line first when a message must start with `M` or a space (Enter or
+  Backspace on the empty line closes it). Any other letter still starts typing at once.
+- **Settings:** `terminal_mute_key`, `terminal_listen_key` (one character, or `space`; they must differ), `terminal_hotkeys` and
+  `terminal_mouse` (off lets the mouse select text). The panel has the two keys under Voice, audio, safety & updates and the two
+  switches under Switches. The panel dashboard gets a Listen button next to Mute, and the API gets `POST /listen`.
+- Tests: `tests/test_hotkeys.py` (28), `tests/test_listen_now.py` (6).
+
+### Updates from GitHub (prepared for publishing)
+- **`minty update`** (`--check` only looks, `--yes` skips the question): finds the newest published release (pre-releases count, drafts
+  do not), shows the notes, and after you say yes moves this git checkout to the release tag with a fast-forward only. It refuses to
+  run over local changes, over commits of your own, from a different `origin`, or for a tag that is not there. It installs changed
+  dependencies, checks that the new version starts, and rolls back to the commit that worked if it does not (the last good commit is also
+  recorded in `update-state/last-good.json`).
+- **Daily check** (`update.check`, on): one request to the GitHub releases API, one notice on the display per new release, nothing
+  installed and nothing spoken. Throttled by `update.check_every_hours` (24).
+- **`update.auto_install`** (off) installs by itself; `update.verify_signed` requires a signed tag. The docs say plainly why it is off.
+- **Which repository:** `update.repo` (`owner/name`), or by default the one the checkout's `origin` points at, so a clone of the
+  published project needs no setting.
+- `docs/releasing.md` and `scripts/release.py` check that a tag matches the version and the changelog and print the publish commands.
+  Nothing publishes by itself.
+- Fixed: `minty tune --lite`, `minty update --check` and a sentence after `minty instant` were rejected by the command parser.
+- Tests: `tests/test_selfupdate.py` (60, including real git repositories for the update and the rollback).
+
+### One name
+- The project carries one name everywhere: the old-settings-folder hint and its tests are gone, the changelog tells the story under one
+  name, the example names in tests are neutral, and the repository starts from a single fresh commit.

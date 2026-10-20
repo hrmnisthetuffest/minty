@@ -1,0 +1,3 @@
+name = "prompts"
+description = "Lets Minty adjust its own standing instructions, learn your preferences, and keep custom voice commands you teach it."
+default_enabled = true
