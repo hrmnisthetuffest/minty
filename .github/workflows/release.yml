@@ -1,0 +1,26 @@
+name: release
+# Pushing a tag such as v1.0.2 makes the GitHub release that `minty update` looks for. The notes are that version's section of CHANGELOG.md.
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: The tag must match the version and the changelog
+        run: python scripts/release.py "$GITHUB_REF_NAME" --ci
+      - name: Release notes from the changelog
+        run: python scripts/release_tools.py notes "$GITHUB_REF_NAME" > notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --title "Minty ${GITHUB_REF_NAME#v}" --notes-file notes.md $flags

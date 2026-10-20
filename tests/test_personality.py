@@ -77,3 +77,15 @@ def test_service_rules_stay_short_because_every_request_pays_for_them():
     from minty_core.personality import SERVICE_RULES
 
     assert len(SERVICE_RULES) <= 800
+
+
+def test_the_default_persona_is_a_neutral_tough_blank_slate():
+    """The shipped persona carries nothing of any one person's taste: no owner, no old names, no menace or devotion talk."""
+    text = DEFAULT_PERSONALITIES["minty"]
+    lowered = text.lower()
+    assert text.startswith("You are Minty") and 200 <= len(text) <= 900
+    for taste in ("menacing", "loyal", "master", "sir", "ul" + "tron", "ha" + "des", "laptop"):
+        assert taste not in lowered, taste
+    for wanted in ("direct", "honest", "initiative", "check with the user"):  # what makes it good: plain, truthful, acts, asks before consequences
+        assert wanted in lowered, wanted
+    assert "flatter" in lowered and "pad" in lowered

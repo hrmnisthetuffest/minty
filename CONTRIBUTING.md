@@ -35,8 +35,8 @@ Python 3.10 or newer. The tests need no API keys and no audio hardware. To run t
 5. **Keep it small.** One idea per pull request. Match the style around your change (comments explain *why*, names are plain).
 6. **Settings, not surprises.** New behaviour that changes what users hear or what runs on their machine is behind a setting that
    defaults to the old behaviour unless there is a strong reason.
-7. **Update the changelog and the version.** Add your change to `CHANGELOG.md` and bump the alpha number in
-   `src/minty_core/__init__.py` (`1.0.0-alpha.N`) and `pyproject.toml` (`1.0.0aN`). `tests/test_version.py` checks they agree.
+7. **Update the changelog, not the version.** Add a line for your change under `## Unreleased` at the bottom of `CHANGELOG.md`
+   (start it with what changes for the user). Do not change the version number: the maintainer sets it when a release is made.
 
 ## Adding a tool group
 

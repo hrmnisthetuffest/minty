@@ -518,3 +518,15 @@ when it is good enough.
   the image could not be built in the environment where this was written, so the first build on a machine with Docker is the real test.
 - **Removed** the "Design inspired by ..." line from the panel.
 - Tests: `tests/test_profile_bank.py`, `test_profile_store.py`, `test_profile_prompt.py`, `test_profile_api.py`, `test_docker_files.py` and the Profile page in `tests/panel_js_checks.mjs`.
+
+## Unreleased
+
+### A tougher blank-slate default, and a release flow
+- **Default persona.** The persona Minty ships with is now direct, honest, calm and unflattering, with no one's particular taste in it (no
+  menace, no talk of loyalty): it answers first, says plainly when it cannot or should not, takes small safe steps on its own and checks before
+  anything with consequences. Your own persona, edited in the panel, is a file in your settings folder and is never replaced.
+- **Releases.** From the first release on, the version is a plain `1.0.1`, changed only when a release is made (`scripts/release_tools.py`: patch,
+  minor, major, or `first` for 1.0.1); everyday changes are logged under `## Unreleased`. Pushing a tag such as `v1.0.2` starts the new release
+  workflow (`.github/workflows/release.yml`), which makes the GitHub release that `minty update` looks for, using the changelog section as its notes.
+  `scripts/leak_check.py` searches the tracked files for key-shaped strings, for the keys you actually use and for personal words (kept in files outside the repository).
+- Tests: `tests/test_release_tools.py`, `tests/test_release_workflow.py`, `tests/test_version.py`, `tests/test_personality.py`.

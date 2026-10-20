@@ -384,3 +384,4 @@ def test_the_release_script_checks_the_tag_against_the_version_and_the_changelog
     assert clean == []
     assert any("does not match" in p for p in module.problems(root, "v9.9.9"))
     assert any("not a version" in p for p in module.problems(root, "nightly"))
+    assert module.problems(root, f"v{__version__}", ci=True) == []  # in CI the tag and the tree exist already

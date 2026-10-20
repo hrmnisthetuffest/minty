@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Check that a release is ready and print the commands that publish it. It publishes nothing itself.
 
-  python scripts/release.py v1.0.0-alpha.20
+  python scripts/release.py v1.0.1
+  python scripts/release.py v1.0.1 --ci      # in the release workflow: the tag and the tree already exist
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def problems(root: Path, tag: str) -> list[str]:
+def problems(root: Path, tag: str, ci: bool = False) -> list[str]:
     sys.path.insert(0, str(root / "src"))
     from minty_core.selfupdate import parse_version
 
@@ -29,6 +30,8 @@ def problems(root: Path, tag: str) -> list[str]:
         found.append(f"the tag {tag} does not match pyproject.toml ({pyproject.group(1) if pyproject else 'missing'})")
     if f"## {tag.lstrip('vV')}" not in (root / "CHANGELOG.md").read_text():
         found.append(f"CHANGELOG.md has no heading for {tag.lstrip('vV')}")
+    if ci:
+        return found
     git = lambda *a: subprocess.run(["git", *a], cwd=root, capture_output=True, text=True)  # noqa: E731
     if git("status", "--porcelain").stdout.strip():
         found.append("the working tree has uncommitted changes")
@@ -38,18 +41,24 @@ def problems(root: Path, tag: str) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    ci = "--ci" in argv
+    argv = [a for a in argv if a != "--ci"]
     if len(argv) != 1:
         print(__doc__)
         return 2
     tag = argv[0]
-    bad = problems(ROOT, tag)
+    bad = problems(ROOT, tag, ci=ci)
     if bad:
         print("Not ready:\n- " + "\n- ".join(bad))
         return 1
+    if ci:
+        print(f"{tag} matches the version and the changelog.")
+        return 0
     print(f"Ready. To publish {tag} run:\n\n"
           f"  git tag -a {tag} -m \"Minty {tag.lstrip('vV')}\"      # add -s to sign it\n"
-          f"  git push origin main --tags\n"
-          f"  gh release create {tag} --prerelease --title \"Minty {tag.lstrip('vV')}\" --notes-file notes.md\n")
+          f"  git push origin main --tags\n\n"
+          f"Pushing the tag starts the release workflow (.github/workflows/release.yml), which makes the GitHub release that\n"
+          f"`minty update` looks for, with this version's changelog section as its notes.")
     return 0
 
 
