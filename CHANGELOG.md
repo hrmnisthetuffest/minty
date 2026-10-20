@@ -530,3 +530,4 @@ when it is good enough.
   workflow (`.github/workflows/release.yml`), which makes the GitHub release that `minty update` looks for, using the changelog section as its notes.
   `scripts/leak_check.py` searches the tracked files for key-shaped strings, for the keys you actually use and for personal words (kept in files outside the repository).
 - Tests: `tests/test_release_tools.py`, `tests/test_release_workflow.py`, `tests/test_version.py`, `tests/test_personality.py`.
+- **Merging.** `CHANGELOG.md` merges line by line (`.gitattributes`), so a contributor's line and yours under `## Unreleased` no longer clash, and `release_tools.merge_unreleased` joins two Unreleased sections into one.

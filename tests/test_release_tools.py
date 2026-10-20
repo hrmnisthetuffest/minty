@@ -123,3 +123,24 @@ def test_untracked_and_ignored_files_are_not_scanned(tmp_path):
     repo = make_repo(tmp_path, {"a.txt": "fine", ".gitignore": "secret.txt\n"})
     (repo / "secret.txt").write_text("gsk_" + "A1b2C3d4E5f6G7h8I9j0K1l2")
     assert leaks.find_leaks(repo) == []
+
+
+# ---- merging two changelogs ----------------------------------------------------------------------------
+def test_two_unreleased_sections_become_one_at_the_bottom_without_repeats():
+    text = ("# Changelog\n\n## 1.0.1 (2026-11-01)\n\n- a\n\n## Unreleased\n\n- from dev\n- shared line\n\n"
+            "## Unreleased\n\n- shared line\n- from a pull request\n")
+    out = tools.merge_unreleased(text)
+    assert out.count("## Unreleased") == 1 and out.rstrip().endswith("- from a pull request")
+    body = out.split("## Unreleased", 1)[1]
+    assert body.count("shared line") == 1 and "from dev" in body and out.index("- a") < out.index("## Unreleased")
+
+
+def test_a_changelog_with_one_or_no_unreleased_section_is_left_alone():
+    one = "# Changelog\n\n## 1.0.1 (x)\n\n- a\n\n## Unreleased\n\n- b\n"
+    assert tools.merge_unreleased(one) == one
+    none = "# Changelog\n\n## 1.0.1 (x)\n\n- a\n"
+    assert tools.merge_unreleased(none) == none
+
+
+def test_changelog_lines_added_on_two_branches_merge_without_a_conflict():
+    assert "CHANGELOG.md merge=union" in (Path(__file__).parents[1] / ".gitattributes").read_text()

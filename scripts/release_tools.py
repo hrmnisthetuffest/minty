@@ -88,6 +88,23 @@ def add_entry(text: str, markdown: str) -> str:
     return text[:start] + body + "\n" + markdown + "\n" + ("\n" + text[end:] if text[end:] else "")
 
 
+def merge_unreleased(text: str) -> str:
+    """After two branches that both added changelog lines are merged there can be two Unreleased sections: make them one, at the
+    bottom, each line once."""
+    found = [(start, end) for start, end, heading in _sections(text) if heading.strip().lower() == "## unreleased"]
+    if len(found) < 2:
+        return text
+    lines: list[str] = []
+    for start, end in found:
+        for line in text[start:end].split("\n")[1:]:
+            if line.strip() and line not in lines:
+                lines.append(line)
+    rest = text
+    for start, end in reversed(found):
+        rest = rest[:start] + rest[end:]
+    return rest.rstrip("\n") + "\n\n## Unreleased\n\n" + "\n".join(lines) + "\n"
+
+
 def release_notes(text: str, version: str) -> str:
     """The changelog section of one version, without its heading."""
     wanted = version.lstrip("vV")
