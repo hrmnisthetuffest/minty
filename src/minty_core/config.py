@@ -213,6 +213,10 @@ class AudioConfig(BaseModel):
     wake_word: str = "hey_jarvis"  # openWakeWord model used when wake_mode = "model"
     wake_threshold: float = Field(0.5, ge=0.0, le=1.0)
     speech_rms_threshold: int = Field(400, ge=0)
+    auto_sensitivity: bool = True  # the speech bar follows the room and the microphone (audio/sensitivity.py); off: speech_rms_threshold is fixed
+    mic_sensitivity: float = Field(1.0, ge=0.25, le=8.0)  # above 1: hears quieter speech (a deaf mic); below 1: needs louder (a hot mic)
+    listen_duck: bool = True  # turn everything else that is playing way down while it listens, and back up afterwards
+    listen_duck_level: float = Field(0.1, ge=0.0, le=0.9)  # what it is turned down to (0.1 = a tenth of the volume it had)
     silence_ms: int = Field(900, ge=80)
     # Hear the turn during the pause: after this much silence the words so far are recognised in the background, so they are ready
     # when the pause ends (or, with early_finish_ms, a plainly finished sentence ends the turn sooner). Off: recognise at the end.

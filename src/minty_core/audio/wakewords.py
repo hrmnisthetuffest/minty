@@ -13,6 +13,7 @@ from typing import Callable
 import numpy as np
 
 from minty_core.audio.endpointer import rms
+from minty_core.audio.sensitivity import speech_threshold, track_floor
 from minty_core.audio.types import FRAME_S
 from minty_core.audio.vad import is_voice
 from minty_core.config import AudioConfig
@@ -96,9 +97,9 @@ class TranscriptWakeDetector:
     def detect(self, frame: bytes) -> bool:
         cfg = self._get_cfg()
         level = rms(frame)
-        loud = is_voice(level, cfg.speech_rms_threshold, self._floor, frame, self._vad if cfg.vad_assist else None)
+        loud = is_voice(level, speech_threshold(cfg, self._floor), self._floor, frame, self._vad if cfg.vad_assist else None)
         if not loud and not self._buf:
-            self._floor = level if self._floor is None else 0.95 * self._floor + 0.05 * level
+            self._floor = track_floor(self._floor, level)
         if self._skip:  # after an endless stretch, wait for a real pause before listening again
             self._silent = 0 if loud else self._silent + 1
             if self._silent >= _SILENCE_FRAMES:

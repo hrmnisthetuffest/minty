@@ -98,14 +98,17 @@ def _run(argv: list[str]) -> tuple[int, str]:
 
 
 class Ducker:
-    """Lower other applications' playback while Minty speaks (PipeWire/PulseAudio), and put it back. Never touches its
-    own stream."""
+    """Lower other applications' playback (PipeWire/PulseAudio) and put it back. Never touches its own stream.
+
+    With a `state_path` what was turned down is written to a file, so if Minty is killed before it could turn the sound back up,
+    the next start does it (`recover`) and nothing is left quiet."""
 
     def __init__(self, run: Callable[[list[str]], tuple[int, str]] = _run, own_pid: int | None = None,
-                 level: float = 0.3):
+                 level: float = 0.3, state_path: Path | str | None = None):
         self._run, self._pid, self.level = run, own_pid if own_pid is not None else os.getpid(), level
         self._saved: dict[str, int] = {}
         self._lock = threading.Lock()
+        self._state = Path(state_path) if state_path else None
 
     def _inputs(self) -> list[tuple[str, int, str]]:
         code, out = self._run(["pactl", "list", "sink-inputs"])
@@ -119,6 +122,22 @@ class Ducker:
             found.append((ident, int(vol.group(1)) if vol else 100, pid.group(1) if pid else ""))
         return found
 
+    def _write_state(self) -> None:
+        if self._state is None:
+            return
+        try:
+            self._state.parent.mkdir(parents=True, exist_ok=True)
+            self._state.write_text(json.dumps(self._saved), encoding="utf-8")
+        except OSError:
+            pass
+
+    def _forget_state(self) -> None:
+        if self._state is not None:
+            try:
+                self._state.unlink()
+            except OSError:
+                pass
+
     def begin(self) -> bool:
         with self._lock:
             if self._saved:
@@ -127,6 +146,8 @@ class Ducker:
                 if pid == str(self._pid):
                     continue
                 self._saved[ident] = pct
+            self._write_state()  # before anything is lowered: a kill in the middle still leaves a note
+            for ident, pct in self._saved.items():
                 self._run(["pactl", "set-sink-input-volume", ident, f"{int(pct * self.level)}%"])
             return bool(self._saved)
 
@@ -135,3 +156,18 @@ class Ducker:
             saved, self._saved = self._saved, {}
         for ident, pct in saved.items():
             self._run(["pactl", "set-sink-input-volume", ident, f"{pct}%"])
+        self._forget_state()
+
+    def recover(self) -> None:
+        """After a start: if the last run was killed while the sound was turned down, turn it back up."""
+        if self._state is None:
+            return
+        try:
+            saved = json.loads(self._state.read_text(encoding="utf-8"))
+            items = {str(k): int(v) for k, v in saved.items()}
+        except (OSError, ValueError, AttributeError, TypeError):
+            self._forget_state()
+            return
+        for ident, pct in items.items():
+            self._run(["pactl", "set-sink-input-volume", ident, f"{pct}%"])
+        self._forget_state()

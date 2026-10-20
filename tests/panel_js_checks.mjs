@@ -258,7 +258,7 @@ const baseConfig = () => ({
   personality: { active: "minty", formality: 5, humor: 3, verbosity: 3 },
   stt: { provider: "groq", groq_model: "w", local_model: "base.en", local_only: false },
   tts: { engine: "kokoro", kokoro_voice: "am_michael", kokoro_model: "", kokoro_voices: "", speed: 1, voice_model: "", minty_filter: false },
-  audio: { input_device: null, output_device: null, wake_word: "hey_jarvis", wake_threshold: 0.5, speech_rms_threshold: 400, silence_ms: 900, max_wait_ms: 4000, max_record_s: 15, barge_in: true },
+  audio: { input_device: null, output_device: null, wake_word: "hey_jarvis", wake_threshold: 0.5, speech_rms_threshold: 400, auto_sensitivity: true, mic_sensitivity: 1, listen_duck: true, listen_duck_level: 0.1, silence_ms: 900, max_wait_ms: 4000, max_record_s: 15, barge_in: true },
   safety: { confirm_risky: true },
   plugins: { weather: { units: "metric" } },
   update: { repo: "" },

@@ -49,13 +49,14 @@ def _quiet_task(task: asyncio.Task) -> None:
 
 
 class VoicePipeline:
-    def __init__(self, *, audio_in, wake, endpointer, stt, tts, player, agent, bus, store, commands=None, captions=None, live=None, music=None, on_restart=None, tracer=None,
+    def __init__(self, *, audio_in, wake, endpointer, stt, tts, player, agent, bus, store, commands=None, captions=None, live=None, music=None, listen_ducker=None, on_restart=None, tracer=None,
                  speech_check=None, on_conversation=None, streaming=None):
         self.audio_in, self.wake, self.endpointer = audio_in, wake, endpointer
         self.stt, self.tts, self.player = stt, tts, player
         self.agent, self.bus, self.store = agent, bus, store
         self.commands = commands
         self.music = music  # MusicWatcher or None
+        self.listen_ducker = listen_ducker  # voice.adapt.Ducker or None: turns other apps down while it listens
         self.on_restart = on_restart  # called after the spoken goodbye when the user asked to restart Minty
         self.live = live  # LiveMode or None
         self._stable = StablePrefix()
@@ -213,6 +214,7 @@ class VoicePipeline:
                 first_words = "" if manual or pressed else getattr(self.wake, "remainder", "")
                 if not manual and not pressed:
                     self.wake.reset()
+                ducked = await self._duck_for_listening()  # first: it works for any player, and takes effect at once
                 paused = await self._pause_music()
                 live = self.live is not None and self.live.available() and not pressed
                 if not first_words and not live and not pressed and not manual:  # a button press needs no "Yes, sir?"
@@ -246,9 +248,13 @@ class VoicePipeline:
                 finally:
                     if paused:
                         await asyncio.to_thread(self.music.resume)
+                    if ducked:
+                        await asyncio.to_thread(self.listen_ducker.restore)  # after the song plays again, so it returns at full volume
         except EOFError:
             return
         finally:
+            if self.listen_ducker is not None:  # stopping while the sound is turned down must not leave it down
+                await asyncio.to_thread(self.listen_ducker.restore)
             notify_task.cancel()
             await asyncio.gather(notify_task, return_exceptions=True)
             self.bus.unsubscribe(self._notices)
@@ -355,6 +361,19 @@ class VoicePipeline:
             if difflib.SequenceMatcher(None, heard, said).ratio() >= 0.8:
                 return True
         return False
+
+    async def _duck_for_listening(self) -> bool:
+        """Turn everything else that is playing way down while Minty listens, so a song is not heard as speech. Any player,
+        not just ones that answer to a pause command. Undone when the conversation ends."""
+        cfg = self.store.config.audio
+        if self.listen_ducker is None or not cfg.listen_duck:
+            return False
+        self.listen_ducker.level = cfg.listen_duck_level
+        try:
+            return bool(await asyncio.to_thread(self.listen_ducker.begin))  # a few ms; the audio waits in the queue
+        except Exception as e:  # never let the volume control stop a conversation
+            log.debug("could not turn the other audio down: %s", e)
+            return False
 
     async def _pause_music(self) -> bool:
         cfg = self.store.config.audio

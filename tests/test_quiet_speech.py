@@ -11,7 +11,7 @@ spec.loader.exec_module(bench)
 
 @pytest.mark.parametrize("kw, assist_detects, loudness_detects", [
     (dict(speech_db=-26), True, True),
-    (dict(speech_db=-40), True, False),  # below the loudness threshold: only the assist hears it
+    (dict(speech_db=-42), True, False),  # below the fixed loudness threshold: only the assist hears it
     (dict(speech_db=-34, pause=True), True, True),
 ])
 def test_speech_is_caught_and_never_cut_early(kw, assist_detects, loudness_detects):
@@ -29,6 +29,8 @@ def test_speech_is_caught_and_never_cut_early(kw, assist_detects, loudness_detec
 def test_noise_alone_is_never_taken_for_speech(kw):
     pcm, start, end = bench.scenario(**kw)
     assert bench.run(pcm, start, end, True)[0] is None
+    assert bench.run(pcm, start, end, True, auto=True)[0] is None  # nor with the bar that follows the room
+    assert bench.run(pcm, start, end, False, auto=True)[0] is None
 
 
 def test_the_assist_can_be_switched_off_and_is_skipped_without_a_detector():

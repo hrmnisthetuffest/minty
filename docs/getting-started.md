@@ -97,6 +97,19 @@ Two buttons sit on the top edge of the chat bar: **M Mute** and **Space Listen**
   clicking off (the mouse then selects text as usual).
 - The panel's dashboard has the same two buttons, and the local API has `POST /mute` and `POST /listen`.
 
+### Music, rooms and microphones
+
+- **Music while it listens.** The moment Minty starts listening (you said the name, or pressed Listen) everything else that is playing
+  is turned down to a tenth of its volume, and back up when the conversation ends, so a song is not heard as your words. It works for
+  any player, not only ones Minty can pause (a browser tab, a video). If Minty is stopped or killed while the sound is down, the next
+  start turns it back up. Change how far it goes with `audio.listen_duck_level` (0.1 = a tenth, 0 = silent) or turn it off with
+  `audio.listen_duck = false`. (Playing media is also paused for the conversation, as before, with `audio.music_pause`.)
+- **The room and the microphone.** Microphones and rooms differ, so the volume that counts as speech is not a fixed number: Minty
+  learns the background level and sets the bar a little above it (`audio.auto_sensitivity`, on). It drops quickly when the room gets
+  quieter, so turning the music down does not leave it deaf. If a quiet microphone still misses you, raise **Microphone sensitivity**
+  (`audio.mic_sensitivity`, 1 = normal, try 2 or 3); if a sensitive one reacts to the room, lower it (0.5). Both are in the panel
+  (Voice, audio, safety & updates). With `auto_sensitivity = false` the old fixed `speech_rms_threshold` is used.
+
 ### Quick answers and commands (no waiting)
 
 Questions that need no thinking are answered the moment you finish speaking, by Minty itself, with no model call and no internet:
@@ -166,6 +179,8 @@ Use another folder for everything with `MINTY_CONFIG_DIR=/some/folder minty`.
 |---|---|
 | `minty: command not found` | add `export PATH="$HOME/.local/bin:$PATH"` to your shell profile |
 | No sound or no microphone | `minty onboard --step voice` runs the microphone test; install `libportaudio2` and `ffmpeg` |
+| It answers to the music or the TV | lower `audio.listen_duck_level`, or raise `audio.speech_rms_threshold`; lower `audio.mic_sensitivity` for a hot microphone |
+| It does not hear a quiet voice | raise `audio.mic_sensitivity` (try 2); keep `audio.auto_sensitivity` on |
 | "Replies are slow" | the free tiers have limits; add a second provider key, or use `minty claude-brain on` |
 | Only basic tools are available | Minty is in safe mode (`--safe`); start it normally with `minty` |
 | Start from scratch | stop Minty and move `~/.config/minty` aside; the next `minty` offers the setup again |

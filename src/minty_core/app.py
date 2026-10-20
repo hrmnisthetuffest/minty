@@ -147,6 +147,10 @@ def build_voice_pipeline(ctx: AppContext):
     from minty_core.audio.music import MusicWatcher
 
     music = MusicWatcher()
+    from minty_core.voice.adapt import Ducker
+
+    listen_ducker = Ducker(state_path=ctx.config_dir / "ducked.json")
+    listen_ducker.recover()  # the last run was killed while the sound was turned down: put it back now
     ctx.services["music_watcher"] = music  # song recognition counts players Minty paused for a conversation
     from minty_core.audio.devices import OpenWakeWordDetector, SoundDeviceInput, SoundDevicePlayer, StreamingPlayer
     from minty_core.live import LiveMode
@@ -215,7 +219,6 @@ def build_voice_pipeline(ctx: AppContext):
                                permissions=ctx.services.get("permissions"), bootlog=ctx.services.get("bootlog"),
                                destinations=lambda plugin: (ctx.services["destinations"].today_summary() if plugin == "__today__"
                                                             else ctx.services["destinations"].summary(plugin)),
-                               resume=ctx.services.get("resume"),
                                health_data=(HealthCommands(ctx.services["health"])
                                             if ctx.services.get("health") is not None else None),
                                focus_end=lambda: _end_focus(ctx),
@@ -240,7 +243,7 @@ def build_voice_pipeline(ctx: AppContext):
         live=LiveMode(store, ctx.secrets, FilteredHost(ctx.host, exclude_plugins=("agents", "installer", "subagents"),
                                                        allow_risky=True),  # risky actions are parked for a spoken yes
                       ctx.agent, ctx.bus, StreamingPlayer(store), router=ctx.router, guard=ctx.services.get("guard")),
-        captions=whisper_transcriber(store.config.stt.local_model), music=music, on_restart=request_restart,
+        captions=whisper_transcriber(store.config.stt.local_model), music=music, listen_ducker=listen_ducker, on_restart=request_restart,
         speech_check=voiced_ms, on_conversation=_on_conversation(ctx),
         streaming=build_streaming(store.config.audio, voices_dir()),
     )
@@ -1098,9 +1101,6 @@ def announce_interrupted(ctx: AppContext) -> str:
     """Honest restart: say which background work was cut short. Nothing is re-run on its own."""
     notice = interrupted_notice(ctx.services["jobs"].interrupted,
                                 {j.id for j in ctx.services["jobs"].resumable()})
-    resume = ctx.services.get("resume")
-    if resume is not None and resume.pending:
-        notice = (resume.QUESTION + " " + notice).strip()
     if ctx.services.get("safe_mode"):
         why = "you asked for it" if ctx.services["safe_mode"] == "requested" else "I crashed several times in a row"
         notice = (f"I started in safe mode because {why}, with only the basics: "

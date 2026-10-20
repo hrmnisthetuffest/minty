@@ -443,3 +443,23 @@ when it is good enough.
   bottom is kept.
 - The header is three rows taller when the clock is shown (screens 112 columns and wider); narrower screens are unchanged.
 - Tests: `tests/test_tui.py` checks the grid size, that all ten digits differ, that only block characters are used and that every row has the same width.
+
+## 1.0.0-alpha.23 (2026-10-20)
+
+### Music is not mistaken for you; the microphone adapts; no more "I wasn't closed properly"
+- **Music while listening.** The moment Minty starts listening (you said the name, or pressed Listen) every other app that is playing is
+  turned down to a tenth of its volume (`audio.listen_duck`, `audio.listen_duck_level`), and back up when the conversation ends. It works
+  for any player, including browser tabs and videos that cannot be paused by command, and happens before the pause, so a song is not
+  heard as your words. The volumes are written to a small file while they are down: if Minty is closed or killed in that time, the next start
+  turns the sound back up (and stopping normally always does).
+- **The microphone follows the room and the device.** The volume that counts as speech is no longer a fixed number (`audio.auto_sensitivity`,
+  on): the room's background level is learned and the bar set a little above it, with a small minimum, so a quiet microphone in a quiet room hears
+  a quiet voice and a hot one does not hear a fan. The learned level now falls quickly when the room gets quieter (the music was turned down) and
+  rises slowly, instead of staying high for seconds. **`audio.mic_sensitivity`** (1 = normal, 0.25 to 8) scales the bar for a microphone that is deafer or
+  hotter than most; the bar never drops below just above the room. Both are in the panel next to the old `speech_rms_threshold`, which is still
+  the starting level and, with `auto_sensitivity = false`, a fixed minimum as before. The wake-word listener uses the same bar.
+- **Removed the "I wasn't closed properly last time" question.** After a crash, a kill or closing the window the next start is simply a fresh
+  one: the old conversation is set aside in `journal-archive/` (newest five kept), never asked about and never restored, and the start-up notice no
+  longer mentions it.
+- Tests: `tests/test_mic_sensitivity.py`, `tests/test_listen_duck.py` (including the kill-and-recover case), updated `tests/test_journal.py` and
+  `tests/test_wp06_acceptance.py`.

@@ -58,8 +58,10 @@ def scenario(speech_db, room_db=-46.0, pause=False, speech=True, noise_kind="fan
     return pcm, lead, lead + len(voice)
 
 
-def run(pcm, start, end, assist: bool):
-    cfg = AudioConfig(vad_assist=assist)
+def run(pcm, start, end, assist: bool, auto: bool = False):
+    """`auto` False: the loudness bar is the fixed speech_rms_threshold (the baseline the speech-detector assist is measured
+    against); True: the bar follows the room, as it does by default (audio.auto_sensitivity)."""
+    cfg = AudioConfig(vad_assist=assist, auto_sensitivity=auto)
     ep = EnergyEndpointer(lambda: cfg, vad=FrameVAD() if assist else None)
     detected_at = closed_at = None
     for i in range(0, len(pcm) - FRAME_SAMPLES, FRAME_SAMPLES):

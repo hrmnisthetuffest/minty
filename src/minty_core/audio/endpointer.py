@@ -2,6 +2,7 @@ from typing import Callable
 
 import numpy as np
 
+from minty_core.audio.sensitivity import speech_threshold, track_floor
 from minty_core.audio.types import FRAME_S
 from minty_core.audio.vad import is_voice
 from minty_core.config import AudioConfig
@@ -22,11 +23,10 @@ class EnergyEndpointer:
     """Decides when an utterance has ended, from loudness.
 
     - speech only counts after `min_speech_frames` loud frames in a row (a door knock or a cough is a blip);
-    - the threshold rises with the room: it is at least `noise_floor_factor` × the measured background level,
-      so a fan or music bed does not keep the recording open. The background estimate survives resets.
+    - the threshold follows the room and the microphone (audio/sensitivity.py): it is `noise_floor_factor` × the measured
+      background level, so a fan or music bed does not keep the recording open, and it comes back down quickly when the room
+      gets quieter. The background estimate survives resets.
     """
-
-    _FLOOR_EMA = 0.05
 
     def __init__(self, get_cfg: Callable[[], AudioConfig], vad=None):
         self._get_cfg = get_cfg
@@ -37,11 +37,9 @@ class EnergyEndpointer:
 
     def reset(self) -> None:
         cfg = self._get_cfg()
-        self._threshold = cfg.speech_rms_threshold
         self._silence_frames = _frames(cfg.silence_ms)
         self._wait_frames = _frames(cfg.max_wait_ms)
         self._min_loud = cfg.min_speech_frames
-        self._factor = cfg.noise_floor_factor
         self.heard_speech = False
         self._quiet = 0
         self._waited = 0
@@ -54,9 +52,7 @@ class EnergyEndpointer:
 
     @property
     def threshold(self) -> float:
-        if self._factor > 0 and self.noise_floor is not None:
-            return max(self._threshold, self.noise_floor * self._factor)
-        return self._threshold
+        return speech_threshold(self._get_cfg(), self.noise_floor)
 
     def feed(self, frame: bytes) -> bool:
         level = rms(frame)
@@ -68,8 +64,7 @@ class EnergyEndpointer:
             self._quiet = 0
             return False
         if not self.heard_speech:  # background: learn the room's level
-            self.noise_floor = level if self.noise_floor is None else (
-                (1 - self._FLOOR_EMA) * self.noise_floor + self._FLOOR_EMA * level)
+            self.noise_floor = track_floor(self.noise_floor, level)
         self._loud_run = 0
         if self.heard_speech:
             self._quiet += 1

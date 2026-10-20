@@ -1,7 +1,6 @@
 import re
 
 from minty_core.brownout import capacity_reply
-from minty_core.policy import is_affirmative, is_negative
 from minty_core.jobs import short
 
 # Mode state lives on the agent in memory only: it resets to normal/non-private on restart.
@@ -185,7 +184,7 @@ class CommandRouter:
     def __init__(self, agent, store=None, restart: bool = False, prompts=None, router=None, jobs=None,
                  proactive=None, capacity=None, where=None, receipt=None, approvals=None,
                  lockdown=None, allow_unlock: bool = False, receipts=None, permissions=None, bootlog=None,
-                 destinations=None, resume=None, offline=None, config_changes=None, backup_now=None,
+                 destinations=None, offline=None, config_changes=None, backup_now=None,
                  health=None, power=None, canary=None, health_data=None, coach=None, finance=None, focus_end=None,
                  butler=None, productivity=None):
         self._agent = agent
@@ -201,7 +200,6 @@ class CommandRouter:
         self._backup_now = backup_now  # () -> str: make an encrypted backup now and say how it went
         self._config_changes = config_changes  # () -> str: what the last settings change was
         self._offline = offline  # offline.NetworkProbe: "go offline" / "go online" (for testing and travel)
-        self._resume = resume  # journal.ResumeQuestion: the one question after an unclean exit
         self._destinations = destinations  # (plugin | None) -> str
         self._bootlog = bootlog  # safemode.BootLog: "leave safe mode"
         self._permissions = permissions  # (kind: "explain" | "review") -> str
@@ -320,12 +318,6 @@ class CommandRouter:
             if phrase in ("go online", "offline mode off", "stop working offline"):
                 self._offline.forced = None
                 return "Back online."
-        if self._resume is not None and self._resume.pending:
-            if is_affirmative(phrase):
-                return self._resume.accept()
-            if is_negative(phrase):
-                return self._resume.decline()
-            self._resume.decline()  # anything else is a no: the old conversation is kept, the request carries on
         if self._lockdown is not None:
             reply = self._lockdown_command(phrase)
             if reply is not None:

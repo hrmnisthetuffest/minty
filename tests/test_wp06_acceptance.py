@@ -1,4 +1,4 @@
-"""WP-06 acceptance: kill -9 asks before restoring; offline scenarios; injected faults do not defeat fail-over."""
+"""WP-06 acceptance: kill -9 starts fresh and keeps the old conversation; offline scenarios; injected faults do not defeat fail-over."""
 import subprocess
 import sys
 import textwrap
@@ -7,6 +7,7 @@ from pathlib import Path
 
 from tests.safety_helpers import build, say
 from tests.test_turn_deadline import Slow, router_with
+from minty_core.app import announce_interrupted
 from minty_core.commands import CommandRouter
 from minty_core.context import build_context
 from minty_core.llm.types import LLMError, Message, TextDelta
@@ -39,25 +40,21 @@ def killed_conversation(tmp_path):
             child.kill()
 
 
-def test_after_kill_nine_it_asks_and_no_starts_fresh_with_the_old_one_archived(tmp_path):
+def test_after_kill_nine_it_starts_fresh_without_asking_and_keeps_the_old_conversation(tmp_path):
     killed_conversation(tmp_path)
     ctx = build_context(tmp_path)
-    resume = ctx.services["resume"]
-    assert resume.pending and "continue the previous conversation" in resume.QUESTION
+    assert "resume" not in ctx.services  # no "I wasn't closed properly" question any more
     assert ctx.agent.history == []  # nothing was restored on its own
-    router = CommandRouter(ctx.agent, ctx.store, resume=resume)
-    assert router.handle("no, thanks").startswith("Okay, starting fresh")
-    assert ctx.agent.history == []
     archived = list((tmp_path / "journal-archive").glob("*.json"))
     assert len(archived) == 1 and "compare two desk lamps" in archived[0].read_text()
+    assert "closed properly" not in announce_interrupted(ctx)
 
 
-def test_after_kill_nine_a_yes_brings_it_back(tmp_path):
+def test_a_second_start_after_the_kill_has_nothing_left_to_archive(tmp_path):
     killed_conversation(tmp_path)
-    ctx = build_context(tmp_path)
-    router = CommandRouter(ctx.agent, ctx.store, resume=ctx.services["resume"])
-    assert router.handle("yes please") == "Okay, continuing where we left off."
-    assert [m.content for m in ctx.agent.history] == ["open the shop and compare two desk lamps", "Opened the shop."]
+    build_context(tmp_path)
+    build_context(tmp_path)
+    assert len(list((tmp_path / "journal-archive").glob("*.json"))) == 1
 
 
 class Tools:

@@ -1,7 +1,7 @@
 """Crash-safe conversation journal: the live conversation is saved after every turn.
 
-After an unclean exit Minty asks "Do you want to continue the previous conversation?" and restores it only on a
-yes; anything else starts fresh and keeps the old one in `journal-archive/`. Nothing is ever restored silently.
+After an unclean exit (a crash, a kill, closing the window) the next start is simply a fresh one: the old conversation is set
+aside in `journal-archive/` (newest five kept), never restored and never asked about.
 Messages marked private are not written to this file at all.
 """
 from __future__ import annotations
@@ -76,6 +76,11 @@ class ConversationJournal:
         except (KeyError, TypeError, ValueError):
             return None
 
+    def set_aside_unclean(self) -> Path | None:
+        """Start fresh after an unclean exit: the saved conversation, if there is one, goes to the archive. A clean exit
+        leaves the file alone. Returns where it went, or None."""
+        return self.archive() if self.pending() else None
+
     def archive(self) -> Path | None:
         """Set the saved conversation aside (kept, newest five) and start empty."""
         if not self.path.exists():
@@ -88,23 +93,3 @@ class ConversationJournal:
         for old in sorted(folder.glob("*.json"))[:-KEEP_ARCHIVED]:
             old.unlink(missing_ok=True)
         return target
-
-
-class ResumeQuestion:
-    """Holds the one question asked after an unclean exit and applies the answer."""
-
-    QUESTION = "I wasn't closed properly last time. Do you want to continue the previous conversation?"
-
-    def __init__(self, agent, journal: ConversationJournal, messages: list[Message]):
-        self._agent, self._journal, self._messages = agent, journal, messages
-        self.pending = bool(messages)
-
-    def accept(self) -> str:
-        self.pending = False
-        self._agent.history[:0] = self._messages
-        return "Okay, continuing where we left off."
-
-    def decline(self) -> str:
-        self.pending = False
-        self._journal.archive()
-        return "Okay, starting fresh. The old conversation is kept."

@@ -47,7 +47,7 @@ from minty_core.scheduler import Scheduler
 from minty_core.skills import BUILTIN_SKILLS_DIR, SkillIndex
 from minty_core.toolkits import ToolkitRouter
 from minty_core.jobs import JobRunner, make_job_store
-from minty_core.journal import ConversationJournal, ResumeQuestion
+from minty_core.journal import ConversationJournal
 from minty_core.lockdown import Lockdown
 from minty_core.trace import Tracer, read_events
 from minty_core.tracereport import receipt, where_it_went
@@ -216,16 +216,14 @@ def build_context(config_dir: Path) -> AppContext:
     agent.offline = offline
     services["offline"] = offline
     journal = ConversationJournal(config_dir / "conversation.json")
-    resume = ResumeQuestion(agent, journal, journal.pending() or [])
+    journal.set_aside_unclean()  # after a crash or a kill: start fresh; the old conversation is kept in the archive
 
     def save_journal(_request: str, _reply: str) -> None:
-        if resume.pending:  # the old conversation was never answered for: set it aside before overwriting
-            resume.decline()
         journal.save(agent.history)
 
     agent.turn_done.append(save_journal)
     agent.on_reset.append(lambda: journal.save([]))
-    services["journal"], services["resume"] = journal, resume
+    services["journal"] = journal
     receipts = ReceiptStore(config_dir / "receipts.sqlite", redact=lambda t: mask_pii(scanner.redact(t)),
                             machine=machine)
     agent.receipts = receipts
