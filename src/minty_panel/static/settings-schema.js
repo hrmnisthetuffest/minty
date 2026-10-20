@@ -73,6 +73,13 @@ export const SECTIONS = [
     ],
   },
   {
+    id: "profile", title: "Profile", blurb: "The 500 questions about you (Profile page). Answers stay on this computer.",
+    rows: [
+      ["profile", "enabled", "Let Minty use my answers", "bool", "Answers related to a request are added to what the model is given, like a memory note. Off: they are only stored"],
+      ["profile", "max_chars", "Most characters of answers added to one request", "number:100", "200 to 8000. More means better-informed answers and slightly slower ones"],
+    ],
+  },
+  {
     id: "updates", title: "Updates", blurb: "From the project's GitHub releases. Nothing installs by itself unless you say so.",
     rows: [
       ["update", "repo", "GitHub repository (owner/name)", "text", "blank until the project is published; then the daily check and `minty update` use it"],

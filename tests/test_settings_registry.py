@@ -44,7 +44,7 @@ def test_the_settings_added_in_the_recent_versions_can_all_be_set_in_the_panel()
         ("instant", "enabled"), ("instant", "actions"), ("update", "repo"), ("update", "check"), ("update", "check_every_hours"),
         ("update", "auto_install"), ("update", "verify_signed"), ("", "terminal_hotkeys"), ("", "terminal_mouse"),
         ("", "terminal_mute_key"), ("", "terminal_listen_key"), ("", "terminal_reduced_motion"), ("", "terminal_images"),
-        ("", "terminal_cover_size"), ("", "clock_24h"),
+        ("", "terminal_cover_size"), ("", "clock_24h"), ("profile", "enabled"), ("profile", "max_chars"),
     ]:
         assert wanted in have, f"{wanted} has no place in the panel's settings"
 

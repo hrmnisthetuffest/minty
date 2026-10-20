@@ -1,0 +1,22 @@
+# Minty in Docker:  docker compose up -d        then open http://127.0.0.1:7778
+# First time only:  docker compose run --rm minty minty set-password
+#                   docker compose run --rm minty minty set-key groq
+# Voice (Linux):    docker compose -f docker-compose.yml -f docker-compose.voice.yml up -d --build
+# More in docs/docker.md.
+services:
+  minty:
+    build:
+      context: .
+      target: ${MINTY_IMAGE_TARGET:-core}
+    image: minty:local
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7778:7778"   # the panel, on this computer only. The control API (7777) stays inside the container.
+    environment:
+      MINTY_NO_ONBOARD: "1"
+    volumes:
+      - minty-data:/data        # settings, keys, memory and your profile
+
+volumes:
+  minty-data: {}

@@ -1,0 +1,14 @@
+# Adds the microphone and speaker (Linux with PipeWire or PulseAudio) to docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.voice.yml up -d --build
+# MINTY_UID / MINTY_GID: your user id and group id if they are not 1000 (run: id -u, id -g), so the sound server lets the container in.
+services:
+  minty:
+    build:
+      target: voice
+    user: "${MINTY_UID:-1000}:${MINTY_GID:-1000}"
+    environment:
+      PULSE_SERVER: unix:/run/pulse/native
+    devices:
+      - /dev/snd:/dev/snd
+    volumes:
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse:/run/pulse

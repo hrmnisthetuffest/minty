@@ -501,3 +501,20 @@ when it is good enough.
   **Ctrl+K / Cmd+K** opens a search bar that jumps to any page or straight to a setting (the row flashes). It works on a phone too.
   The display font is the condensed one that is installed on the computer (Nimbus Sans Narrow here); a closer match can be dropped in as `Antonio`.
 - Tests: `tests/test_timefmt.py`, `tests/test_settings_registry.py`, `tests/test_panel_static.py` and `tests/panel_js_checks.mjs` (the settings page, filter and deep link).
+
+## 1.0.0-alpha.27 (2026-10-20)
+
+### A 500-question profile, Docker, and no design credit line
+- **Profile.** A new **Profile** page in the panel asks 500 fixed questions about you in 15 groups (about you, home, routine, health,
+  fitness, food, sleep, school and work, interests, devices, how you like Minty, people, money, goals, limits). The numbers are permanent: a
+  question is never reworded to mean something else, moved or removed. Answer one at a time (Interview) or from the list (All questions, with a filter), skip
+  any, change or clear any answer, and download them all. Answers are kept on this computer in one private file (`profile/answers.json`, mode 600).
+  **They are used:** with each request, the basics (about you, how you like Minty, your limits) and only those other answers that share words
+  with the request are added to what the model is given, as short lines marked as background facts, within `profile.max_chars` (1800). `profile.enabled`
+  switches that off (the answers are then only stored). New: `minty_core/profile.py`, `minty_core/profile_questions.py`, `GET/PUT/DELETE /profile`, a Profile group in Settings.
+- **Docker.** `Dockerfile` (a small `core` image, and a `voice` image with the voice libraries), `docker-compose.yml` (the panel on `127.0.0.1:7778` only, data in a
+  volume, not run as root, health check), `docker-compose.voice.yml` (passes the sound server and `/dev/snd` on Linux) and `docs/docker.md`, which also says plainly what
+  does not work in a container (the Chrome browser tool, desktop control, a microphone on macOS and Windows). The files are checked by tests;
+  the image could not be built in the environment where this was written, so the first build on a machine with Docker is the real test.
+- **Removed** the "Design inspired by ..." line from the panel.
+- Tests: `tests/test_profile_bank.py`, `test_profile_store.py`, `test_profile_prompt.py`, `test_profile_api.py`, `test_docker_files.py` and the Profile page in `tests/panel_js_checks.mjs`.

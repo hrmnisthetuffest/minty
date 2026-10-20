@@ -16,7 +16,7 @@ from minty_panel.core_client import CoreClient, CoreUnavailable
 
 STATIC = Path(__file__).parent / "static"
 COOKIE = "minty_session"
-ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags"}
+ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags", "profile"}
 LAN_ONLY_MESSAGE = "this panel answers only on your own network"
 
 

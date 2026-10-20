@@ -402,6 +402,50 @@ def create_app(ctx: AppContext) -> FastAPI:
         vault_kit().pipeline.reject(note_id)
         return Response(status_code=204)
 
+    # ---- the profile: 500 fixed questions, your answers stored on this computer ----------------------
+    def profile_store():
+        return ctx.services["profile"]
+
+    def profile_summary() -> dict:
+        from minty_core.profile import CATEGORIES, QUESTIONS
+
+        counts = {c.id: sum(1 for q in QUESTIONS if q.category == c.id) for c in CATEGORIES}
+        return {"categories": [{"id": c.id, "title": c.title, "blurb": c.blurb, "count": counts[c.id]} for c in CATEGORIES]}
+
+    @api.get("/profile")
+    async def profile_list():
+        store = profile_store()
+        return {**profile_summary(), "progress": store.progress(), "questions": store.rows()}
+
+    @api.get("/profile/export")
+    async def profile_export():
+        return Response(profile_store().export_markdown(), media_type="text/markdown; charset=utf-8")
+
+    @api.put("/profile/{number}")
+    async def profile_answer(number: int, body: TextBody):
+        store = profile_store()
+        try:
+            store.answer(number, body.text)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="no such question")
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        return {"id": number, "answer": store.get(number), "progress": store.progress()}
+
+    @api.post("/profile/{number}/skip")
+    async def profile_skip(number: int):
+        store = profile_store()
+        try:
+            store.skip(number)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="no such question")
+        return {"id": number, "progress": store.progress()}
+
+    @api.delete("/profile/{number}", status_code=204)
+    async def profile_clear(number: int):
+        profile_store().clear(number)
+        return Response(status_code=204)
+
     # ---- the memory audit: what is known, where from, and a way to correct or drop it -----------------
     class AuditBody(BaseModel):
         text: str

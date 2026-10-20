@@ -12,7 +12,7 @@
 **Your voice assistant, on your own computer.**
 Talk to it, type to it, or message it from your phone. It runs on free model tiers, keeps your data local, and asks before it does anything that matters.
 
-[Quick start](#quick-start) · [What it does](#what-it-does) · [Safety](#safety-by-design) · [Docs](docs/getting-started.md) · [Contributing](CONTRIBUTING.md)
+[Quick start](#quick-start) · [Docker](docs/docker.md) · [What it does](#what-it-does) · [Safety](#safety-by-design) · [Docs](docs/getting-started.md) · [Contributing](CONTRIBUTING.md)
 
 ![status](https://img.shields.io/badge/status-alpha-orange) ![license](https://img.shields.io/badge/license-MIT-blue) ![python](https://img.shields.io/badge/python-3.10%2B-blue) ![platform](https://img.shields.io/badge/platform-Linux-informational)
 
@@ -23,6 +23,8 @@ Talk to it, type to it, or message it from your phone. It runs on free model tie
 > report them in the issue tracker.
 
 ## Quick start
+
+Prefer a container? `docker compose up -d --build`, then open http://127.0.0.1:7778 ([Docker guide](docs/docker.md)).
 
 ```bash
 git clone https://github.com/YOUR-USER/minty.git

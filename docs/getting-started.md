@@ -120,8 +120,16 @@ unaffected. Turn **Open DuckDuckGo instead of Google** off in the browser plugin
 
 Open the panel in a browser (`minty-panel`, `http://127.0.0.1:7778`). **Settings** holds everything that can be set, in groups, with a filter box;
 press **Ctrl+K** (Cmd+K on a Mac) anywhere to search all pages and settings and jump straight to one. The panel turns red while the microphone is
-muted. **Display & keys** has the 24-hour clock switch (`clock_24h`), the mute and listen keys and the mouse buttons. Design inspired by
-[Nous Research](https://nousresearch.com).
+muted. **Display & keys** has the 24-hour clock switch (`clock_24h`), the mute and listen keys and the mouse buttons.
+
+### Your profile: 500 questions
+
+The **Profile** page of the panel asks 500 fixed questions about you (basics, home, routine, health, fitness, food, sleep, school and work,
+interests, devices, how you like Minty, people, money, goals, limits). Answer one at a time or pick from the list, in any order; each can
+be skipped and any answer can be changed or cleared. The answers are kept in one private file on this computer (`profile/answers.json`).
+When a request is related to some of them (a dinner question and your diet, say), those answers are added to what the model is given,
+together with the basics (about you, how you like Minty, your limits), within `profile.max_chars` characters. Turn the sharing off with
+`profile.enabled` (Settings, Profile); the answers then stay stored and unused. **Download them** from the page at any time.
 
 ### Quick answers and commands (no waiting)
 
@@ -155,6 +163,8 @@ turns the feature off). Note: with the default cloud speech recognition everythi
 `stt.provider = "local"` to keep it on your computer.
 
 Keep it running in the background and start it at login (Linux, systemd): `scripts/install_service.sh`.
+
+Docker: see [docker.md](docker.md).
 
 ## 4. Updates
 

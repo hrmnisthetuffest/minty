@@ -271,6 +271,12 @@ def build_context(config_dir: Path) -> AppContext:
         recalled["ids"] = []
 
     agent.turn_extras.append(memory_section)
+    from minty_core.profile import ProfileStore, prompt_section as profile_section
+
+    profile = ProfileStore(config_dir / "profile" / "answers.json")
+    services["profile"] = profile
+    agent.turn_extras.append(
+        lambda request: profile_section(profile, request, store.config.profile.max_chars) if store.config.profile.enabled else "")
     from minty_core.governance.contradiction import ContradictionStore, prompt_line as contradiction_line
 
     contradictions = ContradictionStore(config_dir / "contradictions.json")

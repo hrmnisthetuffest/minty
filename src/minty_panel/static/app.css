@@ -1,5 +1,5 @@
-/* Minty control panel. The look follows nousresearch.com: deep navy, one cobalt accent, tall condensed capitals,
-   squared panels, a blue frame, halftone dots. While the microphone is muted the accent turns red, as on the terminal display. */
+/* Minty control panel: deep navy, one cobalt accent, tall condensed capitals, squared panels, a blue frame, halftone dots.
+   While the microphone is muted the accent turns red, as on the terminal display. */
 :root {
   --bg: #12111f; --bg2: #19192f; --panel: rgba(255,255,255,.05); --panel2: rgba(255,255,255,.09);
   --line: rgba(255,255,255,.14); --line2: rgba(255,255,255,.3);
@@ -187,16 +187,13 @@ tr.cooling td { color: var(--dim); }
 .pal-item.sel { background: var(--blue); color: #fff; } .pal-item.sel .hint { color: #fff; opacity: .8; }
 .pal-empty { padding: 18px; color: var(--dim); }
 
-/* ---- toasts, login, credit ---- */
+/* ---- toasts, login ---- */
 #toasts { position: fixed; right: 22px; bottom: 22px; display: flex; flex-direction: column; gap: 8px; z-index: 95; }
 .toast { background: #1c1c34; border: 1px solid var(--line2); border-left: 4px solid var(--ok); padding: 11px 16px; max-width: 380px; }
 .toast.error { border-left-color: var(--err); }
 .login { margin: 9vh auto 0; width: min(420px, 92vw); }
 .login h1 { font: 400 clamp(72px, 20vw, 120px)/.85 var(--display); text-transform: uppercase; letter-spacing: -.005em; margin: 0 0 22px; }
 .login .kicker { margin-bottom: 18px; }
-.credit { text-align: center; padding: 26px 16px 34px; font: 700 10px/1.6 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
-.credit a { color: var(--soft); text-decoration: underline; text-underline-offset: 3px; }
-.credit a:hover { color: #fff; }
 
 @media (max-width: 860px) {
   .settings-layout { grid-template-columns: 1fr; } .settings-index { display: none; }
@@ -220,3 +217,17 @@ tr.cooling td { color: var(--dim); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .page-head { margin-bottom: 30px; }
 .page-head h2 { margin-bottom: 0; }
+
+/* ---- profile ---- */
+.big-number { font: 400 64px/1 var(--display); letter-spacing: .02em; }
+.profile-count { padding-bottom: 20px; }
+.bar-track { height: 10px; margin-top: 14px; background: rgba(255,255,255,.1); -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); }
+.bar-fill { height: 100%; background: var(--blue2); }
+.question-card { padding: 28px 28px 22px; }
+.question { display: block; margin: 0 0 18px; font: 400 clamp(32px, 5vw, 52px)/1.02 var(--display); letter-spacing: 0; text-transform: uppercase; color: var(--text); }
+.question::before { display: none; }
+.qa { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.qa:last-child { border-bottom: 0; }
+.qa-text { flex: 1; } .qa-answer { color: var(--soft); margin-top: 4px; white-space: pre-wrap; }
+.row > select { width: auto; min-width: 260px; flex: 1 1 260px; }
+.row > input[type=search] { flex: 1 1 260px; width: auto; }

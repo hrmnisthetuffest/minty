@@ -1162,3 +1162,128 @@ test("memory forget refuses to delete a different note when the list changed und
   assert.ok(!main.textContent.includes("likes tea"));
   assert.equal(forgetButtons(main).length, 1);
 });
+
+// ---- profile page: 500 fixed questions, one at a time or as a list ----
+const PROFILE_GROUPS = [["about", "About you", 35], ["home", "Home & places", 30], ["routine", "Daily routine", 435]];
+function profileServer({ failPut = false } = {}) {
+  const questions = [];
+  let id = 0;
+  for (const [category, , count] of PROFILE_GROUPS) {
+    for (let i = 0; i < count; i += 1) {
+      id += 1;
+      questions.push({ id, category, text: id === 1 ? "What name should I call you?" : `Question number ${id}?`, answer: "", skipped: false });
+    }
+  }
+  const progress = () => ({ answered: questions.filter((q) => q.answer).length, skipped: questions.filter((q) => q.skipped).length, total: questions.length });
+  return (call) => {
+    if (call.path === "profile") return { categories: PROFILE_GROUPS.map(([cid, title, count]) => ({ id: cid, title, blurb: `${title} blurb`, count })), progress: progress(), questions };
+    const m = call.path.match(/^profile\/(\d+)(\/skip)?$/);
+    if (!m) throw new Error(`unexpected ${call.method} ${call.path}`);
+    const q = questions[Number(m[1]) - 1];
+    if (call.method === "PUT") {
+      if (failPut) return { status: 422, data: { detail: "an answer cannot be empty" } };
+      q.answer = call.body.text; q.skipped = false;
+      return { id: q.id, answer: q.answer, progress: progress() };
+    }
+    if (call.method === "POST") { q.skipped = true; return { id: q.id, progress: progress() }; }
+    if (call.method === "DELETE") { q.answer = ""; q.skipped = false; return undefined; }
+    throw new Error(`unexpected ${call.method} ${call.path}`);
+  };
+}
+const textareaOf = (main) => findAll(main, (e) => e.tagName === "TEXTAREA")[0];
+
+test("profile: starts on the first question with the count of answers", async () => {
+  pageEnvironment(profileServer());
+  const main = await mount("profile");
+  assert.match(main.textContent, /0 \/ 500/);
+  assert.match(main.textContent, /What name should I call you\?/);
+  assert.match(main.textContent, /About you/);
+});
+
+test("profile: Save & next stores the answer and moves to the next question", async () => {
+  const env = pageEnvironment(profileServer());
+  const main = await mount("profile");
+  textareaOf(main).value = "Sam";
+  await button(main, "Save & next").click();
+  assert.deepEqual(env.calls.filter((c) => c.method === "PUT").map((c) => [c.path, c.body]), [["profile/1", { text: "Sam" }]]);
+  assert.match(main.textContent, /1 \/ 500/);
+  assert.match(main.textContent, /Question number 2\?/);
+  assert.equal(textareaOf(main).value, "");
+});
+
+test("profile: an empty answer is not sent", async () => {
+  const env = pageEnvironment(profileServer());
+  const main = await mount("profile");
+  textareaOf(main).value = "   ";
+  await button(main, "Save & next").click();
+  assert.equal(env.calls.filter((c) => c.method === "PUT").length, 0);
+  assert.match(env.toasts().at(-1).text, /Write an answer/);
+  assert.match(main.textContent, /What name should I call you\?/);
+});
+
+test("profile: Skip parks the question and shows the next one", async () => {
+  const env = pageEnvironment(profileServer());
+  const main = await mount("profile");
+  await button(main, "Skip").click();
+  assert.equal(env.calls.filter((c) => c.method === "POST" && c.path === "profile/1/skip").length, 1);
+  assert.match(main.textContent, /Question number 2\?/);
+});
+
+test("profile: a refused answer keeps what was typed and shows the reason", async () => {
+  const env = pageEnvironment(profileServer({ failPut: true }));
+  const main = await mount("profile");
+  textareaOf(main).value = "Sam";
+  await button(main, "Save & next").click();
+  assert.match(env.toasts().at(-1).text, /an answer cannot be empty/);
+  assert.equal(textareaOf(main).value, "Sam");
+  assert.match(main.textContent, /0 \/ 500/);
+});
+
+test("profile: the category picker limits the interview to one group", async () => {
+  pageEnvironment(profileServer());
+  const main = await mount("profile");
+  const picker = findAll(main, (e) => e.tagName === "SELECT")[0];
+  picker.value = "home";
+  await picker.dispatch("change");
+  assert.match(main.textContent, /Question number 36\?/);
+  assert.match(main.textContent, /Home & places/);
+});
+
+test("profile: the list shows every answer and filters by words and by state", async () => {
+  pageEnvironment(profileServer());
+  const main = await mount("profile");
+  textareaOf(main).value = "Sam";
+  await button(main, "Save & next").click();
+  await button(main, "Skip").click();
+  await button(main, "All questions").click();
+  const search = findAll(main, (e) => e.tagName === "INPUT" && e.getAttribute("type") === "search")[0];
+  assert.match(main.textContent, /Sam/);
+  search.value = "number 3?";
+  await search.dispatch("input");
+  const rows = findAll(main, (e) => e.className === "qa");
+  assert.ok(rows.length >= 1 && rows.length < 100 && rows.every((r) => r.textContent.includes("3?")));  // 3?, 13?, 23? ...
+  assert.ok(rows[0].textContent.startsWith("3. Question number 3?"));
+  search.value = "";
+  await search.dispatch("input");
+  const state = findAll(main, (e) => e.tagName === "SELECT").find((s) => s.options.some((o) => o.textContent === "Skipped"));
+  state.value = "skipped";
+  await state.dispatch("change");
+  const skippedRows = findAll(main, (e) => e.className === "qa");
+  assert.equal(skippedRows.length, 1);
+  assert.match(skippedRows[0].textContent, /Question number 2\?/);
+});
+
+test("profile: Edit on a list row opens that question and Clear removes the answer", async () => {
+  const env = pageEnvironment(profileServer());
+  const main = await mount("profile");
+  textareaOf(main).value = "Sam";
+  await button(main, "Save & next").click();
+  await button(main, "All questions").click();
+  await button(main, "Edit").click();
+  assert.match(main.textContent, /What name should I call you\?/);
+  assert.equal(textareaOf(main).value, "Sam");
+  await button(main, "Clear answer").click();
+  assert.equal(env.calls.filter((c) => c.method === "DELETE" && c.path === "profile/1").length, 1);
+  assert.match(main.textContent, /0 \/ 500/);
+});
+

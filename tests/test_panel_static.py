@@ -21,10 +21,10 @@ def test_entry_files_exist():
     assert 'href="/static/app.css"' in html and 'id="app"' in html and 'id="toasts"' in html
 
 
-def test_the_design_credit_is_on_every_screen():
-    html = (STATIC / "index.html").read_text()
-    assert "Design inspired by" in html and 'href="https://nousresearch.com"' in html and "Nous Research" in html
-    assert 'rel="noopener noreferrer"' in html  # an external link leaks no referrer or window handle
+def test_the_panel_carries_no_design_credit_line():
+    for page in (STATIC / "index.html", STATIC / "app.css", STATIC / "app.js"):
+        text = page.read_text().lower()
+        assert "inspired by" not in text and "nousresearch" not in text and "credit" not in text, page.name
 
 
 def test_the_search_bar_and_settings_page_are_wired_in():

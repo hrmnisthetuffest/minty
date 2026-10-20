@@ -7,6 +7,7 @@ import dashboard from "./pages/dashboard.js";
 import logs from "./pages/logs.js";
 import personality from "./pages/personality.js";
 import settings from "./pages/settings.js";
+import profile from "./pages/profile.js";
 import brain from "./pages/brain.js";
 import plugins from "./pages/plugins.js";
 import memory from "./pages/memory.js";
@@ -19,6 +20,7 @@ import timeline from "./pages/timeline.js";
 const PAGES = [
   ["dashboard", "Dashboard", dashboard],
   ["settings", "Settings", settings],
+  ["profile", "Profile", profile],
   ["brain", "Brain", brain],
   ["personality", "Personality", personality],
   ["plugins", "Plugins", plugins],

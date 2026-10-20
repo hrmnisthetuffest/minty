@@ -8,6 +8,7 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 LABELS = {
+    "profile.enabled": "Add the answers from your profile that relate to a request to what the model sees",
     "clock_24h": "Show and say times on a 24-hour clock (15:10) instead of 3:10 PM",
     "terminal_hotkeys": "On the terminal display, the mute and listen keys work when nothing is typed",
     "terminal_mouse": "On the terminal display, the Mute and Listen buttons can be clicked",

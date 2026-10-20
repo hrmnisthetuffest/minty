@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "minty-core"
-version = "1.0.0a26"
+version = "1.0.0a27"
 description = "Minty: a voice assistant that runs on your own computer, on free model tiers, and asks before it acts"
 readme = "README.md"
 license = { text = "MIT" }

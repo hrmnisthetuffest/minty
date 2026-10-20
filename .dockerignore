@@ -1,0 +1,19 @@
+# Kept out of the image: history, local environments, caches, tests and anything that could hold a key.
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests
+docs
+.env
+.env.*
+*.key
+*.pem
+apis and stuff*
+*.toml.bak
+node_modules

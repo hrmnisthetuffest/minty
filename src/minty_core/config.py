@@ -449,6 +449,12 @@ class OfflineConfig(BaseModel):
     enabled: bool = True  # answer what needs no model while the internet is down (off: say the models are down)
 
 
+class ProfileConfig(BaseModel):
+    """The 500-question profile (profile.py). Your answers stay on this computer; related ones go to the model with a request."""
+    enabled: bool = True  # add your related answers to what the model sees (off: the answers are only stored)
+    max_chars: int = Field(1800, ge=200, le=8000)  # the most characters of them added to one request
+
+
 class InstantConfig(BaseModel):
     """Questions the computer can answer by itself (docs/instant-answers.md): no model call, so they come back at once."""
     enabled: bool = True
@@ -823,6 +829,7 @@ class Config(BaseModel):
     debug: DebugConfig = Field(default_factory=DebugConfig)
     offline: OfflineConfig = Field(default_factory=OfflineConfig)
     instant: InstantConfig = Field(default_factory=InstantConfig)
+    profile: ProfileConfig = Field(default_factory=ProfileConfig)
     update: UpdateConfig = Field(default_factory=UpdateConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     health: HealthConfig = Field(default_factory=HealthConfig)
