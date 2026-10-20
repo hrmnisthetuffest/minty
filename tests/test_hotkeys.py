@@ -205,3 +205,31 @@ def test_the_buttons_mute_and_listen_through_the_pipeline():
     act("listen")
     assert pipe.started == 1
     _button_action(NS(pipeline=None))("mute")  # before the voice pipeline exists: nothing happens, nothing breaks
+
+
+def test_while_muted_the_state_line_just_says_muted_in_red_whatever_it_is_doing():
+    for state in ("idle", "listening", "thinking", "speaking"):
+        m = TuiModel(status=lambda: {"muted": True})
+        m.reduced_motion, m.state = True, state
+        text = "\n".join(lines(m))
+        assert "MUTED" in text
+        assert "WAITING FOR" not in text and "LISTENING" not in text.replace("Listen", "") and "SPEAKING" not in text and "THINKING" not in text
+
+
+def test_the_state_line_is_back_to_normal_when_unmuted():
+    m = TuiModel(status=lambda: {"muted": False})
+    m.reduced_motion = True
+    m.state = "idle"
+    assert any("WAITING FOR" in line for line in lines(m))
+
+
+def test_pressing_listen_while_muted_says_how_to_unmute():
+    from types import SimpleNamespace as NS
+
+    from minty_core.app import _button_action
+
+    events = []
+    pipe = NS(muted=True, listen_now=lambda: False)
+    act = _button_action(NS(pipeline=pipe, bus=NS(publish=lambda kind, **f: events.append((kind, f)))))
+    act("listen")
+    assert events == [("notice", {"message": "Muted. Press M to unmute."})]

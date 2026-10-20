@@ -215,7 +215,7 @@ class VoicePipeline:
                     self.wake.reset()
                 paused = await self._pause_music()
                 live = self.live is not None and self.live.available() and not pressed
-                if not first_words and not live and not pressed:
+                if not first_words and not live and not pressed and not manual:  # a button press needs no "Yes, sir?"
                     await self._acknowledge()
                 try:
                     if self.live is not None and self.live.available():
@@ -262,6 +262,7 @@ class VoicePipeline:
             return False
         if self.state == "idle" and not self._notifying:
             self._listen_now = True
+            self._set_state("listening")  # at once: the display says so before the next audio frame arrives
             return True
         if self._queue is not None and self.state in ("speaking", "thinking", "executing", "processing"):
             self._barged.set()

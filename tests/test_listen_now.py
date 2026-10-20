@@ -84,3 +84,29 @@ def test_the_panel_api_can_press_listen_and_mute(tmp_path):
     assert client.post("/listen", headers=auth).status_code == 204 and ctx.pipeline.pressed == 1
     ctx.pipeline.muted = True
     assert client.post("/listen", headers=auth).status_code == 409  # nothing to start
+
+
+async def test_listen_goes_straight_to_listening_with_no_acknowledgement(tmp_path):
+    p, f = build(tmp_path, stt_texts=["what time is it"], replies=[["It is noon."]], wake_ack="Yes, sir?")
+    states = f.bus.subscribe({"state"})
+    task = asyncio.create_task(p.run())
+    await asyncio.sleep(0.02)
+    assert p.listen_now() is True
+    assert p.state == "listening"  # at once, before the next audio frame even arrives
+    f.audio.push(b"x", b"SPEECH", b"END")
+    await wait_until(lambda: b"It is noon." in f.player.played)
+    await finish(p, f, task)
+    seen = [e["state"] for e in list(states._queue)]
+    assert seen[0] == "listening"
+    assert [x for x in seen if x != "listening"][0] in ("thinking", "processing")  # nothing was said before the question was answered
+    assert b"Yes, sir?" not in f.player.played  # the name still gets its acknowledgement; the button does not
+
+
+async def test_the_name_still_gets_its_acknowledgement(tmp_path):
+    p, f = build(tmp_path, stt_texts=["hello"], replies=[["Hi."]], wake_ack="Yes, sir?")
+    task = asyncio.create_task(p.run())
+    f.audio.push(b"WAKE")
+    await wait_until(lambda: b"Yes, sir?" in f.player.played)
+    f.audio.push(*[b"x"] * 10, b"SPEECH", b"END")
+    await wait_until(lambda: b"Hi." in f.player.played)
+    await finish(p, f, task)

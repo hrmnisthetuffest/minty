@@ -423,3 +423,13 @@ when it is good enough.
 ### One name
 - The project carries one name everywhere: the old-settings-folder hint and its tests are gone, the changelog tells the story under one
   name, the example names in tests are neutral, and the repository starts from a single fresh commit.
+
+## 1.0.0-alpha.21 (2026-10-20)
+
+### Muted looks muted, Listen listens
+- **While muted** the state line on the display says only **MUTED**, in red, whatever else is happening: no "waiting for", "listening",
+  "speaking" or "thinking", and no spinner. The rest of the screen already follows the red accent.
+- **Listen** (the button or the key) goes straight to **LISTENING**: the display says so at once (not after the next audio frame), and the
+  spoken "Yes, sir?" (or the chime) is skipped, because pressing a button needs no acknowledgement. Saying the name still gets it. Pressing
+  Listen while muted shows the notice "Muted. Press M to unmute." instead of doing nothing silently.
+- Tests: new cases in `tests/test_listen_now.py` and `tests/test_hotkeys.py`.

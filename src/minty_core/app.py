@@ -58,8 +58,8 @@ def _button_action(ctx):
             return
         if name == "mute":
             pipe.muted = not pipe.muted
-        elif name == "listen":
-            pipe.listen_now()
+        elif name == "listen" and not pipe.listen_now() and pipe.muted:
+            ctx.bus.publish("notice", message="Muted. Press M to unmute.")
     return act
 
 

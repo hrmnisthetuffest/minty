@@ -88,7 +88,7 @@ Two buttons sit on the top edge of the chat bar: **M Mute** and **Space Listen**
 
 - **Mute** (key `M`, or click it) turns the microphone off and on. While it is off the whole display turns red and the button says
   *Muted*; press it again to turn the microphone back on.
-- **Listen** (key `Space`, or click it) starts listening at once, the same as saying "Minty". Saying the name still works. If Minty is
+- **Listen** (key `Space`, or click it) starts listening at once (the display goes straight to LISTENING, with no spoken "Yes, sir?"), the same as saying "Minty". Saying the name still works. If Minty is
   in the middle of an answer, Listen interrupts it and listens.
 - The keys work when nothing is typed. To type a message that starts with `M` or a space, press **Enter** first (Enter or Backspace
   on the empty line closes it again); any other letter just starts typing as before.

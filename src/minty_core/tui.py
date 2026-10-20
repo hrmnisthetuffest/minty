@@ -835,10 +835,15 @@ def render(model: TuiModel, width: int = 80, height: int = 30, now: float | None
     muted = bool(st.get("muted")) if st else False
     model.follow_accent(MUTED_RGB if muted else (model.covers.accent(track) if track else None))  # red when muted, else the song
     accent = model.accent
+    label = LABELS.get(model.state, model.state.upper())
+    if muted:  # the one thing that matters while muted: no "waiting for", no "listening", no spinner
+        color, label = ALPHA_RED, "MUTED"
     head = Text()
     head.append("\u25cf ", style=color)
-    head.append(LABELS.get(model.state, model.state.upper()), style=f"bold {color}")
-    if model.state in ("thinking", "loading", "executing") and not model.reduced_motion:
+    head.append(label, style=f"bold {color}")
+    if muted:
+        pass
+    elif model.state in ("thinking", "loading", "executing") and not model.reduced_motion:
         head.append(" " + SPINNER[int(now * 12) % len(SPINNER)], style=color)
     elif model.state in ("speaking", "live") and not model.reduced_motion:
         head.append(" " + "".join(BARS[1 + int(3.5 * (1 + math.sin(now * 7 + i * 1.7)))] for i in range(3)),

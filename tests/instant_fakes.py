@@ -31,7 +31,7 @@ def machine(root: Path, **kw) -> Machine:
 
 
 def engine(root: Path | None = None, now: datetime = NOW, **kw) -> Instant:
-    env = dict(now=lambda: now, rng=random.Random(7), wake_words=("minty", "mindy"), version="1.0.0-alpha.20",
+    env = dict(now=lambda: now, rng=random.Random(7), wake_words=("minty", "mindy"), version="1.0.0-alpha.21",
                last_reply=lambda: "It is raining.", last_request=lambda: "Is it raining?",
                now_playing=lambda: {"title": "Astronaut in the Ocean", "artist": "Masked Wolf", "status": "Playing"})
     if root is not None:
