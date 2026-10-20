@@ -26,7 +26,7 @@ def server(tmp_path):
     import uvicorn
 
     passwords = PasswordStore(tmp_path)
-    passwords.set("correct horse")
+    passwords.set_pin("493017")
     token = tmp_path / "api_token"
     token.write_text("T\n")
 
@@ -64,10 +64,11 @@ async def test_the_login_and_timeline_fit_a_phone_and_have_big_enough_buttons(se
             ctx = await browser.new_context(viewport={"width": 375, "height": 812}, has_touch=True, is_mobile=True)
             page = await ctx.new_page()
             await page.goto(server)
-            await page.wait_for_selector("input[type=password]")
+            await page.wait_for_selector(".pin-keys")  # the PIN pad
             assert await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
-            await page.fill("input[type=password]", "correct horse")
-            await page.click("button")
+            for digit in "493017":
+                await page.click(f".pin-keys button:text-is('{digit}')")
+            await page.click(".pin-keys button:text-is('Enter')")
             await page.wait_for_selector("nav a")
             await page.goto(server + "/#timeline")
             await page.wait_for_selector(".tl")

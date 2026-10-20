@@ -1378,3 +1378,74 @@ test("pinpad: an older password can still be typed in", async () => {
   await button(p.el, "Use the PIN pad").click();
   assert.ok(button(p.el, "Enter"));
 });
+
+// ---- the status bar at the top of the control centre ----
+async function bar({ status = { state: "idle", muted: false } } = {}) {
+  const env = pageEnvironment((call) => {
+    if (call.path === "status") return { ...state.status };
+    if (call.path === "mute") { state.status.muted = call.body.muted; return undefined; }
+    if (call.path === "listen") return undefined;
+    throw new Error(`unexpected ${call.method} ${call.path}`);
+  });
+  const state = { status: { ...status } };
+  const handlers = [];
+  const events = { on: (fn) => { handlers.push(fn); return () => handlers.splice(handlers.indexOf(fn), 1); } };
+  const muted = [];
+  const { createStatusBar } = await load("statusbar.js");
+  const made = createStatusBar({ events, setMuted: (on) => muted.push(on), every: 0 });
+  await made.refresh();
+  return { ...made, env, handlers, muted, state, emit: (event) => handlers.forEach((fn) => fn(event)) };
+}
+const pill = (root) => findAll(root, (e) => (e.className || "").startsWith("pill"))[0];
+
+test("statusbar: shows the state and a Mute button, and follows state events", async () => {
+  const b = await bar();
+  assert.equal(pill(b.el).textContent, "IDLE");
+  assert.ok(button(b.el, "Mute") && button(b.el, "Listen"));
+  b.emit({ type: "state", state: "listening" });
+  assert.equal(pill(b.el).textContent, "LISTENING");
+  b.emit({ type: "state", state: "thinking" });
+  assert.equal(pill(b.el).textContent, "THINKING");
+});
+
+test("statusbar: while muted it says MUTED whatever else is happening, and the page goes red", async () => {
+  const b = await bar({ status: { state: "speaking", muted: true } });
+  assert.equal(pill(b.el).textContent, "MUTED");
+  assert.ok(button(b.el, "Unmute"));
+  assert.equal(b.muted.at(-1), true);
+  b.emit({ type: "state", state: "listening" });
+  assert.equal(pill(b.el).textContent, "MUTED");
+});
+
+test("statusbar: the Mute button toggles the microphone through the API", async () => {
+  const b = await bar();
+  await button(b.el, "Mute").click();
+  assert.deepEqual(b.env.calls.filter((c) => c.path === "mute").map((c) => c.body), [{ muted: true }]);
+  assert.equal(pill(b.el).textContent, "MUTED");
+  await button(b.el, "Unmute").click();
+  assert.deepEqual(b.env.calls.filter((c) => c.path === "mute").map((c) => c.body).at(-1), { muted: false });
+  assert.equal(pill(b.el).textContent, "IDLE");
+});
+
+test("statusbar: Listen presses the listen button of the core", async () => {
+  const b = await bar();
+  await button(b.el, "Listen").click();
+  assert.equal(b.env.calls.filter((c) => c.path === "listen" && c.method === "POST").length, 1);
+});
+
+test("statusbar: the level meter and the dB read-out follow level events", async () => {
+  const b = await bar();
+  b.emit({ type: "level", db: -30, threshold_db: -26, speech: false });
+  const fill = findAll(b.el, (e) => (e.className || "").startsWith("mini-fill"))[0];
+  assert.match(fill.getAttribute("style"), /width:\s*50(\.\d+)?%/);  // -60..0 dB scale: -30 is half way
+  assert.match(b.el.textContent, /-30 dB/);
+  b.emit({ type: "level", db: -10, speech: true });
+  assert.ok(fill.className.includes("speech"));
+});
+
+test("statusbar: destroy stops listening to events", async () => {
+  const b = await bar();
+  assert.equal(b.handlers.length, 1);
+  b.destroy();
+  assert.equal(b.handlers.length, 0);
+});

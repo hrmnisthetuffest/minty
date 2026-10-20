@@ -1,16 +1,7 @@
-import { action, api, h, setMuted, textInput } from "../lib.js";
+import { action, api, h, pageHead, textInput } from "../lib.js";
 
 export default async function dashboard(main, events) {
   const state = h("strong", {}, "…");
-  const muteButton = action("…", async () => {
-    const status = await api("status");
-    await api("mute", { method: "POST", body: { muted: !status.muted } });
-    await refresh();
-  }, "primary");
-  const listenButton = action("Listen", async () => {
-    await api("listen", { method: "POST" });
-    return "Listening.";
-  });
   const restartButton = action("Restart conversation", async () => {
     await api("restart", { method: "POST" });
     feed.replaceChildren();
@@ -47,8 +38,8 @@ export default async function dashboard(main, events) {
   const caption = h("p", { class: "caption muted" }, "");
   const displayTitle = h("h3", {}, "Display");
   const displayBody = h("pre", { class: "display-body" });
-  const displayCard = h("div", { class: "card" }, displayBody);
-  displayTitle.hidden = displayCard.hidden = true;
+  const displayTile = h("section", { class: "tile wide" }, displayTitle, displayBody);
+  displayTile.hidden = true;
 
   async function refreshJobs() {
     const jobs = await api("jobs");
@@ -67,8 +58,6 @@ export default async function dashboard(main, events) {
     await refreshJobs().catch(() => {});
     const status = await api("status");
     state.textContent = status.state;
-    muteButton.textContent = status.muted ? "Unmute" : "Mute";
-    setMuted(status.muted);
     providers.replaceChildren(...status.providers.map((p) => h("tr", { class: p.cooling_for > 0 ? "cooling" : "" },
       h("td", {}, p.name), h("td", {}, p.enabled ? "on" : "off"), h("td", {}, p.has_key ? "key set" : "no key"),
       h("td", {}, p.cooling_for > 0 ? `cooling ${Math.round(p.cooling_for)}s` : "ready"), h("td", { class: "muted" }, p.last_error || ""))));
@@ -77,36 +66,31 @@ export default async function dashboard(main, events) {
   const sayInput = textInput("", { placeholder: "Make Minty say something" });
   const askInput = textInput("", { placeholder: "Ask Minty (text, no microphone)" });
 
+  const tile = (title, ...children) => h("section", { class: "tile" }, h("h3", {}, title), ...children);
+
   main.replaceChildren(
-    h("section", { class: "hero" },
-      h("p", { class: "kicker" }, "Voice assistant · control panel"),
-      h("h1", { class: "display" }, "Minty"),
-      h("p", { class: "lead" }, "State: ", state, ". Listen or mute it here, restart the conversation, and watch the microphone."),
-      h("div", { class: "row" }, listenButton, muteButton, h("div", { class: "spacer" }), restartButton, restartApp)),
-    h("div", { class: "card" },
-      h("div", { class: "row" }, h("span", {}, "Mic: "), meter, dbLabel, heard),
-      caption),
-    displayTitle, displayCard,
-    h("h3", {}, "Background jobs"),
-    h("div", { class: "card" }, jobsEmpty, jobsList),
-    h("h3", {}, "Brain providers"),
-    h("div", { class: "card" }, h("table", {}, h("thead", {}, h("tr", {}, ["Provider", "Enabled", "Key", "Status", "Last error"].map((t) => h("th", {}, t)))), providers)),
-    h("h3", {}, "Talk to Minty"),
-    h("div", { class: "card" },
-      h("div", { class: "row" }, sayInput, action("Say", async () => { await api("say", { method: "POST", body: { text: sayInput.value } }); })),
-      h("div", { class: "row gap-top" }, askInput,
-        action("Ask", async () => {
-          reply.textContent = "…";
-          try {
-            reply.textContent = (await api("ask", { method: "POST", body: { text: askInput.value } })).reply;
-          } catch (e) {
-            reply.textContent = "";
-            throw e;
-          }
-        })),
-      reply),
-    h("h3", {}, "Live transcript"),
-    h("div", { class: "card" }, feed),
+    pageHead("Monitor", "Dashboard"),
+    h("div", { class: "tiles" },
+      tile("Microphone", h("div", { class: "row" }, meter, dbLabel, heard), caption),
+      tile("System", h("p", { class: "row" }, h("span", { class: "muted" }, "State"), state),
+        h("div", { class: "row" }, restartButton, restartApp)),
+      tile("Brain providers", h("table", {}, h("thead", {}, h("tr", {}, ["Provider", "Enabled", "Key", "Status", "Last error"].map((t) => h("th", {}, t)))), providers)),
+      tile("Background jobs", jobsEmpty, jobsList),
+      tile("Talk to Minty",
+        h("div", { class: "row" }, sayInput, action("Say", async () => { await api("say", { method: "POST", body: { text: sayInput.value } }); })),
+        h("div", { class: "row gap-top" }, askInput,
+          action("Ask", async () => {
+            reply.textContent = "…";
+            try {
+              reply.textContent = (await api("ask", { method: "POST", body: { text: askInput.value } })).reply;
+            } catch (e) {
+              reply.textContent = "";
+              throw e;
+            }
+          })),
+        reply),
+      tile("Live transcript", feed),
+      displayTile),
   );
 
   await refresh();
@@ -127,7 +111,7 @@ export default async function dashboard(main, events) {
     if (event.type === "display") {
       displayTitle.textContent = event.title || "Display";
       displayBody.textContent = event.content || "";
-      displayTitle.hidden = displayCard.hidden = !event.content;
+      displayTile.hidden = !event.content;
     }
     if (event.type === "partial") caption.textContent = event.text ? `${event.text} …` : "";
     if (event.type === "transcript") {

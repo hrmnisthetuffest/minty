@@ -2,6 +2,7 @@ import { makeEvents } from "./events.js";
 import { api, h, report, setMuted, Unauthorized } from "./lib.js";
 import { createPalette } from "./palette.js";
 import { createPinPad } from "./pinpad.js";
+import { createStatusBar } from "./statusbar.js";
 import { SECTIONS } from "./settings-schema.js";
 import { createRunner } from "./runner.js";
 import dashboard from "./pages/dashboard.js";
@@ -20,19 +21,40 @@ import timeline from "./pages/timeline.js";
 
 const PAGES = [
   ["dashboard", "Dashboard", dashboard],
+  ["timeline", "Timeline", timeline],
+  ["logs", "Logs", logs],
   ["settings", "Settings", settings],
   ["profile", "Profile", profile],
-  ["brain", "Brain", brain],
   ["personality", "Personality", personality],
+  ["brain", "Brain", brain],
   ["plugins", "Plugins", plugins],
+  ["flags", "Switches", flags],
+  ["prompts", "Prompts", prompts],
   ["memory", "Memory", memory],
   ["notes", "Notes", notes],
-  ["timeline", "Timeline", timeline],
   ["audit", "What I know", audit],
-  ["prompts", "Prompts", prompts],
-  ["flags", "Switches", flags],
-  ["logs", "Logs", logs],
 ];
+// The menu: pages in groups, each with a small line icon (a path in a 16 x 16 box).
+const GROUPS = [
+  ["Monitor", ["dashboard", "timeline", "logs"]],
+  ["Configure", ["settings", "profile", "personality", "brain", "plugins", "flags", "prompts"]],
+  ["Memory", ["memory", "notes", "audit"]],
+];
+const ICONS = {
+  dashboard: "M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z",
+  timeline: "M3 2v12M3 4h9M3 8h6M3 12h8",
+  logs: "M2 4l4 4-4 4M8 12h6",
+  settings: "M2 5h12M2 11h12M6 3v4M10 9v4",
+  profile: "M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 14c0-3 2-4 5-4s5 1 5 4",
+  personality: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM5.5 9.5c1.5 2 3.5 2 5 0M6 6v1M10 6v1",
+  brain: "M5 5h6v6H5zM8 2v3M8 11v3M2 8h3M11 8h3",
+  plugins: "M3 6h4V3h3v3h3v4h-3v3H7v-3H3z",
+  flags: "M2 5h12v6H2zM9 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
+  prompts: "M3 3h10v8H8l-3 3v-3H3z",
+  memory: "M3 4c0-1.5 10-1.5 10 0v8c0 1.5-10 1.5-10 0zM3 8c0 1.5 10 1.5 10 0",
+  notes: "M4 2h8v12H4zM6 5h4M6 8h4M6 11h2",
+  audit: "M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+};
 const ALIASES = { audio: "settings" }; // the old address of the voice and safety page
 
 // What the search bar can jump to: every page, and every setting.
@@ -56,16 +78,16 @@ function expire() {
 }
 window.addEventListener("minty:unauthorized", expire);
 
-async function render(slot, nav) {
+async function render(ui) {
   const [name, arg = ""] = (location.hash.slice(1) || "dashboard").split(":");
   const key = ALIASES[name] || name;
   const page = PAGES.find((p) => p[0] === key) || PAGES[0];
-  nav.querySelectorAll("a").forEach((a) => a.classList.toggle("active", a.dataset.key === page[0]));
+  ui.nav.querySelectorAll("a").forEach((a) => a.classList.toggle("active", a.dataset.key === page[0]));
+  ui.crumb.replaceChildren(h("span", { class: "muted" }, "Control / "), page[1]);
   // A fresh <main> per render: a page that finishes late can only write into its own detached element.
   const target = h("main", {}, h("p", { class: "muted" }, "Loading…"));
-  nav.after(target);
-  slot.current.remove();
-  slot.current = target;
+  ui.slot.current.replaceWith(target);
+  ui.slot.current = target;
   try {
     await runner.run(() => page[2](target, events, arg));
   } catch (e) {
@@ -91,41 +113,67 @@ window.addEventListener("keydown", (event) => {
   } else if (event.key === "Escape" && palette.isOpen()) palette.close();
 });
 
-const MARK = () => {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 512 512");
-  const frame = document.createElementNS(ns, "rect");
-  for (const [k, v] of Object.entries({ x: 12, y: 12, width: 488, height: 488, fill: "none", stroke: "currentColor", "stroke-width": 28 })) frame.setAttribute(k, v);
-  const m = document.createElementNS(ns, "path");
-  m.setAttribute("d", "M120 392V120h56l80 132 80-132h56v272h-52V212l-84 138-84-138v180z");
-  m.setAttribute("fill", "currentColor");
-  svg.append(frame, m);
+const SVG = "http://www.w3.org/2000/svg";
+function icon(path, size = 16) {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", size);
+  svg.setAttribute("height", size);
+  svg.setAttribute("class", "icon");
+  const line = document.createElementNS(SVG, "path");
+  for (const [k, v] of Object.entries({ d: path, fill: "none", stroke: "currentColor", "stroke-width": 1.4, "stroke-linecap": "round", "stroke-linejoin": "round" })) line.setAttribute(k, v);
+  svg.append(line);
   return svg;
-};
+}
+const MARK = () => icon("M2 14V2h2.5L8 8l3.5-6H14v12h-2.2V6L8 12.5 4.2 6v8z", 26);
+
+let statusBar = null;
+let clockTimer = 0;
 
 function showApp() {
   loggedIn = true;
+  document.body.classList.add("in-app");
   if (loginKeys) window.removeEventListener("keydown", loginKeys);
   loginKeys = null;
   const slot = { current: h("main") };
-  const nav = h("header", { class: "top" },
-    h("div", { class: "bar" },
-      h("a", { class: "brand", href: "#dashboard" }, MARK(), h("span", {}, "Minty")),
-      h("nav", {}, PAGES.map(([key, label]) => h("a", { href: "#" + key, "data-key": key }, label))),
-      h("div", { class: "bar-right" }, h("button", { class: "link", type: "button", onclick: logout }, "Log out"))),
-    h("div", { class: "cmdwrap" },
-      h("button", { class: "cmdbar", type: "button", onclick: () => palette.open() },
-        h("span", {}, "Search settings and pages"), h("span", { class: "hint" }, "Toggle"), h("span", {}, h("kbd", {}, "Ctrl"), h("kbd", {}, "K")))));
-  app.replaceChildren(nav, slot.current);
+  const nav = h("nav", {}, GROUPS.map(([title, keys]) => h("div", { class: "nav-group" },
+    h("div", { class: "nav-title" }, title),
+    keys.map((key) => {
+      const page = PAGES.find((p) => p[0] === key);
+      return h("a", { href: "#" + key, "data-key": key }, icon(ICONS[key]), h("span", {}, page[1]));
+    }))));
+  const side = h("aside", { class: "side" },
+    h("a", { class: "brand", href: "#dashboard" }, MARK(), h("span", {}, "Minty")),
+    nav,
+    h("div", { class: "side-foot" }, h("span", { class: "muted" }, "Control center"),
+      h("button", { class: "link", type: "button", onclick: logout }, "Log out")));
+  const crumb = h("div", { class: "crumb" });
+  const clock = h("span", { class: "clock" });
+  const tick = () => clock.replaceChildren(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+  tick();
+  clockTimer = setInterval(tick, 15000);
+  statusBar = createStatusBar({ events, setMuted });
+  const search = h("button", { class: "cmdbar", type: "button", onclick: () => palette.open() },
+    h("span", {}, "Search"), h("span", { class: "kbds" }, h("kbd", {}, "Ctrl"), h("kbd", {}, "K")));
+  const top = h("header", { class: "topbar" }, crumb, statusBar.el, search, clock);
+  app.replaceChildren(h("div", { class: "shell" }, side, top, slot.current));
   events.start();
-  window.onhashchange = () => render(slot, nav);
-  render(slot, nav);
-  api("status").then((status) => setMuted(status.muted)).catch(() => {});
+  const ui = { slot, nav, crumb };
+  window.onhashchange = () => render(ui);
+  render(ui);
+  statusBar.refresh().catch(() => {});
+}
+
+function stopApp() {
+  if (statusBar) statusBar.destroy();
+  statusBar = null;
+  clearInterval(clockTimer);
+  document.body.classList.remove("in-app");
 }
 
 function showLogin(message = "") {
   loggedIn = false;
+  stopApp();
   events.stop();
   runner.stop();
   window.onhashchange = null;

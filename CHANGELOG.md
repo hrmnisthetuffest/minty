@@ -534,3 +534,7 @@ when it is good enough.
   guess (all the same digit, or digits in a row) and shows nothing as you type. The throttle is unchanged: five wrong tries a minute, then a wait.
   A longer password set earlier still works until you set a PIN (the login screen has "Use a password instead"). Use at least six digits if the
   panel is ever reachable from your network.
+- **A control center, not a website.** The panel is now laid out like one: a menu on the left in three groups (Monitor, Configure, Memory) with small icons, a status bar
+  along the top that is always there (what Minty is doing, a live microphone level, **Listen** and **Mute**, search and the time) and a page that scrolls on its own.
+  The dashboard is a grid of tiles (microphone, system, brain providers, background jobs, talking to Minty, live transcript) instead of a big heading. While the
+  microphone is muted the state reads MUTED and the whole panel turns red. On a phone the menu becomes a bar along the top that scrolls sideways.

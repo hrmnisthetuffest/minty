@@ -34,6 +34,16 @@ def test_the_search_bar_and_settings_page_are_wired_in():
     assert not (STATIC / "pages" / "audio.js").exists()
     worker = (STATIC / "sw.js").read_text()
     assert "/static/palette.js" in worker and "/static/settings-schema.js" in worker
+    assert "/static/pinpad.js" in worker and "/static/statusbar.js" in worker
+    assert 'from "./statusbar.js"' in app and 'from "./pinpad.js"' in app
+
+
+def test_the_page_is_laid_out_as_a_control_centre():
+    app = (STATIC / "app.js").read_text()
+    css = (STATIC / "app.css").read_text()
+    assert 'class: "side"' in app and 'class: "topbar"' in app and "createStatusBar" in app  # a menu, a status bar, the page
+    assert ".shell {" in css and "grid-template-columns: 224px" in css and "body.in-app { overflow: hidden; }" in css
+    assert ".hero" not in css  # no marketing-style header any more
 
 
 def test_every_relative_import_resolves():
