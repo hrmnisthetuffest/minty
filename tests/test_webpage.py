@@ -2,6 +2,7 @@ import pytest
 
 from minty_core.webpage import (
     bot_wall, chunk_text, describe, elements, find_snippets, is_decline, overlay_choice, page_text, parse_aria, render_page,
+    avoid_google,
     search_url,
 )
 
@@ -138,6 +139,22 @@ def test_search_urls():
     assert search_url("youtube", "lo fi beats") == "https://www.youtube.com/results?search_query=lo+fi+beats"
     assert search_url("AMAZON", "desk lamp").startswith("https://www.amazon.in/s?k=desk+lamp")
     assert search_url("nope", "x") is None and search_url("google", "  ") is None
+    assert search_url("", "desk lamp") == "https://duckduckgo.com/?q=desk+lamp"  # the default engine
+    assert search_url("google", "desk lamp") == "https://duckduckgo.com/?q=desk+lamp"  # Google is answered with a captcha
+
+
+def test_google_search_and_home_go_to_duckduckgo_and_other_google_sites_stay():
+    assert avoid_google("https://www.google.com") == "https://duckduckgo.com"
+    assert avoid_google("https://google.com/") == "https://duckduckgo.com"
+    assert avoid_google("https://www.google.co.in/") == "https://duckduckgo.com"
+    assert avoid_google("https://www.google.com/search?q=cheap+lamps&hl=en") == "https://duckduckgo.com/?q=cheap+lamps"
+    assert avoid_google("https://www.google.com/search?q=cats&tbm=isch") == "https://duckduckgo.com/?q=cats&iax=images&ia=images"
+    assert avoid_google("https://www.google.com/search?q=cats&tbm=nws") == "https://duckduckgo.com/?q=cats&iar=news&ia=news"
+    assert avoid_google("https://www.google.com/search?q=a%26b+c") == "https://duckduckgo.com/?q=a%26b+c"
+    for kept in ("https://www.google.com/maps/search/cafes", "https://mail.google.com/", "https://docs.google.com/document/d/1",
+                 "https://store.google.com", "https://accounts.google.com/signin", "https://www.google.com/search",
+                 "https://example.com/?q=google.com", "https://notgoogle.com/", "https://www.google.com.evil.example/"):
+        assert avoid_google(kept) == kept
 
 
 @pytest.mark.parametrize("label, decline", [

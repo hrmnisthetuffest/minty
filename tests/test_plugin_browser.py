@@ -126,7 +126,7 @@ def test_without_a_display_the_browser_runs_hidden(tmp_path, monkeypatch):
     assert launched["headless"] is True and out.startswith("Error")
 
 
-def test_open_with_no_address_starts_on_google(tmp_path, monkeypatch):
+def test_open_with_no_address_starts_on_duckduckgo(tmp_path, monkeypatch):
     # "open Chrome" has no page in it; the tool must still open the browser
     visited = []
 
@@ -164,7 +164,7 @@ def test_open_with_no_address_starts_on_google(tmp_path, monkeypatch):
     assert "url" not in host.get_tool("browser_open").parameters.get("required", [])
     import asyncio
     asyncio.run(host.call("browser_open", {}))
-    assert visited == ["https://www.google.com"]
+    assert visited == ["https://duckduckgo.com"]  # not Google: it answers an automated browser with a captcha
 
 
 class ScriptedRouter:
@@ -373,3 +373,49 @@ async def test_a_saved_download_is_handed_to_the_quarantine_hook(tmp_path, site)
         assert got == [(b"hello", "notes.txt")] and "quarantine as number 7" in out
     finally:
         await host.call("browser_close", {})
+
+
+def test_opening_google_or_a_google_search_opens_duckduckgo_and_it_can_be_switched_off(tmp_path, monkeypatch):
+    import asyncio
+    import playwright.async_api as api
+
+    def run(settings, url):
+        visited = []
+
+        class FakePage:
+            def is_closed(self):
+                return False
+
+            async def goto(self, u, **kw):
+                visited.append(u)
+                raise RuntimeError("stop here")  # only where it went matters
+
+        class FakeContext:
+            pages = [FakePage()]
+
+            async def route(self, *a):
+                pass
+
+            def on(self, *a):
+                pass
+
+        class FakeChromium:
+            async def launch_persistent_context(self, path, **kw):
+                return FakeContext()
+
+        class FakePW:
+            chromium = FakeChromium()
+
+        class Starter:
+            async def start(self):
+                return FakePW()
+
+        monkeypatch.setattr(api, "async_playwright", lambda: Starter())
+        host = browser_host(tmp_path / f"cfg{len(settings)}{abs(hash(url))}", **settings)
+        asyncio.run(host.call("browser_open", {"url": url}))
+        return visited
+
+    assert run({}, "https://www.google.com/search?q=cats")[:1] == ["https://duckduckgo.com/?q=cats"]
+    assert run({}, "google.com")[:1] == ["https://duckduckgo.com"]
+    assert run({}, "https://www.google.com/maps/search/cafes")[:1] == ["https://www.google.com/maps/search/cafes"]
+    assert run({"avoid_google": False}, "https://www.google.com/search?q=cats")[:1] == ["https://www.google.com/search?q=cats"]

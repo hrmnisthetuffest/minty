@@ -53,7 +53,7 @@ Settings: `headless`, `allow_local`, `folder`, `agent_model`, `planner_model`, `
 
 | Tool | What it does | Flags |
 |---|---|---|
-| `browser_open` | Open Chrome on a web page and show what is on it (for 'open Chrome' or 'open the browser'; empty url starts on Google). | sends to a destination |
+| `browser_open` | Open Chrome on a web page and show what is on it (for 'open Chrome' or 'open the browser'; empty url starts on DuckDuckGo). | sends to a destination |
 | `browser_look` | Re-read the current page: its clickable elements with [eN] references and its text. |  |
 | `browser_read` | Read the page's full text in parts of about 3000 characters (part=2 for the next), or find=phrase for the passages around it. For long pages and exact facts. |  |
 | `browser_click` | Click an element by its [eN] reference from the latest page reading. | risk varies |

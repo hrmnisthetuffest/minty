@@ -463,3 +463,14 @@ when it is good enough.
   longer mentions it.
 - Tests: `tests/test_mic_sensitivity.py`, `tests/test_listen_duck.py` (including the kill-and-recover case), updated `tests/test_journal.py` and
   `tests/test_wp06_acceptance.py`.
+
+## 1.0.0-alpha.24 (2026-10-20)
+
+### Chrome opens DuckDuckGo, not Google
+- When the browser tool is asked for Google's home page or a Google web search (`google.com`, `google.co.in`, `/search?q=...`, with images and
+  news kept as such), it opens **DuckDuckGo** instead, and "open Chrome" with no address starts there. Google's other sites (maps, mail,
+  docs, the store, sign-in) are left alone. `browser_search` defaults to DuckDuckGo and treats "google" as DuckDuckGo.
+- Why DuckDuckGo: tried with the same headed Chrome the browser tool uses, two searches each: DuckDuckGo returned results both times, Brave
+  answered `429 Too Many Requests` on the first request, and Google went to its captcha page ("unusual traffic") every time.
+- `avoid_google = false` in the browser plugin's settings brings Google back.
+- Tests: `tests/test_webpage.py`, `tests/test_plugin_browser.py`, `tests/test_browser_recovery.py`.

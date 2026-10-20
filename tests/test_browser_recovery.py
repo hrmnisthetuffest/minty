@@ -126,7 +126,7 @@ async def test_open_with_no_address_on_an_open_session_shows_the_window(tmp_path
     assert world.fronted == 1 and world.visited == ["https://example.com"] and world.launches == 1
 
 
-async def test_open_with_no_address_and_no_session_starts_on_google(tmp_path, world):
+async def test_open_with_no_address_and_no_session_starts_on_duckduckgo(tmp_path, world):
     host = browser_host(tmp_path)
     await host.call("browser_open", {})
-    assert world.visited == ["https://www.google.com"] and world.fronted == 0
+    assert world.visited == ["https://duckduckgo.com"] and world.fronted == 0

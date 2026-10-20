@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field, replace
-from urllib.parse import quote_plus
+from urllib.parse import parse_qs, quote_plus, urlsplit
 
 INTERACTIVE = {
     "link", "button", "textbox", "searchbox", "checkbox", "radio", "combobox", "listbox", "tab", "menuitem",
@@ -291,7 +291,6 @@ def find_snippets(text: str, query: str, width: int = 240, limit: int = 5) -> li
 
 
 SEARCH_URLS = {
-    "google": "https://www.google.com/search?q={q}",
     "duckduckgo": "https://duckduckgo.com/?q={q}",
     "youtube": "https://www.youtube.com/results?search_query={q}",
     "amazon": "https://www.amazon.in/s?k={q}",
@@ -299,8 +298,34 @@ SEARCH_URLS = {
     "wikipedia": "https://en.wikipedia.org/w/index.php?search={q}",
     "maps": "https://www.google.com/maps/search/{q}",
 }
+DEFAULT_ENGINE = "duckduckgo"
+# Tested with the same headed Chrome the browser tool uses: DuckDuckGo returned results; Brave answered 429 (rate limit) on the first
+# request; Google went straight to its captcha page ("unusual traffic") every time. So "google" means DuckDuckGo.
+ENGINE_ALIASES = {"google": "duckduckgo", "ddg": "duckduckgo"}
 
 
 def search_url(engine: str, query: str) -> str | None:
-    template = SEARCH_URLS.get((engine or "google").strip().lower())
+    name = (engine or DEFAULT_ENGINE).strip().lower()
+    template = SEARCH_URLS.get(ENGINE_ALIASES.get(name, name))
     return template.format(q=quote_plus(query.strip())) if template and query.strip() else None
+
+
+_GOOGLE_HOST = re.compile(r"^(www\.)?google\.(com|co\.[a-z]{2}|com\.[a-z]{2})$", re.I)
+_DDG_KIND = {"isch": "&iax=images&ia=images", "nws": "&iar=news&ia=news", "vid": "&iax=videos&ia=videos"}
+
+
+def avoid_google(url: str) -> str:
+    """Google's home page and its web-search results go to DuckDuckGo, because Google answers an automated browser with a captcha
+    at once. Google's other sites (maps, mail, docs, the store, sign-in) and a search page with no query are left as they are."""
+    parts = urlsplit(url)
+    if not _GOOGLE_HOST.match(parts.hostname or ""):
+        return url
+    path = parts.path.rstrip("/")
+    if path in ("", "/webhp"):
+        return "https://duckduckgo.com"
+    if path == "/search":
+        query = parse_qs(parts.query)
+        text = (query.get("q") or [""])[0].strip()
+        if text:
+            return f"https://duckduckgo.com/?q={quote_plus(text)}" + _DDG_KIND.get((query.get("tbm") or [""])[0], "")
+    return url

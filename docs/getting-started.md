@@ -110,6 +110,12 @@ Two buttons sit on the top edge of the chat bar: **M Mute** and **Space Listen**
   (`audio.mic_sensitivity`, 1 = normal, try 2 or 3); if a sensitive one reacts to the room, lower it (0.5). Both are in the panel
   (Voice, audio, safety & updates). With `auto_sensitivity = false` the old fixed `speech_rms_threshold` is used.
 
+### Chrome and searching
+
+The browser tool opens **DuckDuckGo** wherever Google's home page or web search would be used (and `browser_search` defaults to it),
+because Google shows a captcha to an automated browser straight away and DuckDuckGo did not in testing. Google Maps, Mail and Docs are
+unaffected. Set `avoid_google = false` in the browser plugin's settings to go back.
+
 ### Quick answers and commands (no waiting)
 
 Questions that need no thinking are answered the moment you finish speaking, by Minty itself, with no model call and no internet:
