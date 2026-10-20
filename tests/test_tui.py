@@ -272,36 +272,39 @@ def test_noting_mode_lists_the_notes_in_the_conversation_panel_until_it_ends():
 
 
 def test_the_clock_and_date_show_on_wide_screens_only():
-    from minty_core.tui import CLOCK_ROWS, CLOCK_W, clock_block
+    from minty_core.tui import CLOCK_BLOCK_W, CLOCK_ROWS, clock_block
     rows = clock_block(WALL)
-    assert len(rows) == CLOCK_ROWS and {len(r) for r in rows} == {CLOCK_W}  # equal-width rows of solid pixels
+    assert len(rows) == CLOCK_ROWS and {len(r) for r in rows} == {CLOCK_BLOCK_W}  # equal-width rows of solid pixels
     assert clock_block(WALL, colon=False) != rows and len({len(r) for r in clock_block(WALL, colon=False)}) == 1  # the colon blinks
     wide = look(TuiModel(status=lambda: FULL_STATUS), width=130)
     assert "M O N" in wide and "1 9" in wide and "O C T" in wide
     assert "M O N" not in look(TuiModel(status=lambda: FULL_STATUS), width=70)
 
 
-def test_clock_digits_are_three_times_finer_pixel_art():
-    from minty_core.tui import CLOCK_ROWS, DIGIT_H, DIGIT_W, digit_pixels
-    assert (DIGIT_W, DIGIT_H) == (9, 15)  # the old font was 3 x 5 pixels
-    assert CLOCK_ROWS == 8  # two pixels per text row (half blocks), so squares stay square
-    shapes = {}
-    for d in "0123456789":
-        px = digit_pixels(d)
-        assert len(px) == DIGIT_H and {len(r) for r in px} == {DIGIT_W}
-        shapes[d] = tuple(px)
-        assert sum(r.count("1") for r in px) > 40  # a real glyph, not a sliver
-    assert len(set(shapes.values())) == 10  # every digit is its own shape
-    # pixel art, not a smooth font: the outline has stepped corners (a corner pixel is cut) rather than sharp squares
-    zero = digit_pixels("0")
-    assert zero[0][0] == "0" and zero[0][4] == "1"
+def test_the_clock_is_twelve_hours_with_am_or_pm():
+    from minty_core.tui import clock_block, clock_text
+    night = clock_text(WALL, (255, 180, 60), True, False).plain  # 22:47
+    assert "PM" in night and "AM" not in night
+    morning = clock_text(WALL.replace(hour=7, minute=5), (255, 180, 60), True, False).plain
+    assert "AM" in morning and "PM" not in morning
+    midnight = clock_text(WALL.replace(hour=0, minute=0), (255, 180, 60), True, False).plain
+    assert "AM" in midnight
+    # 22:47 reads 10:47: the digits are those of 10 and 47, not 22
+    assert clock_block(WALL) == clock_block(WALL.replace(hour=10))
+    assert clock_block(WALL.replace(hour=13)) == clock_block(WALL.replace(hour=1))
+    # a one-digit hour keeps the clock steady: the first digit is blank and the rest does not move
+    one = clock_block(WALL.replace(hour=7))
+    two = clock_block(WALL.replace(hour=10))
+    assert {len(r) for r in one} == {len(r) for r in two}
+    assert all(row[:9].strip() == "" for row in one)
+    assert clock_block(WALL.replace(hour=0)) == clock_block(WALL.replace(hour=12))  # midnight reads 12
 
 
-def test_clock_uses_only_block_characters():
-    from minty_core.tui import clock_block
-    for hour in (0, 7, 12, 23):
-        for row in clock_block(WALL.replace(hour=hour, minute=hour + 5)):
-            assert set(row) <= set(" \u2588\u2580\u2584")
+def test_the_marker_sits_beside_the_digits_and_the_clock_still_fits():
+    from minty_core.tui import CLOCK_BLOCK_W, CLOCK_W, clock_text
+    assert CLOCK_W > CLOCK_BLOCK_W
+    for row in clock_text(WALL, (255, 180, 60), True, False).plain.splitlines()[:-1]:
+        assert len(row) <= CLOCK_W
 
 
 def test_nothing_overflows_at_any_width():
@@ -645,7 +648,7 @@ def test_the_status_is_one_quiet_line_that_only_speaks_up_when_something_needs_a
     for noise in ("THINKING", "CAPACITY", "MEMORY", "kokoro", "learned", "9/9", "BRAIN", "TODAY", "switch to"):
         assert noise not in calm, noise
     loud = status_strip({**FULL_STATUS, "muted": True, "private": True, "tier": "deep", "brain_ready": 7, "brain_total": 9,
-                         "capacity": {"share": 0.1, "calls_left": 8, "forecast": "runs out around 15:10"},
+                         "capacity": {"share": 0.1, "calls_left": 8, "forecast": "runs out around 3:10 PM"},
                          "work": [{"id": 1, "kind": "coding", "what": "x", "secs": 3, "status": "running"}],
                          "privacy_banner": "on"}).plain
     for expected in ("MUTED", "private", "deep", "7/9", "10%", "1 coding job", "privacy"):
@@ -788,7 +791,7 @@ def test_the_columns_split_the_conversation_panel_roughly_in_half_for_the_chat()
 def test_the_free_space_lists_what_is_coming_up():
     st = {**FULL_STATUS, "agenda": AGENDA}
     out = look(TuiModel(status=lambda: st), width=124, height=40)
-    for expected in ("COMING UP", "tea", "4:32", "call dad", "23:59", "dentist appointment", "Wed 09:30"):
+    for expected in ("COMING UP", "tea", "4:32", "call dad", "11:59 PM", "dentist appointment", "Wed 9:30 AM"):
         assert expected in out, expected
     nothing = look(TuiModel(status=lambda: {**FULL_STATUS, "agenda": []}), width=124, height=40)
     assert "COMING UP" in nothing and "Nothing coming up" in nothing

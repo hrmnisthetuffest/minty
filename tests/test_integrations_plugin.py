@@ -63,8 +63,8 @@ async def test_the_calendar_is_added_read_never_echoed_back_and_answers_in_local
     assert "4 events" in added and "abcd1234" not in added and r.fetched == [FEED]
     assert "abcd1234" not in await r.call("calendar", {"action": "feeds"})
     today = await r.call("calendar", {"action": "agenda"})
-    assert today.startswith("[untrusted calendar text") and "08:00 Maths, Room 4" in today and "15:00 Call with" in today
-    assert "Next: Call with a very long folded line here at 15:00 today" in await r.call("calendar", {"action": "next"})
+    assert today.startswith("[untrusted calendar text") and "8:00 AM Maths, Room 4" in today and "3:00 PM Call with" in today
+    assert "Next: Call with a very long folded line here at 3:00 PM today" in await r.call("calendar", {"action": "next"})
     assert "Dussehra" in await r.call("calendar", {"action": "agenda", "day": "tomorrow"})
     week = await r.call("calendar", {"action": "week"})
     assert week.count("\n") == 7 and "Monday 19 Oct" in week and "Sunday 25 Oct" in week

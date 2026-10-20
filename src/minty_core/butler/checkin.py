@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Callable
 
 from minty_core.fsutil import atomic_write_text
+from minty_core.timefmt import clock12
 
 MIN_MINUTES, MAX_MINUTES = 5, 24 * 60
 
@@ -30,7 +31,7 @@ class Action:
 def template(user: str, due: datetime, label: str = "") -> str:
     who = (user or "someone you know").strip()
     what = f" ({label.strip()[:40]})" if label.strip() else ""
-    return (f"This is Minty, {who}'s assistant. {who} asked me to check in at {due:%H:%M}{what} and I have not "
+    return (f"This is Minty, {who}'s assistant. {who} asked me to check in at {clock12(due)}{what} and I have not "
             f"heard back. Please try to reach them. I can't tell you anything else.")
 
 

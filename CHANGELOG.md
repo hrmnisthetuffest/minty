@@ -474,3 +474,13 @@ when it is good enough.
   answered `429 Too Many Requests` on the first request, and Google went to its captcha page ("unusual traffic") every time.
 - `avoid_google = false` in the browser plugin's settings brings Google back.
 - Tests: `tests/test_webpage.py`, `tests/test_plugin_browser.py`, `tests/test_browser_recovery.py`.
+
+## 1.0.0-alpha.25 (2026-10-20)
+
+### A 12-hour clock with AM and PM
+- The header clock shows the time as 12-hour with AM or PM (10:47 PM, not 22:47), the marker sitting beside the bottom of the digits.
+  A one-digit hour leaves its first digit blank, so the colon and minutes stay where they are when the hour changes. Midnight reads 12:00 AM.
+- The same on the rest of the screen and in speech: the "coming up" list (`11:59 PM`, `tmrw 9:30 AM`, `Wed 9:30 AM`), the battery forecast
+  ("runs out around 3:10 PM"), calendar answers ("Next: ... at 3:00 PM", free time "8:45 AM to 3:00 PM"), the check-in time and the receipts list.
+  One helper, `minty_core/timefmt.py`, does it.
+- Tests: `tests/test_timefmt.py`, `tests/test_tui.py`, and the calendar tests.

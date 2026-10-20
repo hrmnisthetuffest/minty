@@ -136,13 +136,13 @@ def test_the_agenda_next_event_and_free_time_read_in_local_time(tmp_path):
     store = make_store(tmp_path)
     store.import_text(store.add_feed("school", "https://calendar.example/private/abcd1234/basic.ics"), SAMPLE)
     monday = store.agenda(date(2026, 10, 19))
-    assert monday.startswith("Monday 19 Oct:") and "08:00 Maths, Room 4 (Block B)" in monday and "15:00 Call with a very long" in monday
+    assert monday.startswith("Monday 19 Oct:") and "8:00 AM Maths, Room 4 (Block B)" in monday and "3:00 PM Call with a very long" in monday
     assert "Dussehra" in store.agenda(date(2026, 10, 20)) and "all day" in store.agenda(date(2026, 10, 20)).lower()
     assert store.agenda(date(2026, 10, 21)) == "Wednesday 21 Oct: nothing on the calendar."
     now = datetime(2026, 10, 19, 10, 0, tzinfo=IST)
-    assert store.next_event(now).startswith("Next: Call with a very long folded line here at 15:00 today")
+    assert store.next_event(now).startswith("Next: Call with a very long folded line here at 3:00 PM today")
     slots = store.free_slots(date(2026, 10, 19), 60, now=datetime(2026, 10, 19, 7, 0, tzinfo=IST))
-    assert slots == "Free on Monday 19 Oct (at least 60 minutes): 08:45-15:00, 15:30-20:00."
+    assert slots == "Free on Monday 19 Oct (at least 60 minutes): 8:45 AM to 3:00 PM, 3:30 PM to 8:00 PM."
 
 
 def test_the_feed_address_is_a_secret_and_only_https_is_accepted(tmp_path):

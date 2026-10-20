@@ -14,6 +14,7 @@ from typing import Awaitable, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from minty_core.integrations.db import IntegrationsDB
+from minty_core.timefmt import clock12
 from minty_core.web.urls import check_web_url
 
 MAX_CHARS = 2_000_000
@@ -377,7 +378,7 @@ class CalendarStore:
         items = []
         for o in self._day(day):
             where = f" ({o.location})" if o.location else ""
-            items.append(f"{o.summary} (all day)" if o.all_day else f"{self._local(o):%H:%M} {o.summary}{where}")
+            items.append(f"{o.summary} (all day)" if o.all_day else f"{clock12(self._local(o))} {o.summary}{where}")
         return f"{head}: " + "; ".join(items) + "." if items else f"{head}: nothing on the calendar."
 
     def next_event(self, now: datetime) -> str:
@@ -389,7 +390,7 @@ class CalendarStore:
             days = (start.date() - now.date()).days
             when = "today" if days == 0 else "tomorrow" if days == 1 else f"on {start:%A} {start.day} {start:%b}"
             where = f" ({o.location})" if o.location else ""
-            return f"Next: {o.summary} at {start:%H:%M} {when}{where}."
+            return f"Next: {o.summary} at {clock12(start)} {when}{where}."
         return "Nothing is coming up in the next two weeks."
 
     def free_slots(self, day: date, min_minutes: int = 30, work: tuple[int, int] = (8, 20), now: datetime | None = None) -> str:
@@ -408,4 +409,4 @@ class CalendarStore:
         head = f"{day:%A} {day.day} {day:%b}"
         if not gaps:
             return f"No free stretch of {min_minutes} minutes on {head}."
-        return f"Free on {head} (at least {min_minutes} minutes): " + ", ".join(f"{a:%H:%M}-{b:%H:%M}" for a, b in gaps) + "."
+        return f"Free on {head} (at least {min_minutes} minutes): " + ", ".join(f"{clock12(a)} to {clock12(b)}" for a, b in gaps) + "."
