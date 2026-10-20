@@ -250,7 +250,7 @@ function pageEnvironment(handler) {
   return env;
 }
 
-const baseConfig = () => ({
+const rawConfig = () => ({
   providers: [
     { name: "groq", kind: "openai_compat", base_url: "https://g/v1", model: "m1", enabled: true, supports_tools: true, requires_key: true, trains_on_data: false, allow_sensitive: true },
     { name: "cerebras", kind: "openai_compat", base_url: "https://c/v1", model: "m2", enabled: true, supports_tools: true, requires_key: true, trains_on_data: false, allow_sensitive: true },
@@ -266,6 +266,20 @@ const baseConfig = () => ({
   terminal_listen_key: "space",
   api_port: 7777,
 });
+
+// The settings page reads every row of the schema: fill what the hand-written fixture leaves out with a harmless value.
+const { SECTIONS } = await load("settings-schema.js");
+function baseConfig() {
+  const cfg = rawConfig();
+  for (const sec of SECTIONS) {
+    for (const [section, key, , kind] of sec.rows) {
+      const node = section ? (cfg[section] ??= {}) : cfg;
+      if (node[key] !== undefined) continue;
+      node[key] = kind === "bool" ? false : kind.startsWith("number") ? 1 : kind.startsWith("select:") ? kind.slice(7).split(",")[0] : "";
+    }
+  }
+  return cfg;
+}
 
 // A config the second GET returns: someone else added a top-level key and changed a plugin setting.
 function driftingConfigs() {
@@ -491,9 +505,9 @@ function audioServer(cfg) {
   };
 }
 
-test("audio: Save writes onto the live config, keeping unseen changes", async () => {
+test("settings: Save writes onto the live config, keeping unseen changes", async () => {
   const env = pageEnvironment(audioServer(driftingConfigs()));
-  const main = await mount("audio");
+  const main = await mount("settings");
   control(main, "Silence that ends").value = "1200";
   await button(main, "Save").click();
   const body = env.puts("config")[0].body;
@@ -504,9 +518,9 @@ test("audio: Save writes onto the live config, keeping unseen changes", async ()
   assert.deepEqual(body.personality, baseConfig().personality);
 });
 
-test("audio: a blank or non-numeric number field is an error naming the field, and nothing is sent", async () => {
+test("settings: a blank or non-numeric number field is an error naming the field, and nothing is sent", async () => {
   const env = pageEnvironment(audioServer(baseConfig()));
-  const main = await mount("audio");
+  const main = await mount("settings");
   control(main, "Wake sensitivity threshold").value = "";
   await button(main, "Save").click();
   assert.equal(env.puts("config").length, 0);
@@ -519,11 +533,55 @@ test("audio: a blank or non-numeric number field is an error naming the field, a
   assert.match(env.toasts().at(-1).text, /Longest single request/);
 });
 
-test("audio: an unknown speech-to-text provider survives a save", async () => {
+test("settings: the newer options are on the page and are saved where they belong", async () => {
+  const env = pageEnvironment(audioServer(baseConfig()));
+  const main = await mount("settings");
+  control(main, "24-hour clock").checked = true;
+  control(main, "Microphone sensitivity").value = "2";
+  control(main, "Turn other audio down while listening").checked = false;
+  control(main, "How often to look (hours)").value = "12";
+  control(main, "Answer simple questions at once").checked = true;
+  control(main, "Reasoning effort for quick questions").value = "low";
+  await button(main, "Save").click();
+  const body = env.puts("config")[0].body;
+  assert.equal(body.clock_24h, true);
+  assert.equal(body.audio.mic_sensitivity, 2);
+  assert.equal(body.audio.listen_duck, false);
+  assert.equal(body.update.check_every_hours, 12);
+  assert.equal(body.instant.enabled, true);
+  assert.equal(body.router.fast_reasoning, "low");
+});
+
+test("settings: the filter hides rows that do not match, and sections left empty", async () => {
+  pageEnvironment(audioServer(baseConfig()));
+  const main = await mount("settings");
+  const search = findAll(main, (e) => e.tagName === "INPUT" && e.getAttribute("type") === "search")[0];
+  search.value = "duck";
+  await search.dispatch("input");
+  const labels = findAll(main, (e) => e.tagName === "LABEL");
+  const visible = labels.filter((l) => !l.hidden).map((l) => l.textContent);
+  assert.ok(visible.some((t) => t.includes("Turn other audio down while listening")));
+  assert.ok(!visible.some((t) => t.includes("Wake sensitivity threshold")));
+  const sections = findAll(main, (e) => e.tagName === "SECTION");
+  assert.ok(sections.some((s) => s.hidden === true) && sections.some((s) => !s.hidden));
+  search.value = "";
+  await search.dispatch("input");
+  assert.ok(findAll(main, (e) => e.tagName === "SECTION").every((s) => !s.hidden));
+});
+
+test("settings: a link from the search bar opens the page on that setting without error", async () => {
+  pageEnvironment(audioServer(baseConfig()));
+  const { default: page } = await load("pages/settings.js");
+  const main = new FakeElement("main");
+  await page(main, undefined, "audio.auto_sensitivity");
+  assert.ok(findAll(main, (e) => e.tagName === "LABEL" && e.textContent.includes("Adapt the microphone to the room")).length >= 1);
+});
+
+test("settings: an unknown speech-to-text provider survives a save", async () => {
   const cfg = baseConfig();
   cfg.stt.provider = "whisper-cloud";
   const env = pageEnvironment(audioServer(cfg));
-  const main = await mount("audio");
+  const main = await mount("settings");
   await button(main, "Save").click();
   assert.equal(env.puts("config")[0].body.stt.provider, "whisper-cloud");
 });

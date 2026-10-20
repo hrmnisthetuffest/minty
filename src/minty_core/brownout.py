@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
-from minty_core.timefmt import clock12
+from minty_core.timefmt import clock_text
 
 AVG_TOKENS_PER_CALL = 6000  # 2026-10-11 median (history + tools) until the ledger has today's own average
 
@@ -79,7 +79,7 @@ class Brownout:
         runs_out = now + left / rate * 3600
         if runs_out >= day_start + 86400:
             return "lasts until the daily reset"
-        return "runs out around " + clock12(runs_out)
+        return "runs out around " + clock_text(runs_out)
 
     def active(self) -> bool:
         cfg = self._store.config.router

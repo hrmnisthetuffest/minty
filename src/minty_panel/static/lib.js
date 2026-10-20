@@ -106,3 +106,14 @@ export function select(options, current) {
   return el;
 }
 export const encode = encodeURIComponent;
+
+// While the microphone is muted the whole panel turns red, like the terminal display.
+export function setMuted(on) {
+  if (typeof document !== "undefined" && document.body && document.body.classList) document.body.classList.toggle("mic-off", !!on);
+}
+
+// A page heading: a small label, the big title and an optional line under it.
+export function pageHead(kicker, title, lead) {
+  return h("div", { class: "page-head" }, kicker ? h("p", { class: "kicker" }, kicker) : null, h("h2", {}, title),
+    lead ? h("p", { class: "lead" }, lead) : null);
+}

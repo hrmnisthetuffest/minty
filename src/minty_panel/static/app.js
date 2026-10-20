@@ -1,10 +1,12 @@
 import { makeEvents } from "./events.js";
-import { api, h, report, Unauthorized } from "./lib.js";
+import { api, h, report, setMuted, Unauthorized } from "./lib.js";
+import { createPalette } from "./palette.js";
+import { SECTIONS } from "./settings-schema.js";
 import { createRunner } from "./runner.js";
 import dashboard from "./pages/dashboard.js";
 import logs from "./pages/logs.js";
 import personality from "./pages/personality.js";
-import audio from "./pages/audio.js";
+import settings from "./pages/settings.js";
 import brain from "./pages/brain.js";
 import plugins from "./pages/plugins.js";
 import memory from "./pages/memory.js";
@@ -16,17 +18,26 @@ import timeline from "./pages/timeline.js";
 
 const PAGES = [
   ["dashboard", "Dashboard", dashboard],
-  ["timeline", "Timeline", timeline],
-  ["personality", "Personality", personality],
-  ["audio", "Voice & Safety", audio],
+  ["settings", "Settings", settings],
   ["brain", "Brain", brain],
+  ["personality", "Personality", personality],
   ["plugins", "Plugins", plugins],
   ["memory", "Memory", memory],
   ["notes", "Notes", notes],
+  ["timeline", "Timeline", timeline],
   ["audit", "What I know", audit],
   ["prompts", "Prompts", prompts],
   ["flags", "Switches", flags],
   ["logs", "Logs", logs],
+];
+const ALIASES = { audio: "settings" }; // the old address of the voice and safety page
+
+// What the search bar can jump to: every page, and every setting.
+const SEARCH_ITEMS = [
+  ...PAGES.map(([key, label]) => ({ label, hint: "Page", page: true, hash: key, text: `${label} ${key}`.toLowerCase() })),
+  ...SECTIONS.flatMap((sec) => sec.rows.map(([section, key, label, , help]) => ({
+    label, hint: sec.title, hash: `settings:${section}.${key}`, text: `${label} ${help} ${key} ${sec.title}`.toLowerCase(),
+  }))),
 ];
 
 const app = document.getElementById("app");
@@ -42,7 +53,8 @@ function expire() {
 window.addEventListener("minty:unauthorized", expire);
 
 async function render(slot, nav) {
-  const key = location.hash.slice(1) || "dashboard";
+  const [name, arg = ""] = (location.hash.slice(1) || "dashboard").split(":");
+  const key = ALIASES[name] || name;
   const page = PAGES.find((p) => p[0] === key) || PAGES[0];
   nav.querySelectorAll("a").forEach((a) => a.classList.toggle("active", a.dataset.key === page[0]));
   // A fresh <main> per render: a page that finishes late can only write into its own detached element.
@@ -51,7 +63,7 @@ async function render(slot, nav) {
   slot.current.remove();
   slot.current = target;
   try {
-    await runner.run(() => page[2](target, events));
+    await runner.run(() => page[2](target, events, arg));
   } catch (e) {
     if (e instanceof Unauthorized) return expire();
     target.replaceChildren(h("h2", {}, page[1]), h("p", { class: "error" }, e.message));
@@ -67,17 +79,43 @@ async function logout() {
   showLogin();
 }
 
+const palette = createPalette(document.getElementById("palette"), SEARCH_ITEMS, (hash) => { location.hash = hash; });
+window.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    if (loggedIn) palette.toggle();
+  } else if (event.key === "Escape" && palette.isOpen()) palette.close();
+});
+
+const MARK = () => {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 512 512");
+  const frame = document.createElementNS(ns, "rect");
+  for (const [k, v] of Object.entries({ x: 12, y: 12, width: 488, height: 488, fill: "none", stroke: "currentColor", "stroke-width": 28 })) frame.setAttribute(k, v);
+  const m = document.createElementNS(ns, "path");
+  m.setAttribute("d", "M120 392V120h56l80 132 80-132h56v272h-52V212l-84 138-84-138v180z");
+  m.setAttribute("fill", "currentColor");
+  svg.append(frame, m);
+  return svg;
+};
+
 function showApp() {
   loggedIn = true;
   const slot = { current: h("main") };
-  const nav = h("nav", {}, h("h1", {}, "Minty"),
-    PAGES.map(([key, label]) => h("a", { href: "#" + key, "data-key": key }, label)),
-    h("div", { class: "spacer" }),
-    h("button", { class: "link", type: "button", onclick: logout }, "Log out"));
+  const nav = h("header", { class: "top" },
+    h("div", { class: "bar" },
+      h("a", { class: "brand", href: "#dashboard" }, MARK(), h("span", {}, "Minty")),
+      h("nav", {}, PAGES.map(([key, label]) => h("a", { href: "#" + key, "data-key": key }, label))),
+      h("div", { class: "bar-right" }, h("button", { class: "link", type: "button", onclick: logout }, "Log out"))),
+    h("div", { class: "cmdwrap" },
+      h("button", { class: "cmdbar", type: "button", onclick: () => palette.open() },
+        h("span", {}, "Search settings and pages"), h("span", { class: "hint" }, "Toggle"), h("span", {}, h("kbd", {}, "Ctrl"), h("kbd", {}, "K")))));
   app.replaceChildren(nav, slot.current);
   events.start();
   window.onhashchange = () => render(slot, nav);
   render(slot, nav);
+  api("status").then((status) => setMuted(status.muted)).catch(() => {});
 }
 
 function showLogin(message = "") {
@@ -87,7 +125,8 @@ function showLogin(message = "") {
   window.onhashchange = null;
   const password = h("input", { type: "password", autocomplete: "current-password", autofocus: true });
   const error = h("p", { class: "error" }, message);
-  const form = h("form", { class: "login card" }, h("h1", {}, "Minty"),
+  setMuted(false);
+  const form = h("form", { class: "login card" }, h("p", { class: "kicker" }, "Control panel"), h("h1", {}, "Minty"),
     h("label", { class: "field" }, h("span", { class: "label" }, "Panel password"), password),
     error, h("button", { class: "primary", type: "submit" }, "Log in"));
   form.addEventListener("submit", async (event) => {

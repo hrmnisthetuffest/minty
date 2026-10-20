@@ -484,3 +484,20 @@ when it is good enough.
   ("runs out around 3:10 PM"), calendar answers ("Next: ... at 3:00 PM", free time "8:45 AM to 3:00 PM"), the check-in time and the receipts list.
   One helper, `minty_core/timefmt.py`, does it.
 - Tests: `tests/test_timefmt.py`, `tests/test_tui.py`, and the calendar tests.
+
+## 1.0.0-alpha.26 (2026-10-20)
+
+### Everything is a setting, and a new look for the control panel
+- **New settings.** `clock_24h` (off) switches every time on the display and in speech between "3:10 PM" and "15:10". The browser plugin has
+  `avoid_google` (on) in its settings, so the Google-to-DuckDuckGo redirect can be turned off from the Plugins page. The switches page has plain labels for the
+  newer on/off settings (adaptive microphone, turning other audio down, speculative recognition, instant answers, terminal keys and mouse).
+- **Settings page.** The old "Voice & Safety" page is now **Settings**: every setting that can be changed, in six groups (Voice, Microphone & music,
+  Speed, Display & keys, Updates, Safety), each with a plain explanation, a filter box, a section index and one Save bar that says whether
+  anything is unsaved. The list lives in `static/settings-schema.js`, and `tests/test_settings_registry.py` checks that every row is a real
+  setting of the right kind and that all the recently added ones are there. The address `#audio` still works.
+- **New look.** The panel is redesigned after the look of nousresearch.com (with a credit line at the bottom of every screen: "Design inspired by Nous
+  Research"): deep navy, one cobalt accent, tall condensed capitals, squared panels with a corner mark, a blue frame, a halftone-dot header on the dashboard, a
+  row-of-pixels microphone meter and switches instead of tick boxes. The whole panel turns red while the microphone is muted, as the terminal display does.
+  **Ctrl+K / Cmd+K** opens a search bar that jumps to any page or straight to a setting (the row flashes). It works on a phone too.
+  The display font is the condensed one that is installed on the computer (Nimbus Sans Narrow here); a closer match can be dropped in as `Antonio`.
+- Tests: `tests/test_timefmt.py`, `tests/test_settings_registry.py`, `tests/test_panel_static.py` and `tests/panel_js_checks.mjs` (the settings page, filter and deep link).

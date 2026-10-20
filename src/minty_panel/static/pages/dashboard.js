@@ -1,4 +1,4 @@
-import { action, api, h, textInput } from "../lib.js";
+import { action, api, h, setMuted, textInput } from "../lib.js";
 
 export default async function dashboard(main, events) {
   const state = h("strong", {}, "…");
@@ -6,7 +6,7 @@ export default async function dashboard(main, events) {
     const status = await api("status");
     await api("mute", { method: "POST", body: { muted: !status.muted } });
     await refresh();
-  });
+  }, "primary");
   const listenButton = action("Listen", async () => {
     await api("listen", { method: "POST" });
     return "Listening.";
@@ -68,6 +68,7 @@ export default async function dashboard(main, events) {
     const status = await api("status");
     state.textContent = status.state;
     muteButton.textContent = status.muted ? "Unmute" : "Mute";
+    setMuted(status.muted);
     providers.replaceChildren(...status.providers.map((p) => h("tr", { class: p.cooling_for > 0 ? "cooling" : "" },
       h("td", {}, p.name), h("td", {}, p.enabled ? "on" : "off"), h("td", {}, p.has_key ? "key set" : "no key"),
       h("td", {}, p.cooling_for > 0 ? `cooling ${Math.round(p.cooling_for)}s` : "ready"), h("td", { class: "muted" }, p.last_error || ""))));
@@ -77,8 +78,11 @@ export default async function dashboard(main, events) {
   const askInput = textInput("", { placeholder: "Ask Minty (text, no microphone)" });
 
   main.replaceChildren(
-    h("h2", {}, "Dashboard"),
-    h("div", { class: "card row" }, h("span", {}, "State: "), state, h("div", { class: "spacer" }), restartButton, restartApp, listenButton, muteButton),
+    h("section", { class: "hero" },
+      h("p", { class: "kicker" }, "Voice assistant · control panel"),
+      h("h1", { class: "display" }, "Minty"),
+      h("p", { class: "lead" }, "State: ", state, ". Listen or mute it here, restart the conversation, and watch the microphone."),
+      h("div", { class: "row" }, listenButton, muteButton, h("div", { class: "spacer" }), restartButton, restartApp)),
     h("div", { class: "card" },
       h("div", { class: "row" }, h("span", {}, "Mic: "), meter, dbLabel, heard),
       caption),

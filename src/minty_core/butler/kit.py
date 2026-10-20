@@ -12,7 +12,7 @@ from minty_core.butler.checkin import CheckIn, CheckInError
 from minty_core.butler.domains import all_domains
 from minty_core.butler.store import ButlerStore
 from minty_core.butler.urgency import Digest, Interruptions
-from minty_core.timefmt import clock12
+from minty_core.timefmt import clock_text
 
 OFF = "The butler is switched off (butler.enabled on the Switches page)."
 
@@ -181,7 +181,7 @@ class ButlerProvider:
                 state = ci.start(n * (60 if unit == "hour" else 1))
             except CheckInError as e:
                 return str(e)
-            at = clock12(state["due"])
+            at = clock_text(state["due"])
             who = cfg.checkin_contact_name or "your contact"
             return (f"Check-in set for {n} {unit}{'s' * (n != 1)}: I'll ask you at {at}. If I don't hear back "
                     f"I'll tell {who}.")

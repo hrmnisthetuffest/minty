@@ -8,6 +8,7 @@ from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
+from minty_core import timefmt
 from minty_core._toml import tomli_w, tomllib
 from minty_core.configtools import explain_validation
 from minty_core.fsutil import atomic_write_text
@@ -847,6 +848,7 @@ class Config(BaseModel):
     plugins: dict[str, dict] = Field(default_factory=dict)
     preferred_provider: str = ""  # provider the user picked by voice ("switch to gemini"); empty: automatic order
     toolkit_routing: bool = True  # offer only the tools a request needs (false: every tool, every turn)
+    clock_24h: bool = False  # times on the display and in speech: 15:10 instead of 3:10 PM
     terminal_ui: bool = True  # full-screen status display when run in a terminal
     terminal_reduced_motion: bool = False  # still orb and no spinners; the mic meter keeps moving
     terminal_images: Literal["auto", "off", "sixel", "kitty"] = "auto"  # real album covers where the terminal can show them
@@ -893,6 +895,7 @@ class ConfigStore:
                 raise ConfigError(f"{self.path}: {e}") from e
             except ValidationError as e:
                 raise ConfigError(f"{self.path}: " + "; ".join(explain_validation(e))) from e
+        timefmt.configure(self._config.clock_24h)
         return self._config
 
     def update(self, data: dict) -> Config:
@@ -900,6 +903,7 @@ class ConfigStore:
         text = tomli_w.dumps(new.model_dump(mode="json", exclude_none=True))
         atomic_write_text(self.path, text, 0o644)
         self._config = new
+        timefmt.configure(new.clock_24h)
         logger = logging.getLogger(__name__)
         for cb in list(self._listeners):
             try:

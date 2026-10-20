@@ -6,6 +6,11 @@ default_enabled = true
 type = "boolean"
 label = "Hide the browser window (default off, so you can watch it work)"
 
+[settings.avoid_google]
+type = "boolean"
+default = true
+label = "Open DuckDuckGo instead of Google's home and search pages (Google shows a CAPTCHA to an automated browser; default on)"
+
 [settings.allow_local]
 type = "boolean"
 label = "Allow pages on this computer and your home network (default off)"

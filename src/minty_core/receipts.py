@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from minty_core.timefmt import clock12
+from minty_core.timefmt import clock_text
 
 KEEP_S = 90 * 86400
 OUTCOMES = ("ok", "failed", "declined", "blocked")
@@ -87,7 +87,7 @@ class ReceiptStore:
 
 
 def _when(ts: float) -> str:
-    return clock12(ts)
+    return clock_text(ts)
 
 
 def why_reply(store: ReceiptStore, approvals=None) -> str:

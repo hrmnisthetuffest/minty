@@ -49,7 +49,7 @@ On by default: yes.
 Uses a real Chrome window like a person: open pages, read them, click, type, scroll. Asks before buying, sending, deleting or posting, and never types passwords.
 
 On by default: yes.
-Settings: `headless`, `allow_local`, `folder`, `agent_model`, `planner_model`, `strong_model`, `page_budget`, `prompt_state`, `fastpath`, `wall_wait_s`, `min_gap_s`.
+Settings: `headless`, `avoid_google`, `allow_local`, `folder`, `agent_model`, `planner_model`, `strong_model`, `page_budget`, `prompt_state`, `fastpath`, `wall_wait_s`, `min_gap_s`.
 
 | Tool | What it does | Flags |
 |---|---|---|

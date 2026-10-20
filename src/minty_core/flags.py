@@ -8,6 +8,14 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 LABELS = {
+    "clock_24h": "Show and say times on a 24-hour clock (15:10) instead of 3:10 PM",
+    "terminal_hotkeys": "On the terminal display, the mute and listen keys work when nothing is typed",
+    "terminal_mouse": "On the terminal display, the Mute and Listen buttons can be clicked",
+    "audio.auto_sensitivity": "Adapt the microphone to the room: the volume that counts as speech follows the background noise",
+    "audio.listen_duck": "Turn other audio down a lot while Minty listens, and back up afterwards",
+    "audio.speculative_stt": "Recognise your words during the pause, so the answer starts sooner",
+    "instant.enabled": "Answer simple questions (time, maths, unit conversion) at once, without asking a model",
+    "instant.actions": "Do simple actions (timers, volume, pause the music) at once, without asking a model",
     "safety.privacy_mode": "Privacy mode: nothing leaves this computer except to providers that don't train on it",
     "safety.confirm_risky": "Ask before risky actions (money, passwords and deleting are always asked)",
     "safety.audit": "Keep an audit trail of decisions",

@@ -26,7 +26,7 @@ from minty_core import __version__
 from minty_core.audio.cover import CoverCache, tile
 from minty_core.gfx import Graphics, ImageOverlay, cell_pixels, detect
 from minty_core.audio.stable import Typewriter
-from minty_core.timefmt import clock12
+from minty_core.timefmt import clock_text as time_text, is_24h
 
 log = logging.getLogger(__name__)
 
@@ -491,9 +491,9 @@ def _blocks(pixels: list[str]) -> list[str]:
 
 
 def clock_block(wall: datetime, colon: bool = True) -> list[str]:
-    """H:MM on a 12-hour clock as CLOCK_ROWS rows of half blocks, all the same width; the colon is two squares (blank when `colon`
+    """H:MM (12-hour, or HH:MM with the clock_24h setting) as CLOCK_ROWS rows of half blocks, all the same width; the colon is two squares (blank when `colon`
     is False). A one-digit hour leaves its first digit blank so nothing moves when the hour changes."""
-    h, m = f"{wall.hour % 12 or 12:2d}", f"{wall:%M}"
+    h, m = (f"{wall.hour:02d}" if is_24h() else f"{wall.hour % 12 or 12:2d}"), f"{wall:%M}"
     dot = ["1" * COLON_W if colon and y in (4, 5, 10, 11) else "0" * COLON_W for y in range(DIGIT_H)]
     digits = [digit_pixels(c) if c != " " else ["0" * DIGIT_W] * DIGIT_H for c in h + m]
     pixels = ["".join((digits[0][y], "0", digits[1][y], "0", dot[y], "0", digits[2][y], "0", digits[3][y]))
@@ -505,11 +505,11 @@ def clock_text(wall: datetime, rgb: tuple[float, float, float], blink: bool, red
     """The clock for the header: solid digits shaded from the song's colour at the top to a deeper tone at the bottom, a colon
     that blinks each second, and the day and date in small spaced capitals."""
     out = Text(justify="center")
-    mark = "AM" if wall.hour < 12 else "PM"
+    mark = "" if is_24h() else "AM" if wall.hour < 12 else "PM"
     for n, row in enumerate(clock_block(wall, colon=reduced or blink)):
         shade = _shade(rgb, 1.0 - 0.4 * n / (CLOCK_ROWS - 1))
         out.append(row, style=f"bold {shade}")
-        out.append((" " + mark) if n == CLOCK_ROWS - 2 else " " * MARK_W, style=f"bold {shade}")  # beside the bottom of the digits
+        out.append((" " + mark) if mark and n == CLOCK_ROWS - 2 else " " * MARK_W, style=f"bold {shade}")  # beside the bottom of the digits
         out.append("\n")
     out.append(" ".join(f"{wall:%a}".upper()) + "  \u00b7  " + " ".join(f"{wall:%d}") + "  \u00b7  " + " ".join(f"{wall:%b}".upper()),
                style="grey58")
@@ -740,10 +740,10 @@ def _when(due: float, remaining: float, kind: str, wall: datetime) -> str:
         return f"\u23f1 {_mmss(remaining)}"
     at = datetime.fromtimestamp(due)
     if at.date() == wall.date():
-        return clock12(at)
+        return time_text(at)
     if (at.date() - wall.date()).days == 1:
-        return f"tmrw {clock12(at)}"
-    return f"{at:%a} {clock12(at)}"
+        return f"tmrw {time_text(at)}"
+    return f"{at:%a} {time_text(at)}"
 
 
 def coming_up_block(st: dict, wall: datetime, accent: str, lines: int, width: int) -> Group:

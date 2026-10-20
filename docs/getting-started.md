@@ -92,7 +92,7 @@ Two buttons sit on the top edge of the chat bar: **M Mute** and **Space Listen**
   in the middle of an answer, Listen interrupts it and listens.
 - The keys work when nothing is typed. To type a message that starts with `M` or a space, press **Enter** first (Enter or Backspace
   on the empty line closes it again); any other letter just starts typing as before.
-- Change the keys in the panel (Voice, audio, safety & updates) or with `terminal_mute_key` and `terminal_listen_key` in
+- Change the keys in the panel (Settings, Display & keys) or with `terminal_mute_key` and `terminal_listen_key` in
   `config.toml`: one character, or the word `space`. `terminal_hotkeys = false` turns the keys off; `terminal_mouse = false` turns
   clicking off (the mouse then selects text as usual).
 - The panel's dashboard has the same two buttons, and the local API has `POST /mute` and `POST /listen`.
@@ -108,13 +108,20 @@ Two buttons sit on the top edge of the chat bar: **M Mute** and **Space Listen**
   learns the background level and sets the bar a little above it (`audio.auto_sensitivity`, on). It drops quickly when the room gets
   quieter, so turning the music down does not leave it deaf. If a quiet microphone still misses you, raise **Microphone sensitivity**
   (`audio.mic_sensitivity`, 1 = normal, try 2 or 3); if a sensitive one reacts to the room, lower it (0.5). Both are in the panel
-  (Voice, audio, safety & updates). With `auto_sensitivity = false` the old fixed `speech_rms_threshold` is used.
+  (Settings, Microphone & music). With `auto_sensitivity = false` the old fixed `speech_rms_threshold` is used.
 
 ### Chrome and searching
 
 The browser tool opens **DuckDuckGo** wherever Google's home page or web search would be used (and `browser_search` defaults to it),
 because Google shows a captcha to an automated browser straight away and DuckDuckGo did not in testing. Google Maps, Mail and Docs are
-unaffected. Set `avoid_google = false` in the browser plugin's settings to go back.
+unaffected. Turn **Open DuckDuckGo instead of Google** off in the browser plugin's settings (Plugins page) to go back.
+
+### The control panel and its settings
+
+Open the panel in a browser (`minty-panel`, `http://127.0.0.1:7778`). **Settings** holds everything that can be set, in groups, with a filter box;
+press **Ctrl+K** (Cmd+K on a Mac) anywhere to search all pages and settings and jump straight to one. The panel turns red while the microphone is
+muted. **Display & keys** has the 24-hour clock switch (`clock_24h`), the mute and listen keys and the mouse buttons. Design inspired by
+[Nous Research](https://nousresearch.com).
 
 ### Quick answers and commands (no waiting)
 

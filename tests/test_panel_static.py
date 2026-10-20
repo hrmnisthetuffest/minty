@@ -21,6 +21,21 @@ def test_entry_files_exist():
     assert 'href="/static/app.css"' in html and 'id="app"' in html and 'id="toasts"' in html
 
 
+def test_the_design_credit_is_on_every_screen():
+    html = (STATIC / "index.html").read_text()
+    assert "Design inspired by" in html and 'href="https://nousresearch.com"' in html and "Nous Research" in html
+    assert 'rel="noopener noreferrer"' in html  # an external link leaks no referrer or window handle
+
+
+def test_the_search_bar_and_settings_page_are_wired_in():
+    app = (STATIC / "app.js").read_text()
+    assert 'from "./palette.js"' in app and 'from "./pages/settings.js"' in app and "settings-schema.js" in app
+    assert "audio: \"settings\"" in app  # the old address of the voice page still works
+    assert not (STATIC / "pages" / "audio.js").exists()
+    worker = (STATIC / "sw.js").read_text()
+    assert "/static/palette.js" in worker and "/static/settings-schema.js" in worker
+
+
 def test_every_relative_import_resolves():
     for js in JS_FILES:
         for target in re.findall(r'from\s+"(\.{1,2}/[^"]+)"', js.read_text()):
