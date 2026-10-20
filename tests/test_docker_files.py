@@ -63,6 +63,6 @@ def test_the_voice_override_passes_the_sound_server_and_asks_for_the_voice_image
 
 def test_the_docker_guide_says_what_works_and_what_does_not():
     guide = text("docs/docker.md")
-    for needed in ("docker compose up", "set-password", "set-key", "127.0.0.1:7778", "docker-compose.voice.yml", "does not"):
+    for needed in ("docker compose up", "set-pin", "set-key", "127.0.0.1:7778", "docker-compose.voice.yml", "does not"):
         assert needed in guide, needed
     assert "Chrome" in guide and "microphone" in guide

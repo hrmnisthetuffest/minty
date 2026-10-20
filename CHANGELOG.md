@@ -495,8 +495,7 @@ when it is good enough.
   Speed, Display & keys, Updates, Safety), each with a plain explanation, a filter box, a section index and one Save bar that says whether
   anything is unsaved. The list lives in `static/settings-schema.js`, and `tests/test_settings_registry.py` checks that every row is a real
   setting of the right kind and that all the recently added ones are there. The address `#audio` still works.
-- **New look.** The panel is redesigned after the look of nousresearch.com (with a credit line at the bottom of every screen: "Design inspired by Nous
-  Research"): deep navy, one cobalt accent, tall condensed capitals, squared panels with a corner mark, a blue frame, a halftone-dot header on the dashboard, a
+- **New look.** The panel is redesigned: deep navy, one cobalt accent, tall condensed capitals, squared panels with a corner mark, a blue frame, a halftone-dot header on the dashboard, a
   row-of-pixels microphone meter and switches instead of tick boxes. The whole panel turns red while the microphone is muted, as the terminal display does.
   **Ctrl+K / Cmd+K** opens a search bar that jumps to any page or straight to a setting (the row flashes). It works on a phone too.
   The display font is the condensed one that is installed on the computer (Nimbus Sans Narrow here); a closer match can be dropped in as `Antonio`.
@@ -504,7 +503,7 @@ when it is good enough.
 
 ## 1.0.0-alpha.27 (2026-10-20)
 
-### A 500-question profile, Docker, and no design credit line
+### A 500-question profile and Docker
 - **Profile.** A new **Profile** page in the panel asks 500 fixed questions about you in 15 groups (about you, home, routine, health,
   fitness, food, sleep, school and work, interests, devices, how you like Minty, people, money, goals, limits). The numbers are permanent: a
   question is never reworded to mean something else, moved or removed. Answer one at a time (Interview) or from the list (All questions, with a filter), skip
@@ -516,7 +515,6 @@ when it is good enough.
   volume, not run as root, health check), `docker-compose.voice.yml` (passes the sound server and `/dev/snd` on Linux) and `docs/docker.md`, which also says plainly what
   does not work in a container (the Chrome browser tool, desktop control, a microphone on macOS and Windows). The files are checked by tests;
   the image could not be built in the environment where this was written, so the first build on a machine with Docker is the real test.
-- **Removed** the "Design inspired by ..." line from the panel.
 - Tests: `tests/test_profile_bank.py`, `test_profile_store.py`, `test_profile_prompt.py`, `test_profile_api.py`, `test_docker_files.py` and the Profile page in `tests/panel_js_checks.mjs`.
 
 ## Unreleased
@@ -531,3 +529,8 @@ when it is good enough.
   `scripts/leak_check.py` searches the tracked files for key-shaped strings, for the keys you actually use and for personal words (kept in files outside the repository).
 - Tests: `tests/test_release_tools.py`, `tests/test_release_workflow.py`, `tests/test_version.py`, `tests/test_personality.py`.
 - **Merging.** `CHANGELOG.md` merges line by line (`.gitattributes`), so a contributor's line and yours under `## Unreleased` no longer clash, and `release_tools.merge_unreleased` joins two Unreleased sections into one.
+- **A PIN instead of a password.** The panel now logs in with a PIN of 4 to 8 digits, on a PIN pad (dots that fill as you type, a keypad for touch,
+  the number keys, Backspace, Enter and Escape on a keyboard). `minty set-pin` sets it (`set-password` does the same); it refuses a PIN that is easy to
+  guess (all the same digit, or digits in a row) and shows nothing as you type. The throttle is unchanged: five wrong tries a minute, then a wait.
+  A longer password set earlier still works until you set a PIN (the login screen has "Use a password instead"). Use at least six digits if the
+  panel is ever reachable from your network.

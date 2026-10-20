@@ -243,7 +243,8 @@ def test_core_cli_accepts_no_panel_and_set_password():
     assert parse_args([]).no_panel is False
     assert parse_args(["--no-panel"]).no_panel is True
     assert parse_args(["run", "--no-panel"]).no_panel is True
-    assert parse_args(["set-password"]).command == "set-password"
+    assert parse_args(["set-pin"]).command == "set-pin"
+    assert parse_args(["set-password"]).command == "set-pin"  # the old name still works
 
 
 async def test_combined_run_starts_panel_and_core_in_one_process(tmp_path, monkeypatch):

@@ -231,3 +231,19 @@ tr.cooling td { color: var(--dim); }
 .qa-text { flex: 1; } .qa-answer { color: var(--soft); margin-top: 4px; white-space: pre-wrap; }
 .row > select { width: auto; min-width: 260px; flex: 1 1 260px; }
 .row > input[type=search] { flex: 1 1 260px; width: auto; }
+
+/* ---- PIN pad (login) ---- */
+.pinpad { text-align: center; }
+.pin-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 6px 0 4px; }
+.pin-dots { display: flex; gap: 14px; min-height: 28px; align-items: center; }
+.pin-dot { width: 16px; height: 16px; border: 2px solid var(--line2); background: transparent; transition: background .1s, border-color .1s; }
+.pin-dot.on { background: var(--blue2); border-color: var(--blue2); }
+.pin-back { padding: 8px 10px; font-size: 12px; background: none; border-color: transparent; color: var(--dim); }
+.pin-message { min-height: 1.4em; margin: 8px 0; }
+.pin-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px auto 14px; max-width: 300px; }
+.pin-key { padding: 0; height: 64px; font: 400 30px/1 var(--display); letter-spacing: .02em; }
+.pin-key.pin-side, .pin-key.pin-enter { font-size: 15px; }
+.pin-key.pin-enter { background: var(--blue); border-color: var(--blue2); color: #fff; }
+.pinpad[data-shake] { animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@media (pointer: coarse) { .pin-key { height: 72px; } }

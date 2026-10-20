@@ -45,7 +45,7 @@ minty                # starts the voice assistant, the local API and the web pan
 ```
 
 - **Voice:** say "Minty", then ask. Say "stop" while it talks to interrupt it.
-- **Web panel:** <http://127.0.0.1:7778>. Set its password first with `minty set-password`.
+- **Web panel:** <http://127.0.0.1:7778>. Set its PIN first with `minty set-pin`.
 - **Telegram:** after the setup's phone step, run `minty telegram-pair` and send the printed `/pair CODE` to your bot.
 - **Text from a terminal:**
 

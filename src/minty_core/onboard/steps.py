@@ -448,8 +448,8 @@ class Onboarding:
                         ui.fail(f"No answer ({type(err).__name__}). Check the keys with: minty set-key groq")
                 if reply:
                     ui.ok(f"Minty: {reply}")
-        ui.note("Next", "• Start Minty any time with:  minty\n• The web panel is at http://127.0.0.1:7778 (set its password "
-                        "with: minty set-password)\n• Change anything later in the panel, or re-run one step: "
+        ui.note("Next", "• Start Minty any time with:  minty\n• The web panel is at http://127.0.0.1:7778 (set its PIN "
+                        "with: minty set-pin)\n• Change anything later in the panel, or re-run one step: "
                         "minty onboard --step voice\n• Help: docs/getting-started.md")
         if e.root is not None and e.which("systemctl") and (e.root / ".venv" / "bin" / "python").exists():
             if ui.confirm("Keep Minty running in the background and start it when you log in?", default=False):

@@ -1,6 +1,7 @@
 import { makeEvents } from "./events.js";
 import { api, h, report, setMuted, Unauthorized } from "./lib.js";
 import { createPalette } from "./palette.js";
+import { createPinPad } from "./pinpad.js";
 import { SECTIONS } from "./settings-schema.js";
 import { createRunner } from "./runner.js";
 import dashboard from "./pages/dashboard.js";
@@ -47,6 +48,7 @@ const app = document.getElementById("app");
 const events = makeEvents({ onError: report });
 const runner = createRunner();
 let loggedIn = false;
+let loginKeys = null; // the keyboard handler of the PIN pad while the login screen is showing
 
 // Session expired (any 401 from api()): back to the login screen, once.
 function expire() {
@@ -104,6 +106,8 @@ const MARK = () => {
 
 function showApp() {
   loggedIn = true;
+  if (loginKeys) window.removeEventListener("keydown", loginKeys);
+  loginKeys = null;
   const slot = { current: h("main") };
   const nav = h("header", { class: "top" },
     h("div", { class: "bar" },
@@ -125,28 +129,33 @@ function showLogin(message = "") {
   events.stop();
   runner.stop();
   window.onhashchange = null;
-  const password = h("input", { type: "password", autocomplete: "current-password", autofocus: true });
-  const error = h("p", { class: "error" }, message);
   setMuted(false);
-  const form = h("form", { class: "login card" }, h("p", { class: "kicker" }, "Control panel"), h("h1", {}, "Minty"),
-    h("label", { class: "field" }, h("span", { class: "label" }, "Panel password"), password),
-    error, h("button", { class: "primary", type: "submit" }, "Log in"));
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  const pad = createPinPad({ onSubmit: attempt });
+  // Returns "" when logged in, else the reason it was refused (the pad shows it).
+  async function attempt(secret) {
     try {
       const res = await fetch("/login", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Requested-With": "minty" },
-        body: JSON.stringify({ password: password.value }),
+        body: JSON.stringify({ password: secret }),
       });
-      if (res.status === 204) return showApp();
+      if (res.status === 204) {
+        showApp();
+        return "";
+      }
       const data = await res.json().catch(() => ({}));
-      error.textContent = data.detail || `Login failed (HTTP ${res.status})`;
+      return data.detail || `Login failed (HTTP ${res.status})`;
     } catch {
-      error.textContent = "Cannot reach the panel server. Check that it is running and try again.";
+      return "Cannot reach the panel server. Check that it is running and try again.";
     }
-  });
-  app.replaceChildren(form);
+  }
+  if (loginKeys) window.removeEventListener("keydown", loginKeys);
+  loginKeys = (event) => {
+    if (!loggedIn && !event.ctrlKey && !event.metaKey && !event.altKey && pad.handleKey(event)) event.preventDefault();
+  };
+  window.addEventListener("keydown", loginKeys);
+  if (message) pad.setError(message);
+  app.replaceChildren(h("div", { class: "login card" }, h("p", { class: "kicker" }, "Control panel"), h("h1", {}, "Minty"), pad.el));
 }
 
 try {

@@ -122,7 +122,8 @@ def parse_args(argv):
     show.add_argument("--tier", choices=["fast", "deep"], default="fast")
     show.add_argument("--kit", action="append", default=[], help="a tool group in play, e.g. research (repeatable)")
     sub.add_parser("local-llm-test", help="measure the optional local model and adopt it only if it is fast enough")
-    sub.add_parser("set-password", help="set the web panel login password")
+    sub.add_parser("set-pin", help="set the web panel login PIN (4 to 8 digits)")
+    sub.add_parser("set-password", help="the same as set-pin")
     sub.add_parser("spotify-login", help="sign in to Spotify once so Minty can read your playlists")
     set_key = sub.add_parser("set-key", help="store an API key without echoing it")
     set_key.add_argument("name", help="provider name, e.g. groq")
@@ -134,6 +135,8 @@ def parse_args(argv):
         args.rest = list(argv[1:])
         return args
     args = parser.parse_args(argv)
+    if args.command == "set-password":  # the old name of set-pin
+        args.command = "set-pin"
     if args.command is None:
         args.command = "run"
     return args
@@ -1536,10 +1539,10 @@ def main(argv=None) -> None:
         except RuntimeError as e:
             sys.exit(f"minty-core: {e}")
         return
-    if args.command == "set-password":
+    if args.command in ("set-pin", "set-password"):
         from minty_panel.main import main as panel_main
 
-        panel_main(["set-password"])
+        panel_main(["set-pin"])
         return
     if args.command == "import-keys":
         _import_keys(args.path, config_dir())

@@ -93,7 +93,7 @@ def test_wrong_password_and_throttle(tmp_path):
 
 def test_login_without_a_password_set_explains_how(tmp_path):
     res = login(build(tmp_path, password=None))
-    assert res.status_code == 503 and "set-password" in res.json()["detail"]
+    assert res.status_code == 503 and "set-pin" in res.json()["detail"]
 
 
 def test_proxy_adds_core_token_and_not_the_browser_cookie(tmp_path):

@@ -24,6 +24,15 @@ def verify_password(password: str, salt_hex: str, hash_hex: str) -> bool:
     return hmac.compare_digest(digest, hash_hex)
 
 
+PIN_MIN, PIN_MAX = 4, 8
+
+
+def is_weak_pin(pin: str) -> bool:
+    """Every digit the same (0000), or each digit one more or one less than the one before (1234, 9876)."""
+    steps = {int(b) - int(a) for a, b in zip(pin, pin[1:])}
+    return len(set(pin)) == 1 or steps == {1} or steps == {-1}
+
+
 class PasswordStore:
     def __init__(self, directory: Path):
         self.path = Path(directory) / "panel_auth.toml"
@@ -35,6 +44,15 @@ class PasswordStore:
         if len(password) < 8:
             raise ValueError("password must be at least 8 characters")
         salt, digest = hash_password(password)
+        atomic_write_text(self.path, tomli_w.dumps({"salt": salt, "hash": digest}), 0o600)
+
+    def set_pin(self, pin: str) -> None:
+        """The panel's PIN: four to eight digits, and not one that is easy to guess (all the same digit, or in a row)."""
+        if not (pin.isascii() and pin.isdigit() and PIN_MIN <= len(pin) <= PIN_MAX):
+            raise ValueError(f"a PIN is {PIN_MIN} to {PIN_MAX} digits")
+        if is_weak_pin(pin):
+            raise ValueError("that PIN is too easy to guess (the same digit, or digits in a row): choose another")
+        salt, digest = hash_password(pin)
         atomic_write_text(self.path, tomli_w.dumps({"salt": salt, "hash": digest}), 0o600)
 
     def verify(self, password: str) -> bool:

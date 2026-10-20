@@ -12,7 +12,7 @@ You need Docker with the compose plugin (`docker compose version`).
 git clone https://github.com/YOUR-USER/minty.git
 cd minty
 docker compose up -d --build
-docker compose run --rm minty minty set-password      # the panel's login password
+docker compose run --rm minty minty set-pin           # the panel's login PIN
 docker compose run --rm minty minty set-key groq      # a free model key (asks without showing it)
 ```
 

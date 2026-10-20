@@ -1287,3 +1287,94 @@ test("profile: Edit on a list row opens that question and Clear removes the answ
   assert.match(main.textContent, /0 \/ 500/);
 });
 
+
+// ---- the PIN pad on the login screen ----
+async function pad(onSubmit = async () => "") {
+  pageEnvironment(() => undefined);
+  const { createPinPad } = await load("pinpad.js");
+  const made = createPinPad({ onSubmit });
+  return made;
+}
+const dots = (root) => findAll(root, (e) => e.className === "pin-dot on").length;
+const slots = (root) => findAll(root, (e) => e.className === "pin-dot" || e.className === "pin-dot on").length;
+
+test("pinpad: digits fill the dots, up to eight, and anything else is ignored", async () => {
+  const p = await pad();
+  assert.equal(slots(p.el), 6);
+  for (const d of "4821") p.press(d);
+  p.press("x"); p.press(" "); p.press("12");
+  assert.equal(p.value(), "4821");
+  assert.equal(dots(p.el), 4);
+  for (const d of "93579") p.press(d);
+  assert.equal(p.value(), "48219357");
+  assert.equal(slots(p.el), 8);
+});
+
+test("pinpad: delete and clear", async () => {
+  const p = await pad();
+  for (const d of "123") p.press(d);
+  p.back();
+  assert.equal(p.value(), "12");
+  p.clear();
+  assert.equal(p.value(), "");
+  assert.equal(dots(p.el), 0);
+});
+
+test("pinpad: the on-screen keys work and the key labels are the digits", async () => {
+  const p = await pad();
+  for (const label of ["4", "2", "7"]) await button(p.el, label).click();
+  assert.equal(p.value(), "427");
+  await button(p.el, "Delete").click();
+  assert.equal(p.value(), "42");
+  await button(p.el, "Clear").click();
+  assert.equal(p.value(), "");
+  assert.ok(button(p.el, "Enter") && button(p.el, "0") && button(p.el, "9"));
+});
+
+test("pinpad: a PIN that is too short is not sent", async () => {
+  const sent = [];
+  const p = await pad(async (v) => { sent.push(v); return ""; });
+  for (const d of "123") p.press(d);
+  await p.submit();
+  assert.deepEqual(sent, []);
+  assert.match(p.el.textContent, /4 to 8 digits/);
+});
+
+test("pinpad: Enter sends the digits; a refusal shows the reason and starts over", async () => {
+  const sent = [];
+  const p = await pad(async (v) => { sent.push(v); return "wrong PIN"; });
+  for (const d of "493017") p.press(d);
+  await button(p.el, "Enter").click();
+  assert.deepEqual(sent, ["493017"]);
+  assert.match(p.el.textContent, /wrong PIN/);
+  assert.equal(p.value(), "");
+  p.press("1");
+  assert.ok(!/wrong PIN/.test(p.el.textContent));  // typing again clears the message
+});
+
+test("pinpad: the keyboard works too", async () => {
+  const sent = [];
+  const p = await pad(async (v) => { sent.push(v); return ""; });
+  for (const key of ["4", "9", "3", "0", "Backspace", "1", "7"]) assert.equal(p.handleKey({ key }), true);
+  assert.equal(p.value(), "49317");
+  assert.equal(p.handleKey({ key: "Shift" }), false);
+  assert.equal(p.handleKey({ key: "a" }), false);
+  assert.equal(p.handleKey({ key: "Enter" }), true);
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(sent, ["49317"]);
+  p.press("5");
+  assert.equal(p.handleKey({ key: "Escape" }), true);
+  assert.equal(p.value(), "");
+});
+
+test("pinpad: an older password can still be typed in", async () => {
+  const sent = [];
+  const p = await pad(async (v) => { sent.push(v); return ""; });
+  await button(p.el, "Use a password instead").click();
+  const field = findAll(p.el, (e) => e.tagName === "INPUT")[0];
+  field.value = "correct horse";
+  await button(p.el, "Log in").click();
+  assert.deepEqual(sent, ["correct horse"]);
+  await button(p.el, "Use the PIN pad").click();
+  assert.ok(button(p.el, "Enter"));
+});

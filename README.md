@@ -98,7 +98,7 @@ minty onboard            # guided setup, or  --step voice  to redo one part
 minty set-key groq       # add or replace a key (hidden input)
 minty update             # look for a newer release on GitHub and install it (after you say yes)
 minty instant "what is 15 percent of 240"   # try a quick answer; plain  minty instant  lists them all
-minty set-password       # password for the web panel (http://127.0.0.1:7778)
+minty set-pin            # a 4 to 8 digit PIN for the web panel (http://127.0.0.1:7778)
 minty claude-brain on    # use your Claude Code login as the main brain
 minty telegram-pair      # a one-time code to pair your Telegram chat
 minty --safe             # only the basic tools, for this run

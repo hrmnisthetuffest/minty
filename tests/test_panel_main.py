@@ -24,23 +24,42 @@ def test_is_loopback(host, expected):
 
 def test_parse_args():
     assert panel_main.parse_args([]).command == "run"
-    assert panel_main.parse_args(["set-password"]).command == "set-password"
+    assert panel_main.parse_args(["set-pin"]).command == "set-pin"
+    assert panel_main.parse_args(["set-password"]).command == "set-pin"  # the old name does the same
 
 
-def test_set_password_command(tmp_path, monkeypatch):
+def test_set_pin_command(tmp_path, monkeypatch):
     monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
-    answers = iter(["correct horse", "correct horse"])
+    answers = iter(["493017", "493017"])
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": next(answers))
+    panel_main.main(["set-pin"])
+    assert PasswordStore(tmp_path).verify("493017")
+
+
+def test_the_old_command_name_sets_a_pin_too(tmp_path, monkeypatch):
+    monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
+    answers = iter(["493017", "493017"])
     monkeypatch.setattr("getpass.getpass", lambda prompt="": next(answers))
     panel_main.main(["set-password"])
-    assert PasswordStore(tmp_path).verify("correct horse")
+    assert PasswordStore(tmp_path).verify("493017")
 
 
-def test_set_password_mismatch_saves_nothing(tmp_path, monkeypatch):
+def test_set_pin_refuses_an_easy_or_non_numeric_pin(tmp_path, monkeypatch):
     monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
-    answers = iter(["correct horse", "different one"])
+    for first in ("123456", "correct horse"):
+        answers = iter([first, first])
+        monkeypatch.setattr("getpass.getpass", lambda prompt="", a=answers: next(a))
+        with pytest.raises(SystemExit):
+            panel_main.main(["set-pin"])
+        assert not PasswordStore(tmp_path).is_set()
+
+
+def test_set_pin_mismatch_saves_nothing(tmp_path, monkeypatch):
+    monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
+    answers = iter(["493017", "493018"])
     monkeypatch.setattr("getpass.getpass", lambda prompt="": next(answers))
     with pytest.raises(SystemExit):
-        panel_main.main(["set-password"])
+        panel_main.main(["set-pin"])
     assert not PasswordStore(tmp_path).is_set()
 
 
@@ -103,26 +122,26 @@ def test_non_integer_port_exits_naming_panel_toml(tmp_path, monkeypatch):
     assert str(exc_info.value) == "Error in panel.toml: port must be a number"
 
 
-def test_short_password_saves_nothing_and_is_not_echoed(tmp_path, monkeypatch, capsys, caplog):
+def test_a_short_pin_saves_nothing_and_is_not_echoed(tmp_path, monkeypatch, capsys, caplog):
     monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
-    answers = iter(["short1", "short1"])
+    answers = iter(["928", "928"])
     monkeypatch.setattr("getpass.getpass", lambda prompt="": next(answers))
     with caplog.at_level("DEBUG"), pytest.raises(SystemExit) as exc_info:
-        panel_main.main(["set-password"])
+        panel_main.main(["set-pin"])
     assert exc_info.value.code not in (0, None)
     assert not PasswordStore(tmp_path).is_set()
     out = capsys.readouterr()
-    assert "short1" not in out.out + out.err + str(exc_info.value) + caplog.text
+    assert "928" not in out.out + out.err + str(exc_info.value) + caplog.text
 
 
-def test_set_password_never_echoes_password(tmp_path, monkeypatch, capsys, caplog):
+def test_set_pin_never_echoes_the_pin(tmp_path, monkeypatch, capsys, caplog):
     monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
-    answers = iter(["correct horse", "correct horse"])
+    answers = iter(["493017", "493017"])
     monkeypatch.setattr("getpass.getpass", lambda prompt="": next(answers))
     with caplog.at_level("DEBUG"):
-        panel_main.main(["set-password"])
+        panel_main.main(["set-pin"])
     out = capsys.readouterr()
-    assert "correct horse" not in out.out + out.err + caplog.text
+    assert "493017" not in out.out + out.err + caplog.text
 
 
 def test_the_panel_is_lan_only_unless_you_turn_that_off(tmp_path):

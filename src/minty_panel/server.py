@@ -119,12 +119,12 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
         if throttle.blocked(who):
             return JSONResponse({"detail": "too many attempts, try again in a minute"}, status_code=429)
         if not passwords.is_set():
-            return JSONResponse({"detail": "No password set. Run: minty-panel set-password"}, status_code=503)
+            return JSONResponse({"detail": "No PIN set. Run: minty set-pin"}, status_code=503)
         throttle.record_failure(who)  # reserve the attempt before awaiting
         async with login_lock:
             ok = await asyncio.to_thread(passwords.verify, body.password)
         if not ok:
-            return JSONResponse({"detail": "wrong password"}, status_code=401)
+            return JSONResponse({"detail": "wrong PIN"}, status_code=401)
         throttle.reset(who)
         response = Response(status_code=204)
         response.set_cookie(COOKIE, sessions.create(), httponly=True, samesite="strict", max_age=12 * 3600)

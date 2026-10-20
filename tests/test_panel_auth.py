@@ -76,3 +76,31 @@ def test_corrupt_password_file_fails_closed(tmp_path, content, caplog):
     with caplog.at_level(logging.WARNING):
         assert store.verify("whatever pass") is False
     assert caplog.records
+
+
+def test_a_pin_is_four_to_eight_digits_and_stored_hashed(tmp_path):
+    store = PasswordStore(tmp_path)
+    store.set_pin("493017")
+    assert store.verify("493017") and not store.verify("493018") and not store.verify("49301")
+    assert stat.S_IMODE(os.stat(store.path).st_mode) == 0o600 and "493017" not in store.path.read_text()
+    store.set_pin("7319")
+    store.set_pin("48210563")
+    for bad in ("", "123", "123456789", "12ab56", "12 34 56", "pass word", "49301\u0664"):
+        with pytest.raises(ValueError):
+            store.set_pin(bad)
+
+
+def test_easy_to_guess_pins_are_refused(tmp_path):
+    store = PasswordStore(tmp_path)
+    for weak in ("0000", "1111", "123456", "654321", "1234", "9876", "012345", "55555555"):
+        with pytest.raises(ValueError, match="easy to guess"):
+            store.set_pin(weak)
+    store.set_pin("135790")  # steps of two are not "in a row"
+
+
+def test_an_old_password_still_logs_in_until_a_pin_is_set(tmp_path):
+    store = PasswordStore(tmp_path)
+    store.set("correct horse")
+    assert store.verify("correct horse")
+    store.set_pin("493017")
+    assert not store.verify("correct horse") and store.verify("493017")

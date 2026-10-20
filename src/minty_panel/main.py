@@ -74,9 +74,10 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(prog="minty-panel")
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("run", help="start the panel (default)")
-    sub.add_parser("set-password", help="set the panel login password")
+    sub.add_parser("set-pin", help="set the panel login PIN (4 to 8 digits)")
+    sub.add_parser("set-password", help="the same as set-pin")
     args = parser.parse_args(argv)
-    args.command = args.command or "run"
+    args.command = {"set-password": "set-pin"}.get(args.command, args.command or "run")
     return args
 
 
@@ -85,15 +86,15 @@ def main(argv=None) -> None:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     directory = config_dir()
     passwords = PasswordStore(directory)
-    if args.command == "set-password":
-        first = getpass.getpass("New panel password (8+ characters): ")
-        if first != getpass.getpass("Repeat password: "):
-            sys.exit("passwords did not match, nothing saved")
+    if args.command == "set-pin":
+        first = getpass.getpass("New panel PIN (4 to 8 digits; 6 is a good length): ")
+        if first != getpass.getpass("Repeat the PIN: "):
+            sys.exit("the PINs did not match, nothing saved")
         try:
-            passwords.set(first)
+            passwords.set_pin(first)
         except ValueError as e:
             sys.exit(str(e))
-        print("panel password saved")
+        print("panel PIN saved")
         return
     uvicorn.run(**build_panel_app(directory), log_level="info", proxy_headers=False)
 
@@ -103,7 +104,7 @@ def build_panel_app(directory: Path) -> dict:
     passwords = PasswordStore(directory)
     settings = load_settings(directory)
     if not passwords.is_set():
-        log.warning("no panel password set yet; run: minty-panel set-password")
+        log.warning("no panel PIN set yet; run: minty set-pin")
     if not is_loopback(settings.host):
         log.warning("panel is listening on %s, which is reachable from your network. It speaks plain HTTP: "
                     "put it behind HTTPS or keep it on 127.0.0.1.", settings.host)
