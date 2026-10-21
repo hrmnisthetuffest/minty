@@ -50,7 +50,7 @@ class VaultKit:
             return "off: not switched on"
         result = load_result(self.gate_path)
         if result is None:
-            return "off: the evaluation gate has not been run on your notes (minty-core notes gate questions.json)"
+            return "off: the evaluation gate has not been run on your notes (minty notes gate questions.json)"
         if not result.passed:
             return f"off: the gate did not pass ({result.reason})"
         return "on"

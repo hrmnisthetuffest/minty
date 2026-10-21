@@ -1061,7 +1061,7 @@ async def _start_voice(ctx: AppContext) -> None:
 
         if not EchoCancel().apply_environment():
             ctx.bus.publish("notice", message="audio.aec is on but the echo-cancel module is not loaded; run: "
-                                              "minty-core aec on")
+                                              "minty aec on")
     pipeline._set_state("idle")
     pipeline.ready.set()
     # the voice runs under a watchdog: if the audio side dies it restarts alone, the core keeps going
@@ -1150,7 +1150,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
     from minty_core.wizard import needs_setup
 
     if needs_setup(directory):
-        ctx.bus.publish("notify", text="This looks like a first start. In a terminal, run: minty-core setup")
+        ctx.bus.publish("notify", text="This looks like a first start. In a terminal, run: minty setup")
     checks_task = asyncio.create_task(startup_checks(ctx))
     checks_task.add_done_callback(lambda t: _log_task_failure(t, "start-up checks"))
     compact_task = asyncio.create_task(_compaction_loop(ctx))
@@ -1360,7 +1360,7 @@ def _run_overlay() -> None:
     token = (directory / "api_token").read_text().strip() if (directory / "api_token").exists() else ""
     reader = ActiveWindowReader()
     if not reader.available():
-        sys.exit("minty-core overlay: it needs an X11 session with xprop (Wayland has no active-window query).")
+        sys.exit("minty overlay: it needs an X11 session with xprop (Wayland has no active-window query).")
     client = httpx.Client(base_url=f"http://127.0.0.1:{cfg.api_port}", timeout=0.4,
                           headers={"Authorization": f"Bearer {token}"})
     model = OverlayModel(enabled=cfg.overlay.hud, hints=tuple(cfg.overlay.hints))
@@ -1417,7 +1417,7 @@ def main(argv=None) -> None:
         rest = list(args.rest)
         if rest[:1] == ["standing"]:
             sys.exit(standing_cli(rest[1:], config_dir() / "standing.json"))
-        print("usage: minty-core butler standing grant <tool> [--arg k=v] [--per-day N] [--days D] [--note text] | "
+        print("usage: minty butler standing grant <tool> [--arg k=v] [--per-day N] [--days D] [--note text] | "
               "list | revoke <n>")
         sys.exit(1)
     if args.command == "notes":

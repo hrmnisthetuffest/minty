@@ -1,4 +1,4 @@
-"""Pull API keys out of a free-form notes file for ``minty-core import-keys``.
+"""Pull API keys out of a free-form notes file for ``minty import-keys``.
 
 Only the documented provider labels and key prefixes below are recognised; anything else in the
 file (prose, code samples, other services' tokens) is ignored.

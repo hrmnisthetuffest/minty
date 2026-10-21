@@ -83,7 +83,7 @@ def register(ctx):
         password = ctx.secret("password")
         if not user or not password:
             raise PermissionError("mail needs an address and an app password: set plugins.mail.user, then "
-                                  "`minty-core set-key plugin.mail.password`")
+                                  "`minty set-key plugin.mail.password`")
         box = imaplib.IMAP4_SSL(host, 993)
         box.login(user, password)
         status, _ = box.select("INBOX", readonly=True)  # read-only: nothing is ever marked or changed

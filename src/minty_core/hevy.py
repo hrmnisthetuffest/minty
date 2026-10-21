@@ -107,7 +107,7 @@ class HevyPoller:
             return SyncResult(error="consent", message="You haven't agreed to collecting training data.")
         key = self._key()
         if not key:
-            return SyncResult(error="nokey", message="No Hevy key yet. Run: minty-core set-key hevy")
+            return SyncResult(error="nokey", message="No Hevy key yet. Run: minty set-key hevy")
         api = HevyClient(key, self._client, self._base, self._sleep)
         result = SyncResult()
         try:
@@ -126,7 +126,7 @@ class HevyPoller:
             if e.kind == "auth":
                 self._paused, self._refused = True, key
                 result.message = ("Hevy refused the key (a Hevy Pro account is needed for the API). I've stopped "
-                                  "asking; set a new key with: minty-core set-key hevy")
+                                  "asking; set a new key with: minty set-key hevy")
             else:
                 self._fails += 1
                 result.message = f"{e} — I'll try again later."

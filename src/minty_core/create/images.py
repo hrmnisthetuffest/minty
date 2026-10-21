@@ -55,7 +55,7 @@ class ImageGen:
         token, account = self._secret("cf_token"), self._secret("cf_account")
         if not token or not account:
             raise ValueError("Image making needs your own free Cloudflare account (Workers AI). Make a token, then run: "
-                             "minty-core set-key plugin.create.cf_token and minty-core set-key plugin.create.cf_account.")
+                             "minty set-key plugin.create.cf_token and minty set-key plugin.create.cf_account.")
         if not _ACCOUNT.fullmatch(account):
             raise ValueError("The Cloudflare account id looks wrong (it is 32 letters and digits).")
         if self.left() <= 0:

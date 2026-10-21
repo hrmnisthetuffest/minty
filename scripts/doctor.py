@@ -47,7 +47,7 @@ BINARIES = [
     ("openclaw", "OpenClaw plugin", "curl -fsSL https://openclaw.ai/install.sh | bash; then openclaw onboard --install-daemon", "same", True),
     ("spotify", "Spotify plugin", "flatpak install flathub com.spotify.Client (Mint blocks snap)", "spotify (AUR) or the same flatpak", True),
     ("pipx", "installer plugin (pipx)", "pipx", "python-pipx", True),
-    ("xprop", "the HUD's active-window check (minty-core overlay; X11 only)", "x11-utils", "xorg-xprop", True),
+    ("xprop", "the HUD's active-window check (minty overlay; X11 only)", "x11-utils", "xorg-xprop", True),
     ("git", "a history of every change to your notes folder (vault.git)", "git", "git", True),
     ("tesseract", "read text in pictures sent through Telegram", "tesseract-ocr", "tesseract tesseract-data-eng", True),
     ("yt-dlp", "YouTube captions summary (web.helpers; optional, your install: pipx install yt-dlp)", "yt-dlp", "yt-dlp", True),
@@ -141,7 +141,7 @@ def main() -> int:
         print(f"  [{ok(found)}] {path.name:28} {why}")
     print("\nSetup:")
     keys = CONFIG / "secrets.toml"
-    print(f"  [{ok(keys.is_file())}] API keys           minty-core import-keys <file>   or   minty-core set-key <name>")
+    print(f"  [{ok(keys.is_file())}] API keys           minty import-keys <file>   or   minty set-key <name>")
     print(f"  [{ok((CONFIG / 'panel_auth.toml').is_file())}] panel password    minty set-password")
     try:
         import tomllib
@@ -152,17 +152,17 @@ def main() -> int:
         names = set()
     spotify = {"plugin.spotify.client_id", "plugin.spotify.client_secret"} <= names
     signed_in = "plugin.spotify.refresh_token" in names
-    print(f"  [{'OK     ' if spotify else 'optional'}] Spotify app keys  minty-core set-key plugin.spotify.client_id / client_secret")
-    print(f"  [{'OK     ' if signed_in else 'optional'}] Spotify sign-in   minty-core spotify-login")
+    print(f"  [{'OK     ' if spotify else 'optional'}] Spotify app keys  minty set-key plugin.spotify.client_id / client_secret")
+    print(f"  [{'OK     ' if signed_in else 'optional'}] Spotify sign-in   minty spotify-login")
     print(f"  [{'OK     ' if 'plugin.mail.password' in names else 'optional'}] Mail app password  "
-          "minty-core set-key plugin.mail.password   (plugins.mail.user in config.toml)")
+          "minty set-key plugin.mail.password   (plugins.mail.user in config.toml)")
     print(f"  [{'OK     ' if (CONFIG / 'school.json').is_file() else 'optional'}] SchoolPad address   say "
           "\"set my school portal to <address>\", then log in once in the browser window")
-    print(f"  [{'OK     ' if 'fish' in names else 'optional'}] Fish Audio key    minty-core set-key fish   (tts.engine = fish)")
-    print(f"  [{'OK     ' if 'hevy' in names else 'optional'}] Hevy API key       minty-core set-key hevy   "
+    print(f"  [{'OK     ' if 'fish' in names else 'optional'}] Fish Audio key    minty set-key fish   (tts.engine = fish)")
+    print(f"  [{'OK     ' if 'hevy' in names else 'optional'}] Hevy API key       minty set-key hevy   "
           "(needs Hevy Pro; then turn on health.hevy and agree to training data)")
-    print(f"  [{'OK     ' if 'telegram' in names else 'optional'}] Telegram bot token minty-core set-key telegram   "
-          "then minty-core telegram-pair (no extra package: it uses httpx)")
+    print(f"  [{'OK     ' if 'telegram' in names else 'optional'}] Telegram bot token minty set-key telegram   "
+          "then minty telegram-pair (no extra package: it uses httpx)")
     print("\nAll required items present." if not missing else f"\n{missing} required item(s) missing.")
     return 1 if missing else 0
 

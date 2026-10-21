@@ -9,7 +9,7 @@ SCRIPT = REPO / "scripts" / "install_service.sh"
 
 
 def test_unit_execstart_is_quoted_and_percent_escaped(tmp_path):
-    """One unit now (the panel runs inside the core): its text comes from `minty-core service-unit`, quoted and with
+    """One unit now (the panel runs inside the core): its text comes from `minty service-unit`, quoted and with
     % doubled for systemd, and it restarts on failure."""
     root = tmp_path / "my 50% checkout"
     (root / "scripts").mkdir(parents=True)

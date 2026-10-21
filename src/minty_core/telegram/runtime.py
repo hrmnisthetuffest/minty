@@ -1,5 +1,5 @@
 """Telegram, wired into the running app: built from the settings and the key store, closed by lockdown, paired from
-the terminal. Nothing here is on by default: telegram.enabled and a token (`minty-core set-key telegram`) are both needed.
+the terminal. Nothing here is on by default: telegram.enabled and a token (`minty set-key telegram`) are both needed.
 """
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def build_runtime(ctx, *, client: httpx.AsyncClient | None = None, offer_every_s
         return None
     token = ctx.secrets.get("telegram")
     if not token:
-        log.warning("telegram.enabled is on but there is no bot token; run: minty-core set-key telegram")
+        log.warning("telegram.enabled is on but there is no bot token; run: minty set-key telegram")
         return None
     if client is None:
         from minty_core.httpclient import get_client
@@ -213,7 +213,7 @@ async def pairing_instructions(directory: Path, secrets, *, client: httpx.AsyncC
     token = secrets.get("telegram")
     if not token:
         raise SystemExit("minty-core: no Telegram bot token yet. Make a bot with @BotFather, then run: "
-                         "minty-core set-key telegram")
+                         "minty set-key telegram")
     own = client is None
     if own:
         client = httpx.AsyncClient(timeout=httpx.Timeout(15.0))

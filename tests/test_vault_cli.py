@@ -1,4 +1,4 @@
-"""The terminal view of the vault: `minty-core notes ...` (list, search, show, new, edit, inbox, check)."""
+"""The terminal view of the vault: `minty notes ...` (list, search, show, new, edit, inbox, check)."""
 import io
 
 import pytest

@@ -551,3 +551,15 @@ when it is good enough.
   (notes that change go after everything that does not, for providers that reuse the start of a prompt), `turn.lean_prompt` (the short wording of the fixed rules, without
   waiting for the comparison), `tts.parallel` (1 to 3 sentences made into speech at once, order kept), `stt.auto_model` (the local recogniser sized to the computer) and
   `audio.live_barge_in` / `live_barge_in_rms` (a voice clearly louder than the echo can interrupt the live voice). None of them can be judged without listening: try one at a time.
+- **Code review fixes.** Found by reading the code, a check that every name a function uses exists (`tests/test_no_undefined_names.py`), fuzzing everything parsed from outside
+  (`tests/test_fuzz_inputs.py`) and timing hostile input:
+  - the spoken health command used a name that did not exist and would have crashed;
+  - a damaged lockdown file switched lockdown **off** (now it stays on until you release it); a damaged `secrets.toml` no longer crashes every read and is never overwritten;
+  - stopping a helper task (the sleep timer, the barge-in watcher, MCP, coding agents, the installer) swallowed the cancellation of whoever asked; background tasks nobody awaited could be
+    collected mid-run and their errors lost (`minty_core/tasks.py`: `spawn`, `cancel_and_wait`);
+  - the paused song was not resumed if the turn was cancelled during "Yes, sir?"; a closed terminal made the key reader spin at full speed;
+  - hiding personal data in a big page took seconds (the e-mail pattern was quadratic), a 20,000-character message took two seconds in the instant answers, and finding overlapping secrets was quadratic;
+  - the panel sends a Content-Security-Policy, forbids framing, and caps the login body; the updater checks the started version exactly (`1.0.1`, not `1.0.12`);
+  - `install.sh` no longer replaces a `minty` command that points somewhere else (`--relink` to do it on purpose);
+  - messages told you to run `minty-core ...`, a command the installer does not link: they say `minty ...` now;
+  - the wellbeing prompt module no longer mentions a teenager or one country's crisis line.

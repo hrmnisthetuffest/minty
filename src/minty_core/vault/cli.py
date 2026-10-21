@@ -1,4 +1,4 @@
-"""`minty-core notes ...`: the vault in the terminal. It works on the files directly, so it does not need the
+"""`minty notes ...`: the vault in the terminal. It works on the files directly, so it does not need the
 assistant to be running. Nothing here can delete a note."""
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from minty_core.vault.kit import VaultOff
 from minty_core.vault.search import badge
 from minty_core.vault.store import VaultError
 
-USAGE = """minty-core notes <command>
+USAGE = """minty notes <command>
   list [folder]                       the newest notes (optionally one folder)
   search <words>                      find in notes and past conversations
   show <id>                           print a note
@@ -90,7 +90,7 @@ def _private_create(kit, provider, out, ask_secret) -> int:
     out.write("The private area is ready.\n"
               f"Your recovery phrase (shown once; write it down and keep it away from this computer):\n  {phrase}\n"
               "If you lose both the passphrase and this recovery phrase you lose the private notes: there is no back "
-              "door.\nUnlock them with: minty-core notes unlock\n")
+              "door.\nUnlock them with: minty notes unlock\n")
     return 0
 
 

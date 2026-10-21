@@ -2,8 +2,8 @@
 
 Control goes through the desktop app (MPRIS via playerctl), so it needs no Premium API access.
 Finding a song by name uses Spotify's public search with a free developer app (client id + secret):
-    minty-core set-key plugin.spotify.client_id
-    minty-core set-key plugin.spotify.client_secret
+    minty set-key plugin.spotify.client_id
+    minty set-key plugin.spotify.client_secret
 Without them pause/resume/next/previous/volume/now-playing still work.
 """
 import asyncio
@@ -142,7 +142,7 @@ def register(ctx):
         cid, secret = ctx.secret("client_id"), ctx.secret("client_secret")
         if not cid or not secret:
             raise SpotifyError("To search by name I need a Spotify developer app. Make one free at "
-                               "developer.spotify.com, then run: minty-core set-key plugin.spotify.client_id "
+                               "developer.spotify.com, then run: minty set-key plugin.spotify.client_id "
                                "and plugin.spotify.client_secret.")
         basic = base64.b64encode(f"{cid}:{secret}".encode()).decode()
         try:
@@ -159,7 +159,7 @@ def register(ctx):
     user_token = {"value": "", "expires": 0.0}
 
     async def user_access_token() -> str | None:
-        """A token acting as the signed-in user (from `minty-core spotify-login`), or None if not signed in."""
+        """A token acting as the signed-in user (from `minty spotify-login`), or None if not signed in."""
         refresh, cid = ctx.secret("refresh_token"), ctx.secret("client_id")
         if not refresh or not cid:
             return None
@@ -171,7 +171,7 @@ def register(ctx):
         except httpx.HTTPError:
             raise SpotifyError("could not reach Spotify") from None
         if resp.status_code != 200:
-            raise SpotifyError("Spotify sign-in expired; run: minty-core spotify-login")
+            raise SpotifyError("Spotify sign-in expired; run: minty spotify-login")
         data = resp.json()
         user_token.update(value=data["access_token"], expires=time.time() + float(data.get("expires_in", 3600)))
         return user_token["value"]
@@ -219,7 +219,7 @@ def register(ctx):
             return cache["tracks"]
         bearer = await user_access_token()
         if bearer is None:
-            raise SpotifyError("to read your playlist I need you to sign in once: minty-core spotify-login")
+            raise SpotifyError("to read your playlist I need you to sign in once: minty spotify-login")
         tracks, url, params = [], PLAYLIST_URL.format(id=playlist_id), {
             "limit": 100, "fields": "next,items(item(name,uri,artists(name)),track(name,uri,artists(name)))"}
         while url and len(tracks) < MAX_PLAYLIST_TRACKS:
@@ -362,7 +362,7 @@ def register(ctx):
             except SpotifyError as e:  # cannot read it: search instead, and don't claim the song is missing
                 log.info("playlist lookup failed, searching Spotify instead: %s", e)
                 needs_login = "spotify-login" in str(e)
-                not_in_playlist = ("I couldn't read your playlist" + (" (run minty-core spotify-login once)"
+                not_in_playlist = ("I couldn't read your playlist" + (" (run minty spotify-login once)"
                                                                        if needs_login else "") + ", so ")
             else:
                 if found is not None:

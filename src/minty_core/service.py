@@ -1,6 +1,6 @@
 """The systemd user unit that keeps Minty running: restart on failure, a crash-loop ceiling, gentle on the laptop.
 
-`minty-core service-unit` prints it; scripts/install_service.sh installs it. Lingering (`loginctl enable-linger`)
+`minty service-unit` prints it; scripts/install_service.sh installs it. Lingering (`loginctl enable-linger`)
 lets it start at boot without a login; the installer says so instead of doing it silently.
 """
 from __future__ import annotations

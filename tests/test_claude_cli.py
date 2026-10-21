@@ -295,7 +295,7 @@ async def test_the_real_claude_answers_in_text_and_calls_a_tool(tmp_path):
     assert [e.call.name for e in events if isinstance(e, ToolCallEvent)] == ["weather_get_weather"]
 
 
-# -- minty-core claude-brain on | off | status ----------------------------------------------------------------
+# -- minty claude-brain on | off | status ----------------------------------------------------------------
 
 def test_claude_brain_on_puts_claude_first_and_off_takes_it_away(tmp_path):
     from minty_core.claude_brain import claude_brain

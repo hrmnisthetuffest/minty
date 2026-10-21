@@ -62,7 +62,7 @@ class McpRegistry:
     def get(self, name: str) -> dict:
         server = self.servers().get(name)
         if server is None:
-            raise ValueError(f"There is no server called {name!r}. Add one at the terminal: minty-core mcp add.")
+            raise ValueError(f"There is no server called {name!r}. Add one at the terminal: minty mcp add.")
         return server
 
     def add_server(self, name: str, command: list[str], env_keys: list[str] | tuple = ()) -> None:

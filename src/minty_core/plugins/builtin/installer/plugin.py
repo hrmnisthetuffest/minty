@@ -52,7 +52,7 @@ def _norm(name: str) -> str:
 
 
 def critical_packages() -> set[str]:
-    """The fixed denylist plus every distribution minty-core depends on, directly or not (normalised names)."""
+    """The fixed denylist plus every distribution minty depends on, directly or not (normalised names)."""
     found, pending = set(), ["minty-core"]
     while pending:
         name = pending.pop()

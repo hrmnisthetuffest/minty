@@ -51,7 +51,7 @@ class VirusTotal:
         key = self._key()
         if not key:
             return {"state": "nokey", "message": "No VirusTotal key is set, so I only hashed it. Add a free one with: "
-                                                 "minty-core set-key plugin.web.virustotal_key"}
+                                                 "minty set-key plugin.web.virustotal_key"}
         now = self._clock()
         while self._recent and now - self._recent[0] >= 60:
             self._recent.popleft()

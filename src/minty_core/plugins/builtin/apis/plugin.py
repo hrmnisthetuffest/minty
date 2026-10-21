@@ -269,7 +269,7 @@ def register(ctx):
             raise ValueError("this API uses a key but is not https; refusing to send the key")
         key = ctx.secret(name)
         if not key:
-            raise FetchFailed(f"No API key set for {name}. Set it with: minty-core set-key plugin.apis.{name}")
+            raise FetchFailed(f"No API key set for {name}. Set it with: minty set-key plugin.apis.{name}")
         if any(ord(c) < 0x20 or ord(c) == 0x7F for c in key):
             raise FetchFailed(f"The key stored for {name} is not a valid API key.")
         auth_name = entry["auth_name"]
@@ -393,7 +393,7 @@ def register(ctx):
         if key_dropped:
             message += " Its previously saved key was removed."
         if auth != "none":
-            message += f" It needs a key: set it with `minty-core set-key plugin.apis.{name}` or in the panel."
+            message += f" It needs a key: set it with `minty set-key plugin.apis.{name}` or in the panel."
         return message
 
     async def apis_unregister(args):

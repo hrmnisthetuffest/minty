@@ -259,7 +259,7 @@ class AudioConfig(BaseModel):
     turn_judge_provider: str = ""  # empty: the first fast provider that is not a Claude process
     push_to_talk: bool = False  # opt-in: hold a key to talk; no wake word while on
     ptt_key: str = "f9"  # the key pynput listens for while push_to_talk is on
-    aec: bool = False  # PipeWire echo cancellation (set up with `minty-core aec on`); speakers only
+    aec: bool = False  # PipeWire echo cancellation (set up with `minty aec on`); speakers only
     hands_free_stop: bool = False  # with aec: "stop" / "wait" while it speaks halts it without the wake word
 
 
@@ -344,7 +344,7 @@ class TelegramConfig(BaseModel):
 class HealthConfig(BaseModel):
     """Your training, food, sleep and body data in one local store (nothing is collected until you agree per domain)."""
     hub: bool = True
-    hevy: bool = False  # poll Hevy for new workouts (read-only; needs a Hevy Pro API key: minty-core set-key hevy)
+    hevy: bool = False  # poll Hevy for new workouts (read-only; needs a Hevy Pro API key: minty set-key hevy)
     hevy_poll_hours: int = Field(6, ge=1, le=48)
     hc_bridge: bool = True  # import exports (Hevy, Cronometer, Strava archive, Health Connect) sent to the Telegram bot
     strava_api: bool = False  # not built: the archive and Health Connect routes are used (Strava's API terms)
@@ -404,7 +404,7 @@ class VoiceConfig(BaseModel):
 
 
 class OverlayConfig(BaseModel):
-    """The small on-screen HUD (a separate process: minty-core overlay). Off by default; the terminal stays the default."""
+    """The small on-screen HUD (a separate process: minty overlay). Off by default; the terminal stays the default."""
     hud: bool = False  # show state, captions and timers while another window is active
     timer: bool = False  # kept for timers that open their own countdown (the HUD lists them already)
     corner: Literal["bottom-right", "bottom-left", "top-right", "top-left"] = "bottom-right"
@@ -435,7 +435,7 @@ class ButlerConfig(BaseModel):
     domains: list[str] = ["chores", "tasks", "waiting", "place", "leaving", "documents",
                           "ideas", "competitions"]  # which ones answer
     reminders: bool = True  # spoken or pushed when something is due (urgency rules decide how)
-    # limited, expiring pre-approvals YOU make with `minty-core butler standing grant`; never class 3, never tainted
+    # limited, expiring pre-approvals YOU make with `minty butler standing grant`; never class 3, never tainted
     standing_approvals: bool = False
     urgency: bool = True  # only what is time-sensitive interrupts; the rest joins a digest
     max_interrupts_per_day: int = Field(3, ge=0, le=50)

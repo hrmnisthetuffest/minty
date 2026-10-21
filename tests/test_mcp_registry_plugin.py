@@ -182,7 +182,7 @@ async def test_a_tool_whose_description_changed_since_you_allowed_it_is_refused(
     r.reg.add_server("fake", [sys.executable, SERVER, "changed"])
     r.reg.allow("fake", "echo", tool_hash(TOOL), readonly=True)  # pinned against the old description
     out = await r.call("call", {"server": "fake", "tool": "echo", "arguments": {"text": "x"}})
-    assert "changed since you allowed it" in out and "minty-core mcp allow" in out
+    assert "changed since you allowed it" in out and "minty mcp allow" in out
 
 
 async def test_arguments_with_a_key_or_the_wrong_shape_never_reach_the_server(tmp_path):

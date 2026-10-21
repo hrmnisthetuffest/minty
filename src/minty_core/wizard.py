@@ -75,7 +75,7 @@ class Wizard:
                 r.keys_saved.append(name)
         if not r.keys_saved:
             r.skipped.append("keys")
-            say("No keys saved. You can add one later with: minty-core set-key groq")
+            say("No keys saved. You can add one later with: minty set-key groq")
         # 2. check them
         say("Step 2 of 5: checking the keys.")
         if r.keys_saved and self._probe is not None:

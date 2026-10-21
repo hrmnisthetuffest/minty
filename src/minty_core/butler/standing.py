@@ -138,7 +138,7 @@ class StandingApprovals:
 
 
 def run_cli(argv: list[str], path: Path, clock: Callable[[], float] = time.time) -> int:
-    """`minty-core butler standing ...`: the only place a grant can be made."""
+    """`minty butler standing ...`: the only place a grant can be made."""
     sa = StandingApprovals(path, clock)
     cmd, rest = (argv[0], argv[1:]) if argv else ("list", [])
     try:
@@ -173,7 +173,7 @@ def run_cli(argv: list[str], path: Path, clock: Callable[[], float] = time.time)
     except (StandingError, ValueError) as e:
         print(e)
         return 1
-    print("usage: minty-core butler standing grant <tool> [--arg k=v] [--per-day N] [--days D] [--note text] | "
+    print("usage: minty butler standing grant <tool> [--arg k=v] [--per-day N] [--days D] [--note text] | "
           "list | revoke <n>")
     return 1
 

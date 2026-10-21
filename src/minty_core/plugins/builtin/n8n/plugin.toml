@@ -4,4 +4,4 @@ default_enabled = false
 
 [settings.base_url]
 type = "string"
-label = "n8n address (default http://127.0.0.1:5678). Set the API key with: minty-core set-key plugin.n8n.api_key"
+label = "n8n address (default http://127.0.0.1:5678). Set the API key with: minty set-key plugin.n8n.api_key"

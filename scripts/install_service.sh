@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs Minty as a systemd user service that restarts on failure and starts at boot (with lingering).
-# The unit text comes from `minty-core service-unit`, so it is tested and has one source.
+# The unit text comes from `minty service-unit`, so it is tested and has one source.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 unit_dir="$HOME/.config/systemd/user"

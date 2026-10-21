@@ -117,7 +117,7 @@ def selfcheck_line(ctx, probe: dict[str, str] | None = None) -> str:
     groq = bool(ctx.secrets.get("groq")) and not cfg.stt.local_only and cfg.stt.provider == "groq"
     problems = []
     if not keyed:
-        problems.append("no model has a key (minty-core set-key <provider>)")
+        problems.append("no model has a key (minty set-key <provider>)")
     problems += [f"{name} {state}" for name, state in (probe or {}).items() if state != "ok"]
     return (f"Self-check: {len(keyed)}/{len(enabled)} models keyed · speech {'groq, then local' if groq else 'local'}"
             f" ({cfg.stt.language or 'any language'}) · voice {cfg.tts.engine} · wake "

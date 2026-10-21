@@ -1,4 +1,4 @@
-"""`minty-core mcp ...` at the terminal: add, look at, allow, revoke and remove MCP servers and tools. Only you, here, can do any
+"""`minty mcp ...` at the terminal: add, look at, allow, revoke and remove MCP servers and tools. Only you, here, can do any
 of these: no tool a model can call touches this file. Looking at a server's tools starts it; allowing one is a question to you."""
 from __future__ import annotations
 
@@ -10,14 +10,14 @@ from minty_core.mcp.client import McpError, McpSession
 from minty_core.mcp.directory import DIRECTORY, command_for, find
 from minty_core.mcp.registry import McpRegistry, build_env, sanitize_description, tool_hash
 
-USAGE = """minty-core mcp list
-minty-core mcp directory
-minty-core mcp add NAME [--from-directory ENTRY] [--folder PATH] [--env KEY]... [-- COMMAND ARGS...]
-minty-core mcp tools NAME
-minty-core mcp allow NAME TOOL [--readonly] [--yes]
-minty-core mcp revoke NAME TOOL
-minty-core mcp remove NAME
-Set a secret a server needs with: minty-core set-key plugin.mcp.NAME.KEY"""
+USAGE = """minty mcp list
+minty mcp directory
+minty mcp add NAME [--from-directory ENTRY] [--folder PATH] [--env KEY]... [-- COMMAND ARGS...]
+minty mcp tools NAME
+minty mcp allow NAME TOOL [--readonly] [--yes]
+minty mcp revoke NAME TOOL
+minty mcp remove NAME
+Set a secret a server needs with: minty set-key plugin.mcp.NAME.KEY"""
 
 
 async def _tools(reg: McpRegistry, name: str, secret, timeout: float = 30.0) -> list[dict]:
@@ -44,7 +44,7 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
         if cmd == "list":
             servers = reg.servers()
             if not servers:
-                out("No MCP servers added. See: minty-core mcp directory")
+                out("No MCP servers added. See: minty mcp directory")
             for name, s in servers.items():
                 out(f"{name}: {shlex.join(s['command'])}")
                 for tool, entry in sorted(s.get("tools", {}).items()):
@@ -53,7 +53,7 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
         if cmd == "directory":
             for e in DIRECTORY:
                 out(f"{e.name}: {e.title} (needs {e.needs})" + (f"\n  Careful: {e.caution}" if e.caution else ""))
-            out(DIRECTORY[0].trust + " Add one with: minty-core mcp add NAME --from-directory ENTRY")
+            out(DIRECTORY[0].trust + " Add one with: minty mcp add NAME --from-directory ENTRY")
             return 0
         if cmd == "add":
             if not rest:
@@ -78,15 +78,15 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
             if entry_name:
                 entry = find(entry_name)
                 if entry is None:
-                    raise ValueError(f"{entry_name!r} is not in the directory (minty-core mcp directory).")
+                    raise ValueError(f"{entry_name!r} is not in the directory (minty mcp directory).")
                 command = command_for(entry, folder)
             reg.add_server(name, command, env)
             out(f"Added {name}: {shlex.join(command)}")
             if command[0] in ("npx", "uvx", "pipx", "npm", "pip"):
                 out("The first run downloads that package from the internet.")
             for key in env:
-                out(f"Set its secret with: minty-core set-key plugin.mcp.{name}.{key}")
-            out(f"Next, look at what it offers: minty-core mcp tools {name}")
+                out(f"Set its secret with: minty set-key plugin.mcp.{name}.{key}")
+            out(f"Next, look at what it offers: minty mcp tools {name}")
             return 0
         if cmd == "tools" and len(rest) == 1:
             tools = await _tools(reg, rest[0], secret)

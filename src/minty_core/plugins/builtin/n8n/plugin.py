@@ -103,7 +103,7 @@ def register(ctx):
             key = ctx.secret("api_key")
             if not key:
                 raise N8nError("n8n API key missing. In n8n create one (Settings > n8n API), then run: "
-                               "minty-core set-key plugin.n8n.api_key")
+                               "minty set-key plugin.n8n.api_key")
             headers["X-N8N-API-KEY"] = key
         try:
             resp = await client().request(method, base + path, json=body, params=params, headers=headers)

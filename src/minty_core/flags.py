@@ -40,7 +40,7 @@ LABELS = {
     "coach.planning": "Planning and review: programme builder, deload weeks, PR board, streaks, goal feasibility",
     "coach.air_quality": "Check the air quality before outdoor training (sends your coordinates to Open-Meteo)",
     "coach.age_rules": "No weight-loss, deficit, fasting, BMI or weigh-in coaching for under 18 or unknown age",
-    "overlay.hud": "Show a small HUD (state, captions, timers) while another window is active (run: minty-core overlay)",
+    "overlay.hud": "Show a small HUD (state, captions, timers) while another window is active (run: minty overlay)",
     "voice.corrections": "\"No, I said ...\" re-asks with your correction",
     "voice.vocabulary": "Teach the speech recogniser the words you correct",
     "voice.playback_controls": "\"Go on\", \"skip\", \"repeat that\", \"shorter\" by voice",

@@ -1,6 +1,6 @@
 """The Tk skin of the HUD: five labels in a small borderless always-on-top window in a screen corner. Everything it
 decides comes from `OverlayModel`; this only draws a Frame and shows or hides itself. A separate process
-(`minty-core overlay`) so a problem here can never touch the voice."""
+(`minty overlay`) so a problem here can never touch the voice."""
 from __future__ import annotations
 
 import logging

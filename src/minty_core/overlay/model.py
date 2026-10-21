@@ -48,7 +48,7 @@ class OverlayModel:
         if "minty-overlay" in cls or "hud" in title and any(h in title for h in self._hints):
             return True
         if any(h in title for h in self._hints):
-            return True  # the Minty terminal ("minty-core run"), the panel tab, the HUD
+            return True  # the Minty terminal ("minty run"), the panel tab, the HUD
         return False
 
     def frame(self, active: ActiveWindow | None) -> Frame:

@@ -53,7 +53,7 @@ async def test_everything_can_be_skipped(tmp_path):
     r = await w.run()
     assert r.keys_saved == [] and set(r.skipped) >= {"keys", "check", "microphone"}
     assert secrets.names() == [] and store.config.stt.allowed_languages == ["en"]
-    assert "minty-core set-key groq" in " ".join(w.io.said)
+    assert "minty set-key groq" in " ".join(w.io.said)
 
 
 async def test_a_failing_key_check_is_reported_not_raised(tmp_path):

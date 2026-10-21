@@ -11,7 +11,7 @@ from minty_core.overlay.model import OverlayModel
 from minty_core.overlay.xwin import ActiveWindow, ActiveWindowReader
 
 
-def xprop(active="0x3a00007", cls='"gnome-terminal-server", "Gnome-terminal"', title='"minty-core run"', pid="4321"):
+def xprop(active="0x3a00007", cls='"gnome-terminal-server", "Gnome-terminal"', title='"minty run"', pid="4321"):
     def run(argv):
         assert argv[0] == "xprop"
         if "-root" in argv:
@@ -23,7 +23,7 @@ def xprop(active="0x3a00007", cls='"gnome-terminal-server", "Gnome-terminal"', t
 
 def test_the_active_window_is_read_from_xprop():
     w = ActiveWindowReader(xprop()).read()
-    assert w == ActiveWindow("0x3a00007", "minty-core run", "gnome-terminal-server", 4321)
+    assert w == ActiveWindow("0x3a00007", "minty run", "gnome-terminal-server", 4321)
 
 
 def test_no_active_window_or_a_failing_xprop_is_none():
@@ -42,7 +42,7 @@ def win(cls="firefox", title="YouTube - Mozilla Firefox"):
 
 def test_the_hud_is_hidden_when_the_minty_terminal_is_focused_and_shown_for_other_apps():
     m = model()
-    terminal = ActiveWindow("0x2", "minty-core run", "gnome-terminal-server", 4321)
+    terminal = ActiveWindow("0x2", "minty run", "gnome-terminal-server", 4321)
     assert m.frame(terminal).visible is False
     assert m.frame(win()).visible is True
     other_terminal = ActiveWindow("0x3", "vim notes.txt", "gnome-terminal-server", 99)

@@ -201,7 +201,7 @@ def join_parts(first: Path, out: Path) -> Path:
     return out
 
 
-# ---- the terminal command: minty-core transfer export|verify|import ---------------------------------------
+# ---- the terminal command: minty transfer export|verify|import ---------------------------------------
 def cli(argv: list[str], config_dir: Path, vault_root: Path | None, workspace: Path, ask_secret=None) -> int:
     import getpass
     from datetime import datetime
@@ -230,7 +230,7 @@ def cli(argv: list[str], config_dir: Path, vault_root: Path | None, workspace: P
             if split:
                 parts = split_file(info.path, PART_BYTES)
                 print(f"Split into {len(parts)} part{'s' * (len(parts) != 1)} that each fit a Telegram file: "
-                      f"{parts[0].name} ... {parts[-1].name}. Join them again with: minty-core transfer join "
+                      f"{parts[0].name} ... {parts[-1].name}. Join them again with: minty transfer join "
                       f"{parts[0].name} <output>")
             return 0
         if cmd == "verify" and rest:
@@ -251,6 +251,6 @@ def cli(argv: list[str], config_dir: Path, vault_root: Path | None, workspace: P
     except FileNotFoundError as e:
         print(f"I can't find {e.filename or 'that file'}. Make the export first (and check the name).")
         return 1
-    print("usage: minty-core transfer export [--out FILE] [--split] | verify FILE | import FILE NEWFOLDER | "
+    print("usage: minty transfer export [--out FILE] [--split] | verify FILE | import FILE NEWFOLDER | "
           "join FIRSTPART OUT")
     return 1

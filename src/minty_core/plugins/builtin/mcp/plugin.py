@@ -1,5 +1,5 @@
 """MCP tools for the model: look at what you set up, and call a tool you allowed. There is deliberately no tool to add a server, allow
-a tool or remove either: those are terminal commands (minty-core mcp ...). Every call is shown to you first (class 1 for a tool you
+a tool or remove either: those are terminal commands (minty mcp ...). Every call is shown to you first (class 1 for a tool you
 marked read-only, class 2 otherwise), its arguments are checked and screened for keys, and the result comes back tagged as outside text."""
 from pathlib import Path
 
@@ -56,10 +56,10 @@ def register(ctx):
                 state = "allowed, read-only" if e.get("allowed") and e.get("readonly") else "allowed" if e.get("allowed") else "off"
                 note = " — its description gives orders to a model: not trusted" if e.get("flagged") else ""
                 lines.append(f"  {tool} [{state}]: {e.get('description', '')[:160]}{note}")
-        return f"{UNTRUSTED}\n" + ("\n".join(lines) if lines else "No MCP servers are set up. Add one at the terminal: minty-core mcp directory.")
+        return f"{UNTRUSTED}\n" + ("\n".join(lines) if lines else "No MCP servers are set up. Add one at the terminal: minty mcp directory.")
 
     async def directory(args):
-        return "Where to begin (adding one is a terminal command, minty-core mcp add):\n" + "\n".join(
+        return "Where to begin (adding one is a terminal command, minty mcp add):\n" + "\n".join(
             f"{e.name}: {e.title}" + (f" — careful: {e.caution}" if e.caution else "") for e in DIRECTORY)
 
     async def call(args):
@@ -78,10 +78,10 @@ def register(ctx):
                 raise ValueError(f"{name} has no tool called {tool!r}.")
             state = registry.status(name, tool, tool_hash(live[tool]))
             if state == "off":
-                raise ValueError(f"{name}'s {tool} is not allowed. Allow it at the terminal: minty-core mcp allow {name} {tool}.")
+                raise ValueError(f"{name}'s {tool} is not allowed. Allow it at the terminal: minty mcp allow {name} {tool}.")
             if state == "changed":
                 raise ValueError(f"{name}'s {tool} has changed since you allowed it (its description or inputs are different), "
-                                 f"so I did not run it. Look and allow it again: minty-core mcp tools {name}, minty-core mcp allow "
+                                 f"so I did not run it. Look and allow it again: minty mcp tools {name}, minty mcp allow "
                                  f"{name} {tool}.")
             check_arguments(live[tool].get("inputSchema") or {}, arguments)
             result = await session.call_tool(tool, arguments)

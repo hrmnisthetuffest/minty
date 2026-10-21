@@ -1,6 +1,6 @@
 """One-time Spotify sign-in (Authorization Code with PKCE), so Minty can read your playlists as you.
 
-Needs only the app's Client ID. Run `minty-core spotify-login`; the browser opens, you click Agree, and a
+Needs only the app's Client ID. Run `minty spotify-login`; the browser opens, you click Agree, and a
 refresh token is stored as the secret plugin.spotify.refresh_token. No password ever passes through Minty.
 """
 import base64
@@ -88,7 +88,7 @@ def login(secrets_store, open_browser=webbrowser.open, client: httpx.Client | No
           wait=wait_for_code, say=print) -> None:
     client_id = secrets_store.get("plugin.spotify.client_id")
     if not client_id:
-        raise RuntimeError("set the Client ID first: minty-core set-key plugin.spotify.client_id")
+        raise RuntimeError("set the Client ID first: minty set-key plugin.spotify.client_id")
     verifier, challenge = make_pkce()
     state = pysecrets.token_urlsafe(16)
     url = authorize_url(client_id, challenge, state)

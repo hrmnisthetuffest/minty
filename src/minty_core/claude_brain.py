@@ -1,4 +1,4 @@
-"""`minty-core claude-brain on|off|status`: switch Claude (through your own Claude Code login) on as the main brain.
+"""`minty claude-brain on|off|status`: switch Claude (through your own Claude Code login) on as the main brain.
 
 On: the ladder; when the account's usage window is used up
 (or nearly, see `reserve`) the free providers take over by themselves and Claude rests until it resets.

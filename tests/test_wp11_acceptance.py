@@ -15,7 +15,7 @@ class Desk:
     """A scripted desktop: which window is active at each moment."""
 
     def __init__(self):
-        self.now, self.active = 0.0, ActiveWindow("0x1", "minty-core run", "gnome-terminal-server", 1)
+        self.now, self.active = 0.0, ActiveWindow("0x1", "minty run", "gnome-terminal-server", 1)
 
     def read(self):
         return self.active
@@ -39,7 +39,7 @@ def test_it_goes_away_again_when_you_return_to_the_terminal():
     desk, model = Desk(), OverlayModel()
     desk.active = ActiveWindow("0x2", "Firefox", "firefox", 7)
     assert model.frame(desk.read()).visible
-    desk.active = ActiveWindow("0x1", "minty-core run", "gnome-terminal-server", 1)
+    desk.active = ActiveWindow("0x1", "minty run", "gnome-terminal-server", 1)
     assert model.frame(desk.read()).visible is False
 
 

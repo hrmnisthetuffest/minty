@@ -182,7 +182,7 @@ def register(ctx):
             raise ValueError("The private notes are switched off (vault.encryption on the Switches page).")
         area = kit().private
         if not area.exists():
-            raise PrivateError("There is no private area yet. Make one at the terminal: minty-core notes private-create")
+            raise PrivateError("There is no private area yet. Make one at the terminal: minty notes private-create")
         return area
 
     def private_add(args):
