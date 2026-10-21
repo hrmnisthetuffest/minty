@@ -1,5 +1,9 @@
 import pytest
 
+from tests import timeshift
+
+timeshift.install()  # only with MINTY_TEST_SHIFT_DAYS set (see tests/timeshift.py)
+
 
 @pytest.fixture(autouse=True)
 def _isolated_data_dir(tmp_path, monkeypatch):

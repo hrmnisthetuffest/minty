@@ -144,3 +144,23 @@ def test_a_changelog_with_one_or_no_unreleased_section_is_left_alone():
 
 def test_changelog_lines_added_on_two_branches_merge_without_a_conflict():
     assert "CHANGELOG.md merge=union" in (Path(__file__).parents[1] / ".gitattributes").read_text()
+
+
+def test_the_time_shift_plugin_is_inert_without_its_setting_and_moves_the_clock_with_it():
+    import subprocess
+    import sys
+
+    root = Path(__file__).parents[1]
+    code = ("import datetime, time; real = (datetime.datetime.now(), time.time()); from tests import timeshift; on = timeshift.install(); "
+            "now = (datetime.datetime.now(), time.time(), datetime.date.today()); "
+            "print(on, round((now[0] - real[0]).total_seconds() / 86400), round((now[1] - real[1]) / 86400), "
+            "(now[2] - datetime.date.today().__class__.fromtimestamp(real[1])).days)")
+
+    def run(**env):
+        done = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, text=True,
+                              env={"PYTHONPATH": str(root / "src"), "PATH": "/usr/bin", **env})
+        assert done.returncode == 0, done.stderr
+        return done.stdout.split()
+
+    assert run()[:3] == ["False", "0", "0"]  # no setting: nothing moves
+    assert run(MINTY_TEST_SHIFT_DAYS="30") == ["True", "30", "30", "30"]  # now(), time() and today() all move by the setting
