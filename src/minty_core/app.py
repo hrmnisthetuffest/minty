@@ -121,9 +121,12 @@ def parse_args(argv):
     show.add_argument("--channel", choices=["voice", "telegram"], default="voice")
     show.add_argument("--tier", choices=["fast", "deep"], default="fast")
     show.add_argument("--kit", action="append", default=[], help="a tool group in play, e.g. research (repeatable)")
+    pimport = sub.add_parser("profile-import", help="bring old free-form profile notes into the 500 questions (a proposal; --apply writes it)")
+    pimport.add_argument("path", help="the notes file")
+    pimport.add_argument("--apply", action="store_true", help="write the confident matches (nothing already answered is changed)")
     sub.add_parser("local-llm-test", help="measure the optional local model and adopt it only if it is fast enough")
-    sub.add_parser("set-pin", help="set the web panel login PIN (4 to 8 digits)")
-    sub.add_parser("set-password", help="the same as set-pin")
+    for name, text in (("set-pin", "set the web panel login PIN (4 to 8 digits)"), ("set-password", "the same as set-pin")):
+        sub.add_parser(name, help=text).add_argument("--allow-easy", action="store_true", help="accept a PIN that is easy to guess (0000, 1234)")
     sub.add_parser("spotify-login", help="sign in to Spotify once so Minty can read your playlists")
     set_key = sub.add_parser("set-key", help="store an API key without echoing it")
     set_key.add_argument("name", help="provider name, e.g. groq")
@@ -1542,7 +1545,18 @@ def main(argv=None) -> None:
     if args.command in ("set-pin", "set-password"):
         from minty_panel.main import main as panel_main
 
-        panel_main(["set-pin"])
+        panel_main(["set-pin"] + (["--allow-easy"] if getattr(args, "allow_easy", False) else []))
+        return
+    if args.command == "profile-import":
+        from minty_core.profile import ProfileStore
+        from minty_core.profile_import import format_report, run_import
+
+        try:
+            text = Path(args.path).expanduser().read_text(encoding="utf-8")
+        except OSError as e:
+            sys.exit(f"minty: cannot read {args.path}: {e.strerror}")
+        report = run_import(text, ProfileStore(config_dir() / "profile" / "answers.json"), apply=args.apply)
+        print(format_report(report, args.apply))
         return
     if args.command == "import-keys":
         _import_keys(args.path, config_dir())

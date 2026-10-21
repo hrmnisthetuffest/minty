@@ -46,11 +46,11 @@ class PasswordStore:
         salt, digest = hash_password(password)
         atomic_write_text(self.path, tomli_w.dumps({"salt": salt, "hash": digest}), 0o600)
 
-    def set_pin(self, pin: str) -> None:
+    def set_pin(self, pin: str, allow_easy: bool = False) -> None:
         """The panel's PIN: four to eight digits, and not one that is easy to guess (all the same digit, or in a row)."""
         if not (pin.isascii() and pin.isdigit() and PIN_MIN <= len(pin) <= PIN_MAX):
             raise ValueError(f"a PIN is {PIN_MIN} to {PIN_MAX} digits")
-        if is_weak_pin(pin):
+        if is_weak_pin(pin) and not allow_easy:
             raise ValueError("that PIN is too easy to guess (the same digit, or digits in a row): choose another")
         salt, digest = hash_password(pin)
         atomic_write_text(self.path, tomli_w.dumps({"salt": salt, "hash": digest}), 0o600)

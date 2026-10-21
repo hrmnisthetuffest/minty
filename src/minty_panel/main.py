@@ -74,10 +74,12 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(prog="minty-panel")
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("run", help="start the panel (default)")
-    sub.add_parser("set-pin", help="set the panel login PIN (4 to 8 digits)")
-    sub.add_parser("set-password", help="the same as set-pin")
+    for name, text in (("set-pin", "set the panel login PIN (4 to 8 digits)"), ("set-password", "the same as set-pin")):
+        sp = sub.add_parser(name, help=text)
+        sp.add_argument("--allow-easy", action="store_true", help="accept a PIN that is easy to guess (0000, 1234)")
     args = parser.parse_args(argv)
     args.command = {"set-password": "set-pin"}.get(args.command, args.command or "run")
+    args.allow_easy = bool(getattr(args, "allow_easy", False))
     return args
 
 
@@ -91,10 +93,10 @@ def main(argv=None) -> None:
         if first != getpass.getpass("Repeat the PIN: "):
             sys.exit("the PINs did not match, nothing saved")
         try:
-            passwords.set_pin(first)
+            passwords.set_pin(first, allow_easy=args.allow_easy)
         except ValueError as e:
             sys.exit(str(e))
-        print("panel PIN saved")
+        print("panel PIN saved" + (" (it is easy to guess: anyone who can reach the panel can try it)" if args.allow_easy else ""))
         return
     uvicorn.run(**build_panel_app(directory), log_level="info", proxy_headers=False)
 

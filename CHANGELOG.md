@@ -540,3 +540,6 @@ when it is good enough.
   microphone is muted the state reads MUTED and the whole panel turns red. On a phone the menu becomes a bar along the top that scrolls sideways.
 - **Display font.** The tall, narrow capitals of the panel's headings now use **Antonio** (SIL Open Font License, 74 KB, in `static/fonts/` with its licence), so they look the same
   on every computer. The panel loads it from itself: nothing is fetched from a font service.
+- **`minty set-pin --allow-easy`** accepts a PIN that is easy to guess (0000, 1234) when you ask for it, and says plainly that it is.
+- **`minty profile-import FILE`** reads old free-form profile notes ("Label: answer" lines) and proposes which of the 500 questions each belongs to. It is a dry run;
+  `--apply` writes only clear matches, never over an answer you already gave, and lists the rest to answer in the panel.

@@ -104,3 +104,13 @@ def test_an_old_password_still_logs_in_until_a_pin_is_set(tmp_path):
     assert store.verify("correct horse")
     store.set_pin("493017")
     assert not store.verify("correct horse") and store.verify("493017")
+
+
+def test_an_easy_pin_is_accepted_only_when_asked_for_explicitly(tmp_path):
+    store = PasswordStore(tmp_path)
+    with pytest.raises(ValueError, match="easy to guess"):
+        store.set_pin("000000")
+    store.set_pin("000000", allow_easy=True)
+    assert store.verify("000000")
+    with pytest.raises(ValueError):
+        store.set_pin("12ab", allow_easy=True)  # still digits only, still 4 to 8

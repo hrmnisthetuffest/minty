@@ -158,3 +158,14 @@ def test_extra_host_names_for_the_phone_can_be_listed(tmp_path):
     (tmp_path / "panel.toml").write_text('host = "192.168.1.20"\nport = 7788\nextra_hosts = ["mypc.local:7788", 5]\n')
     hosts = build_allowed_hosts(load_settings(tmp_path))
     assert "192.168.1.20:7788" in hosts and "mypc.local:7788" in hosts and 5 not in hosts and "127.0.0.1:7788" in hosts
+
+
+def test_set_pin_allow_easy_flag(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
+    answers = iter(["000000", "000000"])
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": next(answers))
+    assert panel_main.parse_args(["set-pin", "--allow-easy"]).allow_easy is True
+    assert panel_main.parse_args(["set-pin"]).allow_easy is False
+    panel_main.main(["set-pin", "--allow-easy"])
+    assert PasswordStore(tmp_path).verify("000000")
+    assert "easy" in capsys.readouterr().out  # it says plainly that the PIN is easy to guess
