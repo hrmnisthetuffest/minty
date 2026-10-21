@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -12,15 +13,26 @@ def mask_key(value: str) -> str:
     return f"{value[:3]}…{value[-4:]}"
 
 
+log = logging.getLogger(__name__)
+
+
 class SecretsStore:
     def __init__(self, directory: Path):
         self.path = Path(directory) / "secrets.toml"
 
-    def _read(self) -> dict[str, str]:
+    def _read(self, strict: bool = False) -> dict[str, str]:
+        """The keys. A file that cannot be parsed reads as empty (with a warning, so one bad line does not stop every request),
+        and is never written over: the changing calls pass `strict` and stop instead."""
         if not self.path.exists():
             return {}
-        with self.path.open("rb") as f:
-            return dict(tomllib.load(f))
+        try:
+            with self.path.open("rb") as f:
+                return dict(tomllib.load(f))
+        except tomllib.TOMLDecodeError as e:
+            if strict:
+                raise RuntimeError(f"{self.path.name} is damaged ({e}); fix or move it first, the keys in it are untouched") from e
+            log.warning("%s is damaged (%s): its keys are not available until it is fixed", self.path.name, e)
+            return {}
 
     def _write(self, data: dict[str, str]) -> None:
         atomic_write_text(self.path, tomli_w.dumps(data), 0o600)
@@ -59,19 +71,19 @@ class SecretsStore:
         return self._read().get(name)
 
     def set(self, name: str, value: str) -> None:
-        data = self._read()
+        data = self._read(strict=True)
         data[name] = value
         self._write(data)
         self._stamp([name])
 
     def set_many(self, values: dict[str, str]) -> None:
-        data = self._read()
+        data = self._read(strict=True)
         data.update(values)
         self._write(data)
         self._stamp(list(values))
 
     def delete(self, name: str) -> bool:
-        data = self._read()
+        data = self._read(strict=True)
         if name not in data:
             return False
         del data[name]
