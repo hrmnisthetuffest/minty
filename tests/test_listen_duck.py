@@ -1,6 +1,8 @@
 """While Minty listens, everything else that is playing is turned down a lot (and back up afterwards), so the music is not heard as speech."""
 import asyncio
 
+import pytest
+
 from minty_core.config import AudioConfig
 from tests.test_pipeline import build, finish, wait_until
 
@@ -163,3 +165,26 @@ async def test_whatever_happens_the_volume_is_put_back_when_the_pipeline_stops(t
     await asyncio.sleep(0.02)
     await finish(p, f, task)
     assert ("restore",) in p.listen_ducker.events
+
+
+async def test_the_sound_comes_back_even_if_the_turn_is_cancelled_while_saying_yes_sir(tmp_path):
+    p, f = build(tmp_path, stt_texts=[], replies=[], wake_ack="Yes, sir?")
+    log = []
+    music = FakeMusic()
+    music.pause = lambda: log.append("pause") or setattr(music, "paused", ["player"])
+    music.resume = lambda: log.append("resume") or setattr(music, "paused", [])
+    p.music = music
+    entered = asyncio.Event()
+
+    async def stuck_ack():
+        entered.set()
+        await asyncio.sleep(60)
+
+    p._acknowledge = stuck_ack
+    task = asyncio.create_task(p.run())
+    f.audio.push(b"WAKE")
+    await asyncio.wait_for(entered.wait(), 2)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert log == ["pause", "resume"]  # the paused song is resumed, not left silent

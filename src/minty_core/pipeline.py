@@ -221,9 +221,9 @@ class VoicePipeline:
                 ducked = await self._duck_for_listening()  # first: it works for any player, and takes effect at once
                 paused = await self._pause_music()
                 live = self.live is not None and self.live.available() and not pressed
-                if not first_words and not live and not pressed and not manual:  # a button press needs no "Yes, sir?"
-                    await self._acknowledge()
-                try:
+                try:  # from here on, the music is brought back however this ends (even a cancelled "Yes, sir?")
+                    if not first_words and not live and not pressed and not manual:  # a button press needs no "Yes, sir?"
+                        await self._acknowledge()
                     if self.live is not None and self.live.available():
                         self._set_state("live")
                         self._count_conversation()
