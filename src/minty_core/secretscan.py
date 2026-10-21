@@ -99,12 +99,22 @@ class SecretScanner:
 
 def _dedupe(found: list[Finding]) -> list[Finding]:
     """Overlapping findings collapse to the most serious, longest one."""
+    from bisect import bisect_left, insort
+
     rank = {"alarm": 0, "secret": 1, "pii": 2}
-    out: list[Finding] = []
+    starts: list[int] = []  # what is kept so far, as non-overlapping intervals sorted by start, so a clash is found by looking at two neighbours
+    kept: dict[int, Finding] = {}
     for f in sorted(found, key=lambda f: (rank.get(f.severity, 3), -(f.end - f.start), f.start)):
-        if not any(f.start < o.end and o.start < f.end for o in out):
-            out.append(f)
-    return sorted(out, key=lambda f: f.start)
+        i = bisect_left(starts, f.start)
+        before = kept[starts[i - 1]] if i > 0 else None
+        after = kept[starts[i]] if i < len(starts) else None
+        if (before is not None and before.end > f.start) or (after is not None and after.start < f.end):
+            continue
+        if f.start in kept:  # two empty or identical-start intervals cannot both be kept
+            continue
+        insort(starts, f.start)
+        kept[f.start] = f
+    return [kept[s] for s in starts]
 
 
 # ---- honeytokens ------------------------------------------------------------------------------------------

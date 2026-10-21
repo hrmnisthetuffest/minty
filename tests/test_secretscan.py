@@ -99,3 +99,28 @@ def test_no_false_alarms_on_everyday_messages():
 def test_json_round_trip_of_findings_is_plain_data():
     f = SecretScanner().scan(f"key {KEY}")[0]
     assert json.dumps({"kind": f.kind, "label": f.label, "severity": f.severity})
+
+
+def test_dedupe_matches_the_simple_rule_and_stays_fast_with_many_findings():
+    import random
+    import time
+
+    from minty_core.secretscan import Finding, _dedupe
+
+    def simple(found):
+        rank = {"alarm": 0, "secret": 1, "pii": 2}
+        out = []
+        for f in sorted(found, key=lambda f: (rank.get(f.severity, 3), -(f.end - f.start), f.start)):
+            if not any(f.start < o.end and o.start < f.end for o in out):
+                out.append(f)
+        return sorted(out, key=lambda f: f.start)
+
+    rng = random.Random(5)
+    for _ in range(300):
+        found = [Finding("pattern", "x", s, s + rng.randint(1, 12), rng.choice(["secret", "alarm", "pii"]))
+                 for s in (rng.randint(0, 80) for _ in range(rng.randint(0, 25)))]
+        assert _dedupe(found) == simple(found)
+    many = [Finding("pattern", "key", i * 50, i * 50 + 43) for i in range(30000)]  # a pasted list of thirty thousand keys
+    started = time.perf_counter()
+    assert len(_dedupe(many)) == 30000
+    assert time.perf_counter() - started < 1.0
