@@ -243,7 +243,7 @@ def build_voice_pipeline(ctx: AppContext):
                                config_changes=lambda: _config_changes_reply(ctx),
                                backup_now=lambda: ctx.services["backup_now"]() if "backup_now" in ctx.services
                                else "not ready yet",
-                               health=lambda: _health_digest(ctx, directory),
+                               health=lambda: _health_digest(ctx, ctx.config_dir),
                                canary=lambda: _canary_now(ctx),
                                power=lambda: ctx.services["power"].words() if "power" in ctx.services
                                else "I haven't read the power state yet."),
