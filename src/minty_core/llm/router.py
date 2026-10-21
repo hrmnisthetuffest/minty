@@ -676,6 +676,27 @@ class ProviderRouter:
                     trace(r, "cancelled")
 
     # ---- start-up key probe and the health board ------------------------------------------------------------
+    async def warm(self, client: httpx.AsyncClient | None = None) -> int:
+        """Open the connection to each provider's address now (`router.warm_on_wake`), so the first real request does not pay for
+        the handshake. One bodiless HEAD per address, no key sent, nothing counted against any limit. Returns how many answered."""
+        client = client or get_client()
+        urls = []
+        for cfg in self.usable():
+            if cfg.kind == "claude_cli":
+                continue
+            url = (cfg.base_url or ("https://api.anthropic.com" if cfg.kind == "anthropic" else "")).rstrip("/")
+            if url and url not in urls:
+                urls.append(url)
+
+        async def one(url: str) -> bool:
+            try:
+                await client.head(url, timeout=httpx.Timeout(3.0))
+                return True
+            except httpx.HTTPError:
+                return False
+
+        return sum(await asyncio.gather(*(one(u) for u in urls))) if urls else 0
+
     async def probe(self, client: httpx.AsyncClient | None = None) -> dict[str, str]:
         """One model-list request per provider (no tokens used) so expired or revoked keys show up before they
         are needed. A rejected key rests the provider for an hour; unreachable is only reported."""

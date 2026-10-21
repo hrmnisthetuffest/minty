@@ -215,7 +215,8 @@ class Agent:
             base = self._personalities.get(cfg.personality.active)
         except (FileNotFoundError, ValueError):
             base = FALLBACK_PERSONALITY
-        base_rules = prompt_section("BASE_RULES", self.terse_prompts())
+        lean = cfg.turn.lean_prompt
+        base_rules = prompt_section("BASE_RULES", self.terse_prompts(), lean)
         library = ""
         if cfg.personality.prompt_library:
             off = cfg.personality.prompt_modules_off
@@ -229,7 +230,13 @@ class Agent:
             modules = promptlib.select(channel=channel, tier=self.tier, kits=kits, off=off)
             library = promptlib.render(modules)
             annotate_turn(prompt_modules=[m.name for m in modules], prompt_version=promptlib.version(modules, base_rules))
-        prompt = compile_prompt(base, cfg.personality, self._memory.text(), base_rules=base_rules) + library
+        notes = self._memory.text()
+        if cfg.turn.stable_prefix:  # everything that stays the same first; the notes, which change, after it
+            prompt = compile_prompt(base, cfg.personality, "", base_rules=base_rules) + library
+            if notes.strip():
+                prompt += "\n\nThings you remember about the user:\n" + notes.strip()
+        else:
+            prompt = compile_prompt(base, cfg.personality, notes, base_rules=base_rules) + library
         extras = []
         for provider in self.prompt_extras:
             try:

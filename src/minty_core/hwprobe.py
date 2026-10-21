@@ -151,6 +151,17 @@ def _gpu_helps_speech(hw: Hardware) -> bool:
                for g in hw.gpus)
 
 
+def pick_stt_model(hw: Hardware) -> str | None:
+    """The local recogniser size that suits this computer (`stt.auto_model`), or None when it cannot be told (unknown memory)."""
+    if hw.ram_mb == 0:
+        return None
+    if _gpu_helps_speech(hw):
+        return "small.en"
+    if hw.ram_mb < 6000 or hw.threads < 4 or (hw.x86 and not hw.avx2):
+        return "tiny.en"
+    return "base.en"
+
+
 def lite_changes(hw: Hardware) -> dict[str, object]:
     """The settings that trade looks and features for speed, for a computer that struggles. Never applied unless asked for."""
     return {"tts.engine": "piper", "audio.live_captions": False, "terminal_reduced_motion": True, "terminal_images": "off",

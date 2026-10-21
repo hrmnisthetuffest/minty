@@ -49,7 +49,7 @@ def _quiet_task(task: asyncio.Task) -> None:
 
 
 class VoicePipeline:
-    def __init__(self, *, audio_in, wake, endpointer, stt, tts, player, agent, bus, store, commands=None, captions=None, live=None, music=None, listen_ducker=None, on_restart=None, tracer=None,
+    def __init__(self, *, audio_in, wake, endpointer, stt, tts, player, agent, bus, store, commands=None, captions=None, live=None, music=None, listen_ducker=None, warm=None, on_restart=None, tracer=None,
                  speech_check=None, on_conversation=None, streaming=None):
         self.audio_in, self.wake, self.endpointer = audio_in, wake, endpointer
         self.stt, self.tts, self.player = stt, tts, player
@@ -57,6 +57,8 @@ class VoicePipeline:
         self.commands = commands
         self.music = music  # MusicWatcher or None
         self.listen_ducker = listen_ducker  # voice.adapt.Ducker or None: turns other apps down while it listens
+        self.warm = warm  # async () -> int, or None: opens the connection to the model provider (router.warm_on_wake)
+        self._background: set[asyncio.Task] = set()
         self.on_restart = on_restart  # called after the spoken goodbye when the user asked to restart Minty
         self.live = live  # LiveMode or None
         self._stable = StablePrefix()
@@ -211,6 +213,8 @@ class VoicePipeline:
                 elif not await asyncio.to_thread(self.wake.detect, frame):
                     continue
                 self._wake_at = time.perf_counter()
+                if self.warm is not None and self.store.config.router.warm_on_wake:
+                    self._spawn(self._warm())
                 first_words = "" if manual or pressed else getattr(self.wake, "remainder", "")
                 if not manual and not pressed:
                     self.wake.reset()
@@ -260,6 +264,17 @@ class VoicePipeline:
             self.bus.unsubscribe(self._notices)
             self._subscribed = False
             await self.audio_in.stop()
+
+    def _spawn(self, coro) -> None:
+        task = asyncio.create_task(coro)
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+
+    async def _warm(self) -> None:
+        try:
+            await self.warm()
+        except Exception:  # noqa: BLE001 — warming is a courtesy and must never matter
+            log.debug("warming the connection failed", exc_info=True)
 
     def listen_now(self) -> bool:
         """Start listening without the name (the Listen button or key). While an answer is being spoken it cuts in, like
@@ -848,7 +863,32 @@ class VoicePipeline:
         queue.put_nowait(audio)
         return True
 
+    async def _hand_over(self, sentence: str, audio, queue: asyncio.Queue) -> None:
+        self._remember_spoken(sentence)
+        self.bus.publish("transcript", role="assistant", text=sentence)
+        self._unspoken.append(sentence)
+        self._answer_sentences.append(sentence)
+        await queue.put(audio)
+
     async def _produce(self, text: str, queue: asyncio.Queue) -> None:
+        parallel = max(1, int(getattr(self.store.config.tts, "parallel", 1)))
+        order: asyncio.Queue | None = asyncio.Queue() if parallel > 1 else None  # (sentence, speech being made), in the order spoken
+        gate = asyncio.Semaphore(parallel)
+        made: list[asyncio.Task] = []
+
+        async def make(spoken: str):
+            async with gate:  # at most `parallel` at once
+                return await self.tts.synthesize(spoken)
+
+        async def hand_in_order() -> None:  # waits for each in turn, so speech is never out of order
+            while True:
+                item = await order.get()
+                if item is None:
+                    return
+                sentence, speech = item
+                await self._hand_over(sentence, await speech, queue)
+
+        emitter = asyncio.create_task(hand_in_order()) if order is not None else None
         try:
             async with contextlib.aclosing(self.agent.respond(text)) as replies:
                 async for sentence in replies:
@@ -858,12 +898,17 @@ class VoicePipeline:
                     spoken = self.voice.prepare(sentence) if self.voice is not None else sentence
                     if self.voice is not None and hasattr(self.tts, "speed_factor"):
                         self.tts.speed_factor = self.voice.speed_factor()
-                    audio = await self.tts.synthesize(spoken)
-                    self._remember_spoken(sentence)
-                    self.bus.publish("transcript", role="assistant", text=sentence)
-                    self._unspoken.append(sentence)
-                    self._answer_sentences.append(sentence)
-                    await queue.put(audio)
+                    if order is None:
+                        await self._hand_over(sentence, await self.tts.synthesize(spoken), queue)
+                        continue
+                    if emitter.done():  # a sentence failed: like the one-at-a-time way, the turn ends there
+                        emitter.result()
+                    speech = asyncio.ensure_future(make(spoken))
+                    made.append(speech)
+                    order.put_nowait((sentence, speech))
+            if emitter is not None:
+                order.put_nowait(None)
+                await emitter
         except LLMError as e:
             log.warning("no LLM available: %s", e)
             self.bus.publish("error", message=str(e))
@@ -881,6 +926,11 @@ class VoicePipeline:
         except Exception as e:
             log.exception("reply failed")
             self.bus.publish("error", message=str(e))
+        finally:
+            for task in ([emitter] if emitter is not None else []) + made:  # speech made ahead but never played
+                if not task.done():
+                    task.cancel()
+                task.add_done_callback(_quiet_task)
         if self.voice is not None:
             self.voice.note_answer(self._answer_sentences)
         await queue.put(None)

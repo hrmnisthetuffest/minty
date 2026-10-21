@@ -10,6 +10,22 @@ from minty_core.config import ConfigStore, SttConfig
 from minty_core.httpclient import get_client
 from minty_core.keystore import SecretsStore
 
+_hardware = None  # probed once per run, only when stt.auto_model is on
+
+
+def effective_local_model(cfg: SttConfig, hw=None) -> str:
+    """The local recogniser to load: the one you set, or with `stt.auto_model` the size that suits this computer."""
+    if not cfg.auto_model:
+        return cfg.local_model
+    global _hardware
+    from minty_core import hwprobe
+
+    if hw is None:
+        if _hardware is None:
+            _hardware = hwprobe.probe()
+        hw = _hardware
+    return hwprobe.pick_stt_model(hw) or cfg.local_model
+
 log = logging.getLogger(__name__)
 
 # verbose_json reports a language name ("English"); the config speaks ISO codes
@@ -150,7 +166,7 @@ class FallbackSTT:
 
 
 def build_stt_chain(cfg: SttConfig, secrets: SecretsStore, client: httpx.AsyncClient | None = None) -> list[STT]:
-    local = LocalSTT(cfg.local_model, cfg=cfg)
+    local = LocalSTT(effective_local_model(cfg), cfg=cfg)
     if cfg.local_only or cfg.provider == "local":
         return [local]
     key = secrets.get("groq")

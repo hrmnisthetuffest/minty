@@ -547,3 +547,7 @@ when it is good enough.
   notice (and is still spoken), so the album card stays as the default.
 - **Tests that depend on the date are found automatically.** `MINTY_TEST_SHIFT_DAYS=60 pytest` runs the suite with the clock moved ahead (`tests/timeshift.py`); the two
   news tests that broke when the date changed were the only real cases.
+- **Six speed-ups, all off until you switch them on** (Settings): `router.warm_on_wake` (open the connection to the provider when the name is heard), `turn.stable_prefix`
+  (notes that change go after everything that does not, for providers that reuse the start of a prompt), `turn.lean_prompt` (the short wording of the fixed rules, without
+  waiting for the comparison), `tts.parallel` (1 to 3 sentences made into speech at once, order kept), `stt.auto_model` (the local recogniser sized to the computer) and
+  `audio.live_barge_in` / `live_barge_in_rms` (a voice clearly louder than the echo can interrupt the live voice). None of them can be judged without listening: try one at a time.

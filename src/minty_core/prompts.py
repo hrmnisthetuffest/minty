@@ -182,9 +182,10 @@ except (OSError, ValueError):
     _TERSE = {"sections": {}, "gate": {"passed": False}}
 
 
-def section(name: str, terse: bool) -> str:
-    """A fixed prompt section: the terse wording under frugal mode once the evaluation gate passed."""
-    if terse and _TERSE.get("gate", {}).get("passed") and name in _TERSE.get("sections", {}):
+def section(name: str, terse: bool, lean: bool = False) -> str:
+    """A fixed prompt section: the terse wording under frugal mode once the evaluation gate passed, or whenever `lean` is asked for
+    (`turn.lean_prompt`: your choice, made without the comparison)."""
+    if (lean or (terse and _TERSE.get("gate", {}).get("passed"))) and name in _TERSE.get("sections", {}):
         return _TERSE["sections"][name]
     return {"ANSWER_RULES": ANSWER_RULES, "EVOLVE_RULES": EVOLVE_RULES, "BASE_RULES": BASE_RULES,
             "FACT_RULES": FACT_RULES}[name]

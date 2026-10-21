@@ -8,6 +8,11 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 LABELS = {
+    "router.warm_on_wake": "Open the connection to the model provider the moment the name is heard",
+    "turn.stable_prefix": "Put the notes that change after everything that stays the same in the prompt",
+    "turn.lean_prompt": "Use the short wording of the fixed prompt rules",
+    "stt.auto_model": "Pick the local recogniser's size from this computer",
+    "audio.live_barge_in": "Let a loud voice interrupt the live voice while it speaks",
     "profile.enabled": "Add the answers from your profile that relate to a request to what the model sees",
     "clock_24h": "Show and say times on a 24-hour clock (15:10) instead of 3:10 PM",
     "terminal_hotkeys": "On the terminal display, the mute and listen keys work when nothing is typed",

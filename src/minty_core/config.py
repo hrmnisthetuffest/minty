@@ -168,6 +168,7 @@ class SttConfig(BaseModel):
     provider: Literal["groq", "local"] = "groq"
     groq_model: str = "whisper-large-v3-turbo"
     local_model: str = "base.en"
+    auto_model: bool = False  # choose the local recogniser's size from this computer (memory, processor, GPU) instead of local_model
     local_only: bool = False
     # noise guards: Whisper's own speech detector and confidence cut-offs, so a fan or a cough is not "words"
     vad_filter: bool = True
@@ -197,6 +198,7 @@ class TtsConfig(BaseModel):
     fish_voice: str = ""  # voice id from fish.audio (the part after /m/ in a voice's link); empty = Fish default
     fish_model: str = "s2.1-pro"
     fish_latency: Literal["low", "balanced", "normal"] = "balanced"
+    parallel: int = Field(1, ge=1, le=3)  # sentences made into speech at the same time; 1 = one after the other. More is sooner, and uses more of the processor
     kokoro_voice: str = "am_michael"
     kokoro_model: str = ""  # empty: <data dir>/minty/voices/kokoro-v1.0.onnx
     kokoro_voices: str = ""  # empty: <data dir>/minty/voices/voices-v1.0.bin
@@ -236,6 +238,8 @@ class AudioConfig(BaseModel):
     live_voice: str = "Charon"
     live_idle_s: int = Field(20, ge=5, le=600)  # end a live conversation after this much quiet
     live_echo_guard: bool = True  # mute the mic while Gemini speaks (turn off with headphones to talk over it)
+    live_barge_in: bool = False  # with the guard on, let a voice clearly louder than the echo through, so you can interrupt Gemini
+    live_barge_in_rms: int = Field(3000, ge=200, le=20000)  # how loud (RMS of a 16-bit frame) that must be; raise it if the speakers set it off
     music_aware: bool = True  # while media plays: stricter wake matching, short utterances only
     music_pause: bool = True  # pause media during a conversation and resume it after
     live_captions: bool = True  # show words as you speak (extra local transcription)
@@ -698,6 +702,7 @@ class RouterConfig(BaseModel):
     # simple spoken turns ask reasoning models (Groq's gpt-oss) for this effort: faster to the first word, slightly less careful.
     # Hard turns, thinking mode and other providers are untouched. Off by default until you have heard the difference.
     fast_reasoning: Literal["", "low", "medium"] = ""
+    warm_on_wake: bool = False  # open the connection to the model provider the moment the name is heard, so the first request does not wait for it
     classify_errors: bool = True  # request-shaped errors (too large, tool not offered) never cool a provider
     recover_request_errors: bool = True  # the agent repairs such a request (load the toolkit / trim) and retries once
     health_order: bool = True  # recent success decides the order; providers with no recent success are demoted
@@ -734,6 +739,9 @@ class TurnConfig(BaseModel):
     notice_skips_streaming: bool = True  # no "One moment." when the model has already started its answer
     latency_alarm_ms: int = Field(5000, ge=0, le=60000)  # warn when this many turns in a row start slower; 0 = off
     latency_alarm_turns: int = Field(3, ge=1, le=20)
+    # Speed-ups that are off until you switch them on (docs/getting-started.md, "Faster replies"):
+    stable_prefix: bool = False  # the notes you change go after everything that stays the same, so providers can reuse the start of the prompt
+    lean_prompt: bool = False  # the short wording of the fixed rules, whether or not it passed its comparison; judge by ear
 
 
 def default_providers() -> list[ProviderConfig]:

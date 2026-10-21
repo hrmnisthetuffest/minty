@@ -141,6 +141,17 @@ speaking with `minty instant "your phrase"`. A request is answered this way only
 longer or different still goes to the model. Settings: `instant.enabled`, `instant.actions`, and `instant.skip` (categories to leave
 to the model).
 
+### Faster replies, switched on by you
+
+Five more speed-ups exist and are all **off** until you turn them on (Settings, Speed and Voice), so nothing changes by itself. Try one, listen, keep it or switch it off:
+
+- **Warm the connection when the name is heard** (`router.warm_on_wake`): opens the link to the model provider early, so the first request does not wait for the handshake.
+- **Steady prompt order** (`turn.stable_prefix`): the notes you change go after everything that stays the same, so providers that reuse the start of a prompt can.
+- **Lean prompt** (`turn.lean_prompt`): the short wording of the fixed rules. It has not been compared against the normal wording, so judge it by ear.
+- **Sentences made into speech at once** (`tts.parallel`, 1 to 3): the next sentence starts while the last is still being made; the order never changes.
+- **Size the local recogniser to this computer** (`stt.auto_model`): picks tiny, base or small from memory, processor and GPU.
+- **Let a loud voice interrupt the live voice** (`audio.live_barge_in`, with `live_barge_in_rms`): with the echo guard on, a voice clearly louder than the echo reaches Gemini so you can cut in.
+
 ### Faster replies
 
 Three things make the wait after you stop speaking shorter, all adjustable in the panel's Settings:

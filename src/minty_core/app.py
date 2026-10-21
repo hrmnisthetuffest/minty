@@ -13,6 +13,7 @@ from minty_core import __version__
 from minty_core._toml import tomllib
 from minty_core.config import AudioConfig, ConfigError, ConfigStore
 from minty_core.context import AppContext, build_context
+from minty_core.audio.stt import effective_local_model
 from minty_core.audio.vad import build_frame_vad, voiced_ms
 from minty_core.jobs import interrupted_notice
 from minty_core.safemode import SAFE_PLUGINS, BootLog, is_deliberate_stop, start_in_safe_mode
@@ -182,7 +183,7 @@ def build_voice_pipeline(ctx: AppContext):
             from minty_core.audio.wakewords import TranscriptWakeDetector, whisper_transcriber
 
             return TranscriptWakeDetector(
-                whisper_transcriber(cfg.stt.local_model), lambda: store.config.audio,
+                whisper_transcriber(effective_local_model(cfg.stt)), lambda: store.config.audio,
                 on_partial=lambda text: ctx.bus.publish("partial", text=text), music=music.is_playing,
                 speech_check=voiced_ms, vad=build_frame_vad(),
             )
@@ -202,7 +203,7 @@ def build_voice_pipeline(ctx: AppContext):
 
         stop_phrases = ["stop", "wait", "hold on", "cancel", "never mind", "be quiet", "quiet"]
         return TranscriptWakeDetector(
-            whisper_transcriber(store.config.stt.local_model),
+            whisper_transcriber(effective_local_model(store.config.stt)),
             lambda: store.config.audio.model_copy(update={"wake_phrases": stop_phrases, "live_captions": False}),
             speech_check=voiced_ms, vad=build_frame_vad())
 
@@ -249,7 +250,7 @@ def build_voice_pipeline(ctx: AppContext):
         live=LiveMode(store, ctx.secrets, FilteredHost(ctx.host, exclude_plugins=("agents", "installer", "subagents"),
                                                        allow_risky=True),  # risky actions are parked for a spoken yes
                       ctx.agent, ctx.bus, StreamingPlayer(store), router=ctx.router, guard=ctx.services.get("guard")),
-        captions=whisper_transcriber(store.config.stt.local_model), music=music, listen_ducker=listen_ducker, on_restart=request_restart,
+        captions=whisper_transcriber(effective_local_model(store.config.stt)), music=music, listen_ducker=listen_ducker, warm=ctx.router.warm, on_restart=request_restart,
         speech_check=voiced_ms, on_conversation=_on_conversation(ctx),
         streaming=build_streaming(store.config.audio, voices_dir()),
     )
@@ -1008,7 +1009,7 @@ def preload_voice_models(store) -> float:
     try:
         from minty_core.audio.stt import _load_whisper
 
-        model = _load_whisper(cfg.stt.local_model)
+        model = _load_whisper(effective_local_model(cfg.stt))
         list(model.transcribe(np.zeros(16000, dtype=np.float32), language="en", beam_size=1)[0])
     except Exception as e:
         log.warning("could not preload speech recognition: %s", e)

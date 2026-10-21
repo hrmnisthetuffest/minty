@@ -12,6 +12,7 @@ import re
 import time
 from types import SimpleNamespace
 
+from minty_core.audio.endpointer import rms
 from minty_core.commands import voice_mode_for
 from minty_core.voice.notes import is_start as is_notes_start
 from minty_core.policy import Guard, destinations_in, is_affirmative, is_negative
@@ -45,6 +46,16 @@ _BUILTINS = {
     "confirm_pending": "Run the action you just asked the user to confirm, after they answered. It only runs if "
                        "the user's own words were a yes.",
 }
+
+
+def guard_frame(frame: bytes, speaking: bool, cfg) -> bytes:
+    """What Gemini hears of the microphone while it is talking: nothing (so it does not hear its own voice through the speakers),
+    unless `live_barge_in` is on and this frame is loud enough to be you talking over it."""
+    if not speaking or not cfg.live_echo_guard:
+        return frame
+    if cfg.live_barge_in and rms(frame) >= cfg.live_barge_in_rms:
+        return frame
+    return bytes(len(frame))
 
 
 def _version(name: str) -> tuple:
@@ -204,8 +215,7 @@ class LiveMode:
 
         while True:
             frame = await read_frame()
-            if self._store.config.audio.live_echo_guard and time.monotonic() < state.speaking_until:
-                frame = bytes(len(frame))  # don't let Gemini hear its own voice through the speakers
+            frame = guard_frame(frame, time.monotonic() < state.speaking_until, self._store.config.audio)
             await session.send_realtime_input(audio=types.Blob(data=frame, mime_type=f"audio/pcm;rate={IN_RATE}"))
 
     async def _idle(self, state) -> None:

@@ -374,10 +374,10 @@ def build_context(config_dir: Path) -> AppContext:
     agent.terse_prompts = lambda: router.frugal_level() != "F0"
 
     def fixed_sections() -> str:
-        terse = agent.terse_prompts()
-        facts = prompt_section("FACT_RULES", terse) if store.config.memory.auto_remember else ""
-        return (prompt_layers.section() + prompt_section("EVOLVE_RULES", terse) + facts
-                + prompt_section("ANSWER_RULES", terse))
+        terse, lean = agent.terse_prompts(), store.config.turn.lean_prompt
+        facts = prompt_section("FACT_RULES", terse, lean) if store.config.memory.auto_remember else ""
+        return (prompt_layers.section() + prompt_section("EVOLVE_RULES", terse, lean) + facts
+                + prompt_section("ANSWER_RULES", terse, lean))
 
     agent.prompt_extras.append(fixed_sections)
     agent.prompt_extras.append(
