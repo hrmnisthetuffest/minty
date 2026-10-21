@@ -14,6 +14,7 @@ from minty_core.instant.text import clean
 
 log = logging.getLogger(__name__)
 MAX_WORDS = 24
+MAX_CHARS = 400  # a whole spoken request is short; a huge single word is never one of the known questions
 RULES: tuple[Rule, ...] = (*chat.RULES, *clock.RULES, *system.RULES, *calc.RULES, *units.RULES, *facts.RULES, *fun.RULES)
 CATEGORIES: tuple[str, ...] = tuple(dict.fromkeys(r.category for r in RULES))
 
@@ -27,7 +28,7 @@ class Instant:
     def answer(self, text: str, skip=None) -> Hit | None:
         """The answer to a request that is wholly one of the known questions, or None. `skip` overrides the categories to leave out."""
         skipped = self._skip if skip is None else frozenset(skip)
-        if not text or "\n" in text.strip() or len(text.split()) > MAX_WORDS + 6:
+        if not text or len(text) > MAX_CHARS or "\n" in text.strip() or len(text.split()) > MAX_WORDS + 6:
             return None
         q = Query.of(text, self.env)
         if not q.cmd or len(q.cmd.split()) > MAX_WORDS:
