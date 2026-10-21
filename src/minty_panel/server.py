@@ -9,7 +9,7 @@ import httpx
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from minty_panel.auth import LoginThrottle, PasswordStore, SessionStore
 from minty_panel.core_client import CoreClient, CoreUnavailable
@@ -17,6 +17,9 @@ from minty_panel.core_client import CoreClient, CoreUnavailable
 STATIC = Path(__file__).parent / "static"
 COOKIE = "minty_session"
 ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags", "profile"}
+# The panel loads only its own files. Scripts may never be inline or built from text; styles may carry a style attribute (the progress bars).
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
+       "connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
 LAN_ONLY_MESSAGE = "this panel answers only on your own network"
 
 
@@ -58,7 +61,7 @@ def private_client(addr: str) -> bool:
 
 
 class LoginBody(BaseModel):
-    password: str
+    password: str = Field(max_length=256)  # a PIN is 4 to 8 digits; nothing longer than a long password is hashed
 
 
 def default_connect(core: CoreClient):
@@ -94,6 +97,9 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
             response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Content-Security-Policy"] = CSP
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
     def csrf_ok(request: Request) -> bool:

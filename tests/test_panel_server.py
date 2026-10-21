@@ -234,3 +234,27 @@ def test_the_notes_viewer_routes_are_proxied_with_login_and_csrf_on_writes(tmp_p
     assert any(c.url.path == "/vault/search" and c.url.params.get("q") == "ribbon" for c in p.calls)
     assert p.client.post("/api/vault/notes", json={"title": "x"}).status_code == 403
     assert not any(c.method == "POST" and c.url.path == "/vault/notes" for c in p.calls)
+
+
+def test_every_response_carries_the_browser_protections(tmp_path):
+    p = build(tmp_path)
+    for res in (p.client.get("/"), p.client.get("/static/app.css"), p.client.get("/api/status")):
+        policy = res.headers["content-security-policy"]
+        assert "default-src 'self'" in policy and "script-src 'self'" in policy and "object-src 'none'" in policy
+        assert "frame-ancestors 'none'" in policy and "base-uri 'none'" in policy
+        assert "unsafe-inline" not in policy.split("style-src")[0]  # scripts may never be inline
+        assert res.headers["x-frame-options"] == "DENY" and res.headers["referrer-policy"] == "no-referrer"
+    assert "'unsafe-eval'" not in p.client.get("/").headers["content-security-policy"]
+
+
+def test_a_refused_request_carries_them_too(tmp_path):
+    p = build(tmp_path)
+    res = p.client.get("/", headers={"host": "evil.example"})
+    assert res.status_code == 421 and "content-security-policy" in res.headers
+
+
+def test_a_login_body_that_is_absurdly_long_is_refused_before_any_hashing(tmp_path):
+    p = build(tmp_path)
+    res = p.client.post("/login", json={"password": "9" * 100_000}, headers=HDR)
+    assert res.status_code == 422
+    assert login(p).status_code == 204  # and the normal login is untouched (a refused body is not a wrong attempt)
