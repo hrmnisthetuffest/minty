@@ -153,8 +153,9 @@ def test_the_time_shift_plugin_is_inert_without_its_setting_and_moves_the_clock_
     root = Path(__file__).parents[1]
     code = ("import datetime, time; real = (datetime.datetime.now(), time.time()); from tests import timeshift; on = timeshift.install(); "
             "now = (datetime.datetime.now(), time.time(), datetime.date.today()); "
+            "import calendar; stamp = time.strftime('%Y-%m-%d'); "
             "print(on, round((now[0] - real[0]).total_seconds() / 86400), round((now[1] - real[1]) / 86400), "
-            "(now[2] - datetime.date.today().__class__.fromtimestamp(real[1])).days)")
+            "(now[2] - datetime.date.today().__class__.fromtimestamp(real[1])).days, stamp == now[2].isoformat())")
 
     def run(**env):
         done = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, text=True,
@@ -163,4 +164,5 @@ def test_the_time_shift_plugin_is_inert_without_its_setting_and_moves_the_clock_
         return done.stdout.split()
 
     assert run()[:3] == ["False", "0", "0"]  # no setting: nothing moves
-    assert run(MINTY_TEST_SHIFT_DAYS="30") == ["True", "30", "30", "30"]  # now(), time() and today() all move by the setting
+    # now(), time(), today() and a bare strftime() all move by the setting, and agree with each other
+    assert run(MINTY_TEST_SHIFT_DAYS="30") == ["True", "30", "30", "30", "True"]

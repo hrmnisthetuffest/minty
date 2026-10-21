@@ -543,3 +543,7 @@ when it is good enough.
 - **`minty set-pin --allow-easy`** accepts a PIN that is easy to guess (0000, 1234) when you ask for it, and says plainly that it is.
 - **`minty profile-import FILE`** reads old free-form profile notes ("Label: answer" lines) and proposes which of the 500 questions each belongs to. It is a dry run;
   `--apply` writes only clear matches, never over an answer you already gave, and lists the rest to answer in the panel.
+- **The "For you" panel is gone.** A fired reminder or the morning brief used to open a display pane that replaced the album card and the conversation; it is now a short
+  notice (and is still spoken), so the album card stays as the default.
+- **Tests that depend on the date are found automatically.** `MINTY_TEST_SHIFT_DAYS=60 pytest` runs the suite with the clock moved ahead (`tests/timeshift.py`); the two
+  news tests that broke when the date changed were the only real cases.

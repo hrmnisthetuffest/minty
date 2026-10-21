@@ -137,7 +137,7 @@ def build_context(config_dir: Path) -> AppContext:
     proactive = ProactivePolicy(lambda: store.config.proactive)
     scheduler = Scheduler(
         config_dir / "schedule.db", speak=lambda text: bus.publish("notify", text=text),
-        show=lambda text: bus.publish("display", title="For you", content=text),
+        show=lambda text: bus.publish("notice", message=text),  # a short notice: a display pane would replace the album card
         gate=proactive.gate, on_spoken=proactive.spoken)
 
     def brief_daily(now: datetime) -> None:
