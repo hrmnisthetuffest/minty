@@ -233,3 +233,25 @@ def test_pressing_listen_while_muted_says_how_to_unmute():
     act = _button_action(NS(pipeline=pipe, bus=NS(publish=lambda kind, **f: events.append((kind, f)))))
     act("listen")
     assert events == [("notice", {"message": "Muted. Press M to unmute."})]
+
+
+async def test_a_closed_keyboard_input_stops_the_reader_instead_of_spinning():
+    import asyncio
+    import codecs
+    import os
+
+    read_end, write_end = os.pipe()
+    reader = _KeyReader(TuiModel(), lambda line: None, None)
+    reader._fd, reader._decoder = read_end, codecs.getincrementaldecoder("utf-8")("ignore")
+    calls = []
+    original = reader._read
+
+    def counting():
+        calls.append(1)
+        original()
+
+    asyncio.get_running_loop().add_reader(read_end, counting)
+    os.close(write_end)  # the terminal went away: the descriptor is "readable" forever, with nothing to read
+    await asyncio.sleep(0.25)
+    assert len(calls) <= 2  # it noticed the end and stopped, rather than being called hundreds of times
+    os.close(read_end)

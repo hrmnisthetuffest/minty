@@ -1069,6 +1069,12 @@ class _KeyReader:
             data = os.read(self._fd, 4096)
         except OSError:
             return
+        if not data:  # the input was closed (the terminal went away): it would be "readable" forever, so stop listening
+            try:
+                asyncio.get_running_loop().remove_reader(self._fd)
+            except (RuntimeError, ValueError):
+                pass
+            return
         self.feed(self._decoder.decode(data))
 
     def feed(self, text: str) -> None:
