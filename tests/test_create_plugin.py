@@ -9,7 +9,9 @@ import zipfile
 import pytest
 
 from tests.plugin_helpers import make_host
-from tests.test_create_feeds_papers import ARXIV, ATOM, RSS, OUTLINE
+from datetime import datetime
+
+from tests.test_create_feeds_papers import ARXIV, ATOM, NOW, RSS, OUTLINE
 from tests.test_create_images_translate_evidence import ACCOUNT, PNG, WIKI, ARXIV as ARXIV_CLAIM
 from tests.test_create_media_notes import LECTURE, sha, tone
 
@@ -66,7 +68,13 @@ async def test_everything_is_off_until_switched_on_and_images_have_their_own_swi
     assert not (tmp_path / "cfg" / "create.db").exists()
 
 
-async def test_the_news_brief_cites_outlets_and_feeds_can_be_added_and_removed(tmp_path):
+async def test_the_news_brief_cites_outlets_and_feeds_can_be_added_and_removed(tmp_path, monkeypatch):
+    class Frozen(datetime):  # the feeds in the fixtures are from a fixed day: the brief must not depend on today's date
+        @classmethod
+        def now(cls, tz=None):
+            return NOW
+
+    monkeypatch.setattr("minty_core.create.feeds.datetime", Frozen)
     r = Rig(tmp_path)
     assert "No news feeds" in await r.call("news", {"action": "brief"})
     for url in ("https://sci.example/feed", "https://tech.example/feed"):
