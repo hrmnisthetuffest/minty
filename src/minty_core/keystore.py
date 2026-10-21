@@ -16,6 +16,10 @@ def mask_key(value: str) -> str:
 log = logging.getLogger(__name__)
 
 
+class SecretsDamaged(RuntimeError):
+    """secrets.toml cannot be parsed. Changing it would write over keys that may still be recoverable by hand, so nothing is changed."""
+
+
 class SecretsStore:
     def __init__(self, directory: Path):
         self.path = Path(directory) / "secrets.toml"
@@ -30,7 +34,7 @@ class SecretsStore:
                 return dict(tomllib.load(f))
         except tomllib.TOMLDecodeError as e:
             if strict:
-                raise RuntimeError(f"{self.path.name} is damaged ({e}); fix or move it first, the keys in it are untouched") from e
+                raise SecretsDamaged(f"{self.path.name} is damaged ({e}); fix or move it first, the keys in it are untouched") from e
             log.warning("%s is damaged (%s): its keys are not available until it is fixed", self.path.name, e)
             return {}
 

@@ -345,3 +345,12 @@ def test_commands_with_their_own_options_keep_them():
     assert parse_args(["update", "--check"]).rest == ["--check"] and parse_args(["update", "--yes"]).command == "update"
     assert parse_args(["instant", "what", "is", "12", "times", "8"]).rest == ["what", "is", "12", "times", "8"]
     assert parse_args(["instant"]).rest == [] and parse_args([]).command == "run"
+
+
+def test_set_key_with_a_damaged_secrets_file_says_so_and_changes_nothing(tmp_path, monkeypatch):
+    monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
+    (tmp_path / "secrets.toml").write_text("= = broken")
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": "gsk_abcdefghijklmnop")
+    with pytest.raises(SystemExit) as exc:
+        app.main(["set-key", "groq"])
+    assert "damaged" in str(exc.value) and (tmp_path / "secrets.toml").read_text() == "= = broken"

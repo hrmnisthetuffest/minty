@@ -19,7 +19,7 @@ from minty_core.jobs import interrupted_notice
 from minty_core.safemode import SAFE_PLUGINS, BootLog, is_deliberate_stop, start_in_safe_mode
 from minty_core.supervisor import VoiceSupervisor
 from minty_core.keyimport import extract_keys
-from minty_core.keystore import SecretsStore
+from minty_core.keystore import SecretsDamaged, SecretsStore
 from minty_core.paths import config_dir
 
 log = logging.getLogger("minty")
@@ -1312,7 +1312,7 @@ def _import_keys(path: str, directory: Path) -> None:
     try:
         existing = set(store.names())
         store.set_many(keys)
-    except tomllib.TOMLDecodeError:
+    except (tomllib.TOMLDecodeError, SecretsDamaged):
         sys.exit("secrets.toml is not valid TOML; fix or delete it")
     print(f"Imported {len(keys)} {'key' if len(keys) == 1 else 'keys'}: {', '.join(sorted(keys))}")
     replaced = sorted(existing & keys.keys())
@@ -1386,7 +1386,10 @@ def main(argv=None) -> None:
         value = getpass.getpass(f"API key for {args.name}: ").strip()
         if not value:
             sys.exit("empty key, nothing saved")
-        SecretsStore(config_dir()).set(args.name, value)
+        try:
+            SecretsStore(config_dir()).set(args.name, value)
+        except SecretsDamaged as e:
+            sys.exit(str(e))
         print(f"saved {args.name}")
         return
     if args.command == "service-unit":

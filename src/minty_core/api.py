@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 from minty_core.commands import CommandRouter  # noqa: F401  (re-exported for callers and tests)
 from minty_core.typed import command_router
 from minty_core.context import AppContext
+from minty_core.keystore import SecretsDamaged
 from minty_core.llm.types import LLMError
 from minty_core.trace import turn_scope
 
@@ -175,12 +176,18 @@ def create_app(ctx: AppContext) -> FastAPI:
 
     @api.put("/secrets/{name}", status_code=204)
     async def put_secret(name: str, body: SecretBody):
-        ctx.secrets.set(name, body.value)
+        try:
+            ctx.secrets.set(name, body.value)
+        except SecretsDamaged as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
         return Response(status_code=204)
 
     @api.delete("/secrets/{name}", status_code=204)
     async def delete_secret(name: str):
-        ctx.secrets.delete(name)
+        try:
+            ctx.secrets.delete(name)
+        except SecretsDamaged as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
         return Response(status_code=204)
 
     @api.get("/personalities")

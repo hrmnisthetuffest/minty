@@ -29,3 +29,20 @@ def _news_feeds_are_read_on_the_day_they_were_written(request, monkeypatch):
             return NOW if tz is not None else NOW.astimezone(timezone.utc).replace(tzinfo=None)
 
     monkeypatch.setattr("minty_core.create.feeds.datetime", Frozen)
+
+
+def pytest_collection_modifyitems(config, items):
+    """MINTY_TEST_SHUFFLE=<seed> runs the test files in a different order (the tests inside a file keep theirs). A test that only passes
+    after another one has run is leaking state between them, which this finds."""
+    import os
+    import random
+
+    seed = os.environ.get("MINTY_TEST_SHUFFLE")
+    if not seed:
+        return
+    modules: dict[str, list] = {}
+    for item in items:
+        modules.setdefault(item.module.__name__, []).append(item)
+    order = list(modules)
+    random.Random(int(seed)).shuffle(order)
+    items[:] = [item for name in order for item in modules[name]]

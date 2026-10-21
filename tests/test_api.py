@@ -274,3 +274,19 @@ def test_status_carries_the_health_board(client, auth):
     providers = client.get("/status", headers=auth).json()["providers"]
     groq = next(p for p in providers if p["name"] == "groq")
     assert {"health", "probe", "last_error_kind"} <= set(groq) and groq["health"]["calls"] == 0
+
+
+def test_a_damaged_secrets_file_is_a_clear_conflict_not_a_server_error(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from minty_core.api import create_app
+    from minty_core.context import build_context
+
+    ctx = build_context(tmp_path)
+    (tmp_path / "secrets.toml").write_text("= = broken")
+    client = TestClient(create_app(ctx))
+    auth = {"Authorization": f"Bearer {ctx.token}"}
+    res = client.put("/secrets/groq", json={"value": "gsk_abcdefghijklmnop"}, headers=auth)
+    assert res.status_code == 409 and "damaged" in res.json()["detail"]
+    assert client.delete("/secrets/groq", headers=auth).status_code == 409
+    assert (tmp_path / "secrets.toml").read_text() == "= = broken"
