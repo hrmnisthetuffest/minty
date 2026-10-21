@@ -98,3 +98,17 @@ def test_package_data_ships_nested_static_files():
     globs = data["tool"]["setuptools"]["package-data"]["minty_panel"]
     assert "static/*" in globs
     assert "static/pages/*" in globs
+    assert "static/fonts/*" in globs
+
+
+def test_the_display_font_ships_with_the_panel_and_nothing_is_fetched_from_a_font_service():
+    font = STATIC / "fonts" / "Antonio.ttf"
+    assert font.is_file() and font.read_bytes()[:4] == b"\x00\x01\x00\x00"  # a TrueType file
+    licence = (STATIC / "fonts" / "OFL.txt").read_text()
+    assert "SIL Open Font License" in licence and "Antonio" in licence  # the licence travels with the font
+    css = (STATIC / "app.css").read_text()
+    assert '@font-face' in css and 'font-family: "Antonio"' in css and "/static/fonts/Antonio.ttf" in css
+    assert css.index('"Antonio"') < css.index('"Nimbus Sans Narrow"')  # tried first, the installed fonts after
+    assert "fonts.googleapis" not in css and "fonts.gstatic" not in css
+    assert "static/fonts/*" in (PYPROJECT.read_text())  # included when Minty is installed
+    assert "/static/fonts/Antonio.ttf" in (STATIC / "sw.js").read_text()  # and kept for offline use

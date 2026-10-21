@@ -1,12 +1,16 @@
 /* Minty control panel: deep navy, one cobalt accent, tall condensed capitals, squared panels, a blue frame, halftone dots.
    While the microphone is muted the accent turns red, as on the terminal display. */
+@font-face {
+  font-family: "Antonio"; font-weight: 100 700; font-display: swap;
+  src: url("/static/fonts/Antonio.ttf") format("truetype");
+}
 :root {
   --bg: #12111f; --bg2: #19192f; --panel: rgba(255,255,255,.05); --panel2: rgba(255,255,255,.09);
   --line: rgba(255,255,255,.14); --line2: rgba(255,255,255,.3);
   --text: #f2f2f2; --soft: #e6e6f0; --dim: #a0a0bf;
   --blue: #0000f2; --blue2: #5252ff; --glow: rgba(70,70,255,.35);
   --err: #ff6b70; --ok: #6ee7b0; --warn: #f0c55a;
-  --display: "Rules Gothic Compressed", "Antonio", "Bebas Neue", "Oswald", "League Gothic", "Nimbus Sans Narrow", "Arial Narrow", "Liberation Sans Narrow", sans-serif;
+  --display: "Antonio", "Rules Gothic Compressed", "Bebas Neue", "Oswald", "League Gothic", "Nimbus Sans Narrow", "Arial Narrow", "Liberation Sans Narrow", sans-serif;
   --body: "Aeonik", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
 }

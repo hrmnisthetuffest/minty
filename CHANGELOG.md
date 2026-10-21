@@ -538,3 +538,5 @@ when it is good enough.
   along the top that is always there (what Minty is doing, a live microphone level, **Listen** and **Mute**, search and the time) and a page that scrolls on its own.
   The dashboard is a grid of tiles (microphone, system, brain providers, background jobs, talking to Minty, live transcript) instead of a big heading. While the
   microphone is muted the state reads MUTED and the whole panel turns red. On a phone the menu becomes a bar along the top that scrolls sideways.
+- **Display font.** The tall, narrow capitals of the panel's headings now use **Antonio** (SIL Open Font License, 74 KB, in `static/fonts/` with its licence), so they look the same
+  on every computer. The panel loads it from itself: nothing is fetched from a font service.
