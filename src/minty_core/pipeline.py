@@ -17,7 +17,7 @@ from minty_core.audio.types import FRAME_S, Transcription
 from minty_core.llm.types import DeadlineExceeded, LLMError
 from minty_core.policy import is_affirmative  # noqa: F401 (also imported from here)
 from minty_core.text import is_repeat
-from minty_core.tasks import spawn
+from minty_core.tasks import cancel_and_wait, spawn
 from minty_core.trace import NullTracer, turn_scope
 from minty_core.voice.notes import is_stop as is_notes_stop
 from minty_core.voice.turnhold import looks_complete
@@ -969,10 +969,7 @@ class VoicePipeline:
 
     async def _stop_watcher(self) -> None:
         watcher, self._watcher = self._watcher, None
-        if watcher is not None:
-            watcher.cancel()
-            with contextlib.suppress(asyncio.CancelledError, EOFError):
-                await watcher
+        await cancel_and_wait(watcher)
 
     def _stop_enabled(self) -> bool:
         cfg = self.store.config.audio

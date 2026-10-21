@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass
+from minty_core.tasks import cancel_and_wait
 
 PROTOCOL = "2025-06-18"
 MAX_TEXT = 6000
@@ -61,12 +62,7 @@ class McpSession:
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
-        if self._reader is not None:
-            self._reader.cancel()
-            try:
-                await self._reader
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
-                pass
+        await cancel_and_wait(self._reader)
         for fut in self._pending.values():
             if not fut.done():
                 fut.set_exception(McpError("The server was closed."))

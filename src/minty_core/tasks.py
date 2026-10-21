@@ -25,3 +25,12 @@ def spawn(coro, name: str | None = None) -> asyncio.Task:
 
     task.add_done_callback(done)
     return task
+
+
+async def cancel_and_wait(task: asyncio.Task | None) -> None:
+    """Stop a task and wait until it has stopped. Its own cancellation (and whatever it raises on the way out) is absorbed, but if the
+    task that is *calling* this is cancelled meanwhile, that cancellation still arrives: `except CancelledError: pass` would swallow it."""
+    if task is None or task.done():
+        return
+    task.cancel()
+    await asyncio.gather(task, return_exceptions=True)

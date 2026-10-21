@@ -13,6 +13,7 @@ from pathlib import Path
 
 from minty_core.plugins.host import Tool
 from minty_core.policy import R3
+from minty_core.tasks import cancel_and_wait
 
 log = logging.getLogger(__name__)
 
@@ -147,10 +148,7 @@ async def run_command(argv: list[str]) -> tuple[int | None, str, bool]:
     finally:
         if proc.returncode is None:  # cancelled or escalation failed: don't leave it running
             _signal_group(proc, signal.SIGKILL)
-        if not reader.done():
-            reader.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await reader
+        await cancel_and_wait(reader)
     tail = chunks.decode("utf-8", "replace").strip()[-TAIL_CHARS:]
     return proc.returncode, tail, timed_out
 

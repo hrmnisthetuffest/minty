@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
+from minty_core.tasks import cancel_and_wait
 
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,60}")
 
@@ -174,10 +175,7 @@ class JobManager:
                         pass
                     self._signal_group(proc, signal.SIGKILL)
             finally:
-                if not reader.done():
-                    reader.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await reader
+                await cancel_and_wait(reader)
             output = chunks.decode("utf-8", "replace")
             if job.status in ("stopped", "timeout"):
                 pass
