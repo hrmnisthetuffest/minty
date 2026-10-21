@@ -35,8 +35,12 @@ class Lockdown:
             data = json.loads(self.path.read_text(encoding="utf-8"))
             self.active = bool(data.get("active"))
             self.reason, self.since = str(data.get("reason") or ""), float(data.get("since") or 0)
+        except FileNotFoundError:
+            pass  # never engaged
         except (OSError, ValueError, TypeError):
-            pass
+            # The file is there but cannot be read: something damaged it. A safety switch must not turn itself off by accident, so it
+            # stays on until you release it (the release writes a good file).
+            self.active, self.reason, self.since = True, "the lockdown state file was unreadable", self._clock()
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

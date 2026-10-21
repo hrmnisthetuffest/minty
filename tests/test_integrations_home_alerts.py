@@ -228,3 +228,31 @@ async def test_an_unknown_place_is_said_not_guessed(tmp_path):
     w = WeatherWatch(get, IntegrationsDB(tmp_path / "i.db"))
     with pytest.raises(ValueError, match="could not find"):
         await w.alerts("Nowhereville")
+
+
+async def test_cancelling_the_sleep_timer_does_not_swallow_the_cancellation_of_whoever_asked():
+    import asyncio
+
+    from minty_core.integrations.sleeptimer import SleepTimer
+
+    class Runner:
+        async def run(self, cmd):
+            from types import SimpleNamespace
+            return SimpleNamespace(out="Volume: 0.50", code=0)
+
+    async def slow_sleep(_s):
+        await asyncio.sleep(10)
+
+    timer = SleepTimer(Runner(), sleep=slow_sleep)
+    await timer.start(10)
+
+    async def ask_to_cancel():
+        await timer.cancel()
+        await asyncio.sleep(10)  # if the cancellation below were swallowed this line would run to completion
+
+    outer = asyncio.create_task(ask_to_cancel())
+    await asyncio.sleep(0)
+    outer.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await outer
+    assert outer.cancelled()

@@ -74,8 +74,5 @@ class SleepTimer:
         if not self.running():
             return False
         self._task.cancel()
-        try:
-            await self._task
-        except asyncio.CancelledError:
-            pass
+        await asyncio.gather(self._task, return_exceptions=True)  # the timer's own cancellation is absorbed; the caller's still arrives
         return True

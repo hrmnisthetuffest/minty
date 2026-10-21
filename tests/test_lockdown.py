@@ -98,3 +98,14 @@ def test_the_api_engages_and_releases_with_the_token(tmp_path):
     assert client.post("/lockdown", headers=auth).json()["active"] is True
     assert ctx.services["lockdown"].active
     assert client.post("/lockdown/release", headers=auth).json()["active"] is False
+
+
+def test_a_state_file_that_cannot_be_read_keeps_lockdown_on_rather_than_silently_lifting_it(tmp_path):
+    path = tmp_path / "lockdown.json"
+    assert not Lockdown(path).active  # no file: never engaged
+    path.write_text("{this is not json")
+    broken = Lockdown(path)
+    assert broken.active and "unreadable" in broken.reason  # fail closed: something damaged the file
+    assert broken.release("terminal") is True and not Lockdown(path).active  # and an explicit release still clears it
+    path.write_text('{"active": false, "reason": "", "since": 0}')
+    assert not Lockdown(path).active  # a healthy file that says "off" means off
