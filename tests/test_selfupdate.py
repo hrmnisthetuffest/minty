@@ -385,3 +385,33 @@ def test_the_release_script_checks_the_tag_against_the_version_and_the_changelog
     assert any("does not match" in p for p in module.problems(root, "v9.9.9"))
     assert any("not a version" in p for p in module.problems(root, "nightly"))
     assert module.problems(root, f"v{__version__}", ci=True) == []  # in CI the tag and the tree exist already
+
+
+def test_the_started_version_must_be_exactly_the_release_not_one_that_merely_contains_it(tmp_path):
+    from minty_core.selfupdate import Release, apply_update
+
+    calls = []
+
+    def runner(cmd, cwd):
+        calls.append(cmd)
+        if cmd[:2] == ["git", "remote"]:
+            return 0, "https://github.com/owner/minty.git"
+        if cmd[:3] == ["git", "status", "--porcelain"]:
+            return 0, ""
+        if cmd[:2] == ["git", "rev-parse"] and "--verify" in cmd:
+            return 0, "abc"
+        if cmd[:2] == ["git", "merge-base"]:
+            return 0, ""
+        if "--version" in cmd:
+            return 0, "Minty 1.0.12"  # a different version that happens to start with the release's number
+        return 0, "deadbeef0000"
+
+    (tmp_path / ".git").mkdir()
+    import minty_core.selfupdate as su
+    real = su.prepare
+    su.prepare = lambda root, config, run: {"commit": "deadbeef0000"}
+    try:
+        result = apply_update(tmp_path, tmp_path / "cfg", Release("v1.0.1"), "owner/minty", runner=runner)
+    finally:
+        su.prepare = real
+    assert result.ok is False and result.rolled_back is True

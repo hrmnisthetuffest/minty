@@ -215,7 +215,7 @@ def apply_update(root: Path, config_dir: Path, release: Release, repo: str, runn
             return roll_back(f"Installing the dependencies failed ({out.strip()[-160:]}).")
     code, out = runner([python, "-m", "minty_core", "--version"], root / "src")
     steps.append("checked")
-    if code != 0 or release.version not in out:
+    if code != 0 or not re.search(rf"(?<![\w.]){re.escape(release.version)}(?![\w.])", out):  # exactly that version, not 1.0.12 for 1.0.1
         return roll_back(f"The new version did not start ({out.strip()[-160:] or 'no output'}).")
     return UpdateResult(True, f"Updated to {tag}. It starts using it the next time Minty restarts.", old=old[:9], new=tag, steps=steps)
 
