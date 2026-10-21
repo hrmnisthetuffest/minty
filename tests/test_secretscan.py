@@ -124,3 +124,56 @@ def test_dedupe_matches_the_simple_rule_and_stays_fast_with_many_findings():
     started = time.perf_counter()
     assert len(_dedupe(many)) == 30000
     assert time.perf_counter() - started < 1.0
+
+
+# ---- personal data masking: same answers as the original regex, without the quadratic cost on long input -----------
+_OLD_EMAIL = __import__("re").compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+
+
+def _old_pii(text):
+    import re
+
+    from minty_core import secretscan as ss
+
+    found = []
+    for kind, rx in (("email", _OLD_EMAIL), ("pan", ss._PAN)):
+        found += [ss.Finding(kind, kind, m.start(), m.end(), "pii") for m in rx.finditer(text)]
+    for m in ss._CARD.finditer(text):
+        if ss.luhn_ok(m.group(0)):
+            found.append(ss.Finding("card", "card", m.start(), m.end(), "pii"))
+    for m in ss._AADHAAR.finditer(text):
+        if ss.verhoeff_ok(re.sub(r"\D", "", m.group(0))):
+            found.append(ss.Finding("aadhaar", "aadhaar", m.start(), m.end(), "pii"))
+    found += [ss.Finding("phone", "phone", m.start(), m.end(), "pii") for m in ss._PHONE.finditer(text)]
+    priority = {"card": 0, "aadhaar": 1, "email": 2, "pan": 3, "phone": 4}
+    out = []
+    for f in sorted(found, key=lambda f: (priority[f.kind], f.start)):
+        if not any(f.start < o.end and o.start < f.end for o in out):
+            out.append(f)
+    return sorted(out, key=lambda f: f.start)
+
+
+def test_the_personal_data_finder_agrees_with_the_original_on_ordinary_text():
+    import random
+
+    rng = random.Random(9)
+    pieces = ["alex@example.com", "a.b+c@mail.co.uk", "x@y", "@", "@@", "me@", "98765 43210", "+91 98765-43210", "4111 1111 1111 1111",
+              "2345 6789 0123", "ABCDE1234F", "hello", " ", ", ", ".", "-", "12", "user_name@sub.domain.org.", "a@b.c", "@x.com", "q@w.ee"]
+    for _ in range(3000):
+        text = "".join(rng.choice(pieces) for _ in range(rng.randint(1, 14)))
+        assert pii_findings(text) == _old_pii(text), text
+
+
+def test_masking_long_input_is_fast():
+    import random
+    import string
+    import time
+
+    rng = random.Random(1)
+    cases = {"letters": "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(300_000)), "digits": "1" * 300_000,
+             "emails": "a@b.co " * 50_000, "phones": "98765 43210 " * 25_000, "dots": "a." * 150_000}
+    for name, text in cases.items():
+        started = time.perf_counter()
+        mask_pii(text)
+        assert time.perf_counter() - started < 3.0, name
+    assert mask_pii("write to a@b.co or 98765 43210 now") == "write to [email] or [phone] now"

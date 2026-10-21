@@ -99,22 +99,8 @@ class SecretScanner:
 
 def _dedupe(found: list[Finding]) -> list[Finding]:
     """Overlapping findings collapse to the most serious, longest one."""
-    from bisect import bisect_left, insort
-
     rank = {"alarm": 0, "secret": 1, "pii": 2}
-    starts: list[int] = []  # what is kept so far, as non-overlapping intervals sorted by start, so a clash is found by looking at two neighbours
-    kept: dict[int, Finding] = {}
-    for f in sorted(found, key=lambda f: (rank.get(f.severity, 3), -(f.end - f.start), f.start)):
-        i = bisect_left(starts, f.start)
-        before = kept[starts[i - 1]] if i > 0 else None
-        after = kept[starts[i]] if i < len(starts) else None
-        if (before is not None and before.end > f.start) or (after is not None and after.start < f.end):
-            continue
-        if f.start in kept:  # two empty or identical-start intervals cannot both be kept
-            continue
-        insort(starts, f.start)
-        kept[f.start] = f
-    return [kept[s] for s in starts]
+    return _collapse(found, lambda f: (rank.get(f.severity, 3), -(f.end - f.start), f.start))
 
 
 # ---- honeytokens ------------------------------------------------------------------------------------------
@@ -184,18 +170,50 @@ def luhn_ok(number: str) -> bool:
     return total % 10 == 0
 
 
-_EMAIL = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+_EMAIL_LOCAL = re.compile(r"[A-Za-z0-9._%+\-]+$")
+_EMAIL_DOMAIN = re.compile(r"[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
 _PHONE = re.compile(r"(?<![\d.])(?:\+91[\s\-]?|0)?[6-9]\d{4}[\s\-]?\d{5}(?![\d])")
 _CARD = re.compile(r"(?<![\d.])(?:\d[ \-]?){13,19}(?![\d])")
 _AADHAAR = re.compile(r"(?<![\d.])[2-9]\d{3}[\s\-]?\d{4}[\s\-]?\d{4}(?![\d])")
 _PAN = re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")
+_LOCAL_MAX, _DOMAIN_MAX = 64, 255  # the longest local part and domain an address can have
+
+
+def _emails(text: str):
+    """Addresses as (start, end), found from each "@" outwards: one regex over the whole text re-scans every long run of letters
+    from every position, which is quadratic and freezes on a big page."""
+    last_end = 0
+    for at in (m.start() for m in re.finditer("@", text)):
+        if at < last_end:
+            continue
+        local = _EMAIL_LOCAL.search(text, max(last_end, at - _LOCAL_MAX), at)
+        domain = _EMAIL_DOMAIN.match(text, at + 1, at + 1 + _DOMAIN_MAX)
+        if local is not None and domain is not None:
+            yield local.start(), domain.end()
+            last_end = domain.end()
+
+
+def _collapse(found: list[Finding], order) -> list[Finding]:
+    """Keep the best of overlapping findings (best = first in `order`), found by looking at neighbours, not at every kept one."""
+    from bisect import bisect_left, insort
+
+    starts: list[int] = []
+    kept: dict[int, Finding] = {}
+    for f in sorted(found, key=order):
+        i = bisect_left(starts, f.start)
+        before = kept[starts[i - 1]] if i > 0 else None
+        after = kept[starts[i]] if i < len(starts) else None
+        if (before is not None and before.end > f.start) or (after is not None and after.start < f.end) or f.start in kept:
+            continue
+        insort(starts, f.start)
+        kept[f.start] = f
+    return [kept[s] for s in starts]
 
 
 def pii_findings(text: str) -> list[Finding]:
     text = str(text or "")
-    found: list[Finding] = []
-    for kind, rx in (("email", _EMAIL), ("pan", _PAN)):
-        found += [Finding(kind, kind, m.start(), m.end(), "pii") for m in rx.finditer(text)]
+    found: list[Finding] = [Finding("email", "email", a, b, "pii") for a, b in _emails(text)]
+    found += [Finding("pan", "pan", m.start(), m.end(), "pii") for m in _PAN.finditer(text)]
     for m in _CARD.finditer(text):
         if luhn_ok(m.group(0)):
             found.append(Finding("card", "card", m.start(), m.end(), "pii"))
@@ -204,15 +222,13 @@ def pii_findings(text: str) -> list[Finding]:
             found.append(Finding("aadhaar", "aadhaar", m.start(), m.end(), "pii"))
     found += [Finding("phone", "phone", m.start(), m.end(), "pii") for m in _PHONE.finditer(text)]
     priority = {"card": 0, "aadhaar": 1, "email": 2, "pan": 3, "phone": 4}
-    out: list[Finding] = []
-    for f in sorted(found, key=lambda f: (priority[f.kind], f.start)):
-        if not any(f.start < o.end and o.start < f.end for o in out):
-            out.append(f)
-    return sorted(out, key=lambda f: f.start)
+    return _collapse(found, lambda f: (priority[f.kind], f.start))
 
 
 def mask_pii(text: str) -> str:
     text = str(text or "")
-    for f in sorted(pii_findings(text), key=lambda f: -f.start):
-        text = text[:f.start] + f"[{f.kind}]" + text[f.end:]
-    return text
+    parts, at = [], 0
+    for f in pii_findings(text):  # ascending and not overlapping
+        parts += [text[at:f.start], f"[{f.kind}]"]
+        at = f.end
+    return "".join(parts) + text[at:]
