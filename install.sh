@@ -7,17 +7,19 @@
 # It makes a private virtual environment in <checkout>/.venv, installs Minty into it, puts a `minty` command in
 # ~/.local/bin and runs `minty onboard`. It never uses sudo and downloads nothing but the Python packages Minty needs;
 # models, voices and optional extras are offered by the setup, one at a time, after asking.
-#   --no-onboard   install only        --help   show this text
+#   --no-onboard   install only        --relink   replace a different `minty` command in ~/.local/bin        --help   show this text
 set -euo pipefail
 
 REPO="${MINTY_REPO:-https://github.com/YOUR-USER/minty.git}"   # set MINTY_REPO, or edit this line after you publish
 HOME_DIR="${MINTY_HOME:-$HOME/.minty}"
 BIN_DIR="${MINTY_BIN:-$HOME/.local/bin}"
 ONBOARD=1
+RELINK=0
 
 for arg in "$@"; do
   case "$arg" in
     --no-onboard) ONBOARD=0 ;;
+    --relink) RELINK=1 ;;
     -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "install.sh: unknown option $arg" >&2; exit 2 ;;
   esac
@@ -62,8 +64,18 @@ say "Installing Minty (this takes a minute)"
 
 # 4. The `minty` command
 mkdir -p "$BIN_DIR"
-[ "$BIN_DIR/minty" -ef "$root/bin/minty" ] || ln -sf "$root/bin/minty" "$BIN_DIR/minty"
-say "Linked $BIN_DIR/minty"
+link="$BIN_DIR/minty"
+if [ -e "$link" ] || [ -L "$link" ]; then
+  if [ "$link" -ef "$root/bin/minty" ]; then
+    say "$link already points here"
+  elif [ "$RELINK" = 1 ]; then
+    ln -sf "$root/bin/minty" "$link"; say "Replaced $link"
+  else
+    say "A \`minty\` command already exists at $link and points somewhere else, so I left it alone. Run this one with $root/bin/minty, or run install.sh --relink to replace it."
+  fi
+else
+  ln -s "$root/bin/minty" "$link"; say "Linked $link"
+fi
 case ":$PATH:" in *":$BIN_DIR:"*) ;; *) say "Add this to your shell profile so \`minty\` is found:  export PATH=\"$BIN_DIR:\$PATH\"" ;; esac
 
 # 5. The guided setup
