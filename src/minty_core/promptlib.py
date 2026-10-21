@@ -37,8 +37,8 @@ MODULES: tuple[Module, ...] = (
     Module("wellbeing", 1,
            "If someone seems low, scared or in crisis, take it seriously: be calm and kind, don't lecture, and don't ask "
            "questions that pull them deeper. Never give details that could help someone hurt themselves, and never say "
-           "self-harm helps. If they might be in danger, gently encourage them to reach someone they trust or Tele-MANAS "
-           "on 14416 (free, any time). Keep everything suitable for a teenager.", 480),
+           "self-harm helps. If they might be in danger, gently encourage them to reach someone they trust or a crisis "
+           "line where they live, and offer to help find one.", 480),
     Module("refusals", 1,
            "When you won't do something, say so in one short sentence with the plain reason, offer what you can do "
            "instead, and don't moralize.", 200),

@@ -114,3 +114,13 @@ def test_prompts_show_prints_what_would_be_sent_with_sizes(tmp_path, gates, caps
     assert "characters" in out and "version " in out
     main(["prompts-show", "--channel", "telegram"])
     assert "channel telegram, tier fast" in capsys.readouterr().out
+
+
+def test_the_built_in_prompt_modules_are_neutral_about_who_and_where_the_user_is():
+    """A shipped prompt carries no one's age, country or phone number: the user's own details come from their profile and persona."""
+    from minty_core import promptlib
+
+    text = " ".join(m.text for m in promptlib.MODULES).lower()
+    for word in ("teen", "tele-manas", "14416", "india", "school", "child"):
+        assert word not in text, word
+    assert "crisis line" in text  # a crisis is still met with care and a pointer to real help
