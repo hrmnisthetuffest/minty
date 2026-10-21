@@ -13,6 +13,7 @@ from minty_core.agentloop import (
 )
 from minty_core.llm.types import LLMError, ToolSpec
 from minty_core.netguard import check_public_url
+from minty_core.tasks import spawn
 from minty_core.plugins.host import Tool
 from minty_core.policy import R0, R1, R2, R3, destinations_in, link_carries_personal_data, link_egress
 from minty_core.webmemory import (
@@ -208,7 +209,7 @@ def register(ctx):
         pw = state["pw"]
         state.update(pw=None, context=None, page=None, items={}, last_sig="", watched=set(), focus=None)
         if pw is not None:
-            asyncio.ensure_future(_stop(pw))
+            spawn(_stop(pw), name="close the browser")
 
     async def _stop(pw) -> None:
         with contextlib.suppress(Exception):

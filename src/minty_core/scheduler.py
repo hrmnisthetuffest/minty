@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
+from minty_core.tasks import spawn
+
 log = logging.getLogger(__name__)
 
 LATE_AFTER = timedelta(minutes=5)
@@ -136,7 +138,7 @@ class Scheduler:
         try:
             out = fn()
             if asyncio.iscoroutine(out):
-                asyncio.ensure_future(out)
+                spawn(out, name=f"scheduled action {name}")
         except Exception:  # noqa: BLE001
             log.exception("scheduled action %r failed", name)
 

@@ -26,6 +26,7 @@ from minty_core import __version__
 from minty_core.audio.cover import CoverCache, tile
 from minty_core.gfx import Graphics, ImageOverlay, cell_pixels, detect
 from minty_core.audio.stable import Typewriter
+from minty_core.tasks import spawn
 from minty_core.timefmt import clock_text as time_text, is_24h
 
 log = logging.getLogger(__name__)
@@ -1086,7 +1087,7 @@ class _KeyReader:
                 continue
             kind, line = result
             if kind == "send":
-                asyncio.ensure_future(self.on_submit(line))
+                spawn(self.on_submit(line), name="typed message")
             elif self.on_action is not None:
                 self.on_action(kind)
         if self.wake is not None:

@@ -17,6 +17,7 @@ from minty_core.audio.types import FRAME_S, Transcription
 from minty_core.llm.types import DeadlineExceeded, LLMError
 from minty_core.policy import is_affirmative  # noqa: F401 (also imported from here)
 from minty_core.text import is_repeat
+from minty_core.tasks import spawn
 from minty_core.trace import NullTracer, turn_scope
 from minty_core.voice.notes import is_stop as is_notes_stop
 from minty_core.voice.turnhold import looks_complete
@@ -58,7 +59,6 @@ class VoicePipeline:
         self.music = music  # MusicWatcher or None
         self.listen_ducker = listen_ducker  # voice.adapt.Ducker or None: turns other apps down while it listens
         self.warm = warm  # async () -> int, or None: opens the connection to the model provider (router.warm_on_wake)
-        self._background: set[asyncio.Task] = set()
         self.on_restart = on_restart  # called after the spoken goodbye when the user asked to restart Minty
         self.live = live  # LiveMode or None
         self._stable = StablePrefix()
@@ -266,9 +266,7 @@ class VoicePipeline:
             await self.audio_in.stop()
 
     def _spawn(self, coro) -> None:
-        task = asyncio.create_task(coro)
-        self._background.add(task)
-        task.add_done_callback(self._background.discard)
+        spawn(coro, name="warm the connection")
 
     async def _warm(self) -> None:
         try:
