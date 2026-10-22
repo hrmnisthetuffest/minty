@@ -214,9 +214,9 @@ def test_the_stage_in_the_title_is_red_and_the_rest_is_not():
     from minty_core.tui import title_text
     t = title_text()
     assert t.plain == f"Minty v{minty_core.__version__}"
-    stage = minty_core.__version__.split("-", 1)[1]
+    stage = minty_core.__version__.partition("-")[2]  # a plain release such as 1.0.1 has no stage to show in red
     reds = [t.plain[s.start:s.end] for s in t.spans if "e5484d" in str(s.style)]
-    assert reds == [stage]
+    assert reds == ([stage] if stage else [])
 
 
 def test_the_bottom_line_is_gone_and_a_clean_self_check_never_shows():
