@@ -517,7 +517,7 @@ when it is good enough.
   the image could not be built in the environment where this was written, so the first build on a machine with Docker is the real test.
 - Tests: `tests/test_profile_bank.py`, `test_profile_store.py`, `test_profile_prompt.py`, `test_profile_api.py`, `test_docker_files.py` and the Profile page in `tests/panel_js_checks.mjs`.
 
-## Unreleased
+## 1.0.1 (2026-10-22)
 
 ### A tougher blank-slate default, and a release flow
 - **Default persona.** The persona Minty ships with is now direct, honest, calm and unflattering, with no one's particular taste in it (no
