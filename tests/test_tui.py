@@ -612,7 +612,8 @@ def test_reduced_motion_changes_the_colour_at_once():
     assert tuple(round(c) for c in m.accent_rgb) == (10, 200, 90)
 
 
-def test_the_red_alpha_never_changes_colour():
+def test_the_red_alpha_never_changes_colour(monkeypatch):
+    monkeypatch.setattr("minty_core.tui.__version__", "1.0.1-alpha.1")  # a plain release has no stage to colour
     m = TuiModel(status=lambda: FULL_STATUS)
     m.covers = AccentCovers((30, 160, 220))
     assert "#e5484d" in ansi_of(m)  # the stage keeps its red (#e5484d) whatever the song's colour is
