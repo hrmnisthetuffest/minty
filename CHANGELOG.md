@@ -564,7 +564,7 @@ when it is good enough.
   - messages told you to run `minty-core ...`, a command the installer does not link: they say `minty ...` now;
   - the wellbeing prompt module no longer mentions a teenager or one country's crisis line.
 
-## Unreleased
+## 1.0.2 (2026-10-22)
 
 - **Plainer wording.** The README, package description and getting-started guide describe Minty generally (Linux, the AI providers you choose) instead of naming distributions or free tiers.
 - **Tests that fit any release.** The version smoke test and the title test no longer assume an `alpha` version; the fake Slack token in the secret-scanner test is built at run time so GitHub's push protection does not flag it.
