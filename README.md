@@ -27,7 +27,7 @@ Talk to it, type to it, or message it from your phone. It runs on free model tie
 Prefer a container? `docker compose up -d --build`, then open http://127.0.0.1:7778 ([Docker guide](docs/docker.md)).
 
 ```bash
-git clone https://github.com/YOUR-USER/minty.git
+git clone https://github.com/hrmnisthetuffest/minty.git
 cd minty
 ./install.sh
 ```

@@ -9,7 +9,7 @@ own desk with a microphone, the normal install (`./install.sh`) is still the bet
 You need Docker with the compose plugin (`docker compose version`).
 
 ```bash
-git clone https://github.com/YOUR-USER/minty.git
+git clone https://github.com/hrmnisthetuffest/minty.git
 cd minty
 docker compose up -d --build
 docker compose run --rm minty minty set-pin           # the panel's login PIN

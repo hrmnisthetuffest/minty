@@ -3,7 +3,7 @@
 ## 1. Install
 
 ```bash
-git clone https://github.com/YOUR-USER/minty.git
+git clone https://github.com/hrmnisthetuffest/minty.git
 cd minty
 ./install.sh
 ```

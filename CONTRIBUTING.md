@@ -6,7 +6,7 @@ Thank you for helping. Minty is an assistant that can act on your computer, so c
 ## Set up
 
 ```bash
-git clone https://github.com/YOUR-USER/minty.git && cd minty
+git clone https://github.com/hrmnisthetuffest/minty.git && cd minty
 python -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/pytest -q
 ```
