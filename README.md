@@ -10,7 +10,7 @@
 ```
 
 **Your voice assistant, on your own computer.**
-Talk to it, type to it, or message it from your phone. It runs on free model tiers, keeps your data local, and asks before it does anything that matters.
+Talk to it, type to it, or message it from your phone. It keeps your data on your machine, works with the AI providers you choose, and asks before it does anything that matters.
 
 [Quick start](#quick-start) · [Docker](docs/docker.md) · [What it does](#what-it-does) · [Safety](#safety-by-design) · [Docs](docs/getting-started.md) · [Contributing](CONTRIBUTING.md)
 
@@ -18,7 +18,7 @@ Talk to it, type to it, or message it from your phone. It runs on free model tie
 
 </div>
 
-> **Alpha.** Minty is built and used daily on Linux (Arch and Linux Mint). Text chat, the panel, Telegram and the tools are the
+> **Alpha.** Minty is built and used daily on Linux. Text chat, the panel, Telegram and the tools are the
 > most tested parts. Voice depends on your microphone, room and CPU. macOS and Windows are untested. Expect rough edges and please
 > report them in the issue tracker.
 
@@ -58,8 +58,8 @@ No installer? Everything it does is `python -m venv .venv && .venv/bin/pip insta
   recognition, Piper or Kokoro voices, or Gemini Live for speech-to-speech.
 - **Answers quickly.** It starts recognising your words during the pause after you speak, ends the turn early on a plainly finished
   sentence, and starts speaking at the first comma of a long answer. `python scripts/trace_report.py` shows where the time goes.
-- **Thinks on free tiers.** A router spreads requests over free providers, watches their limits, falls back when one fails and keeps
-  private conversations off providers that may train on them. Optionally uses your **Claude Code login** as a ladder
+- **Thinks with the provider you choose.** A router spreads requests over the providers you add, free or paid, watches their limits,
+  falls back when one fails and keeps private conversations off providers that may train on them. Optionally uses your **Claude Code login** as a ladder
   (Haiku for most turns, Sonnet for hard ones, Opus only when you ask).
 - **Answers the quick things at once.** The time, the date, sums, percentages, tips, unit conversions, dice, the capital of a country,
   an element's symbol, "how much battery is left" and hundreds of other questions are answered **in under a millisecond with no model**,
@@ -118,4 +118,4 @@ tool group), `tests/`, `scripts/`. New to the code? Start with [CONTRIBUTING.md]
 ## License
 
 Released under the [MIT license](LICENSE). Third-party packages keep their own licenses; optional voice engines (for example
-Piper) have their own terms. Free model tiers belong to their providers and their rules apply.
+Piper) have their own terms. Model providers keep their own terms, and those apply to anything you send them.

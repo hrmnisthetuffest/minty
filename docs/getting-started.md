@@ -8,8 +8,8 @@ cd minty
 ./install.sh
 ```
 
-You need Python 3.10 or newer. On Debian, Ubuntu and Linux Mint: `sudo apt install python3 python3-venv git`. On Arch:
-`sudo pacman -S python git`. The installer creates `.venv` inside the checkout, links `~/.local/bin/minty`, and starts the setup.
+You need Python 3.10 or newer. Install Python, its `venv` module and git with your package manager
+(for example `sudo apt install python3 python3-venv git`, or `sudo pacman -S python git`). The installer creates `.venv` inside the checkout, links `~/.local/bin/minty`, and starts the setup.
 Use `./install.sh --no-onboard` to install without starting the setup.
 
 Doing it by hand:
