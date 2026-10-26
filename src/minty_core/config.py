@@ -740,6 +740,7 @@ class TurnConfig(BaseModel):
     latency_alarm_ms: int = Field(5000, ge=0, le=60000)  # warn when this many turns in a row start slower; 0 = off
     latency_alarm_turns: int = Field(3, ge=1, le=20)
     # Speed-ups that are off until you switch them on (docs/getting-started.md, "Faster replies"):
+    check_claims: bool = True  # "I sent it" with no send behind it is corrected out loud, straight after (claimcheck.py)
     stable_prefix: bool = False  # the notes you change go after everything that stays the same, so providers can reuse the start of the prompt
     lean_prompt: bool = False  # the short wording of the fixed rules, whether or not it passed its comparison; judge by ear
 

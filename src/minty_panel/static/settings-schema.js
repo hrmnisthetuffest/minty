@@ -54,6 +54,7 @@ export const SECTIONS = [
       ["audio", "spec_after_ms", "Start recognising after this much silence (ms)", "number:50", "160 to 2000"],
       ["audio", "early_finish_ms", "End a plainly finished sentence after this much silence (ms)", "number:50", "0 = never; try 600 and judge by ear"],
       ["router", "warm_on_wake", "Warm the connection when the name is heard", "bool", "Opens the link to the model provider early, so the first request does not wait for it. Off until you want it"],
+      ["turn", "check_claims", "Correct a claim that did not happen", "bool", "If an answer says it sent, deleted or installed something and no tool did, a correction is spoken straight after. Uses no model"],
       ["turn", "stable_prefix", "Steady prompt order", "bool", "Puts the notes that change after everything that stays the same, so providers can reuse the start of the prompt"],
       ["turn", "lean_prompt", "Lean prompt", "bool", "The short wording of the fixed rules. Shorter, so slightly faster; judge by ear"],
       ["tts", "parallel", "Sentences made into speech at once", "number:1", "1 = one after the other. 2 or 3 starts the next sentence sooner and uses more of the processor"],

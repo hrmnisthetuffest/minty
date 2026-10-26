@@ -9,6 +9,7 @@ from typing import AsyncIterator, Awaitable, Callable
 
 from minty_core.config import ConfigStore
 from minty_core.agentloop import StuckDetector, fingerprint, trim_old_observations
+from minty_core.claimcheck import correction, unbacked_claims
 from minty_core.toolargs import check_args
 from minty_core.toolbreaker import ToolBreaker
 from minty_core import promptlib
@@ -713,11 +714,18 @@ class Agent:
                     tail = splitter.flush()
                     if tail:
                         yield tail
-                    self.history.append(Message("assistant", "".join(parts), tool_calls=calls, private=turn_private))
-                    self._log("assistant", "".join(parts), turn_private or sensitive)
+                    fix = ""
+                    if not calls and self._store.config.turn.check_claims:
+                        kinds = unbacked_claims("".join(parts), self._changed)
+                        fix = correction(kinds) if kinds else ""
+                    said = "".join(parts) + (f" {fix}" if fix else "")
+                    self.history.append(Message("assistant", said, tool_calls=calls, private=turn_private))
+                    self._log("assistant", said, turn_private or sensitive)
                     if not calls:
+                        if fix:  # already spoken, so it cannot be taken back: say what really happened
+                            yield fix
                         self._trim()
-                        self._after_turn(user_text, "".join(parts))
+                        self._after_turn(user_text, said)
                         return
                     local_texts: list[str] = []
                     stopped = ""
