@@ -114,6 +114,48 @@ async def test_round_limit_yields_fallback(tmp_path):
     assert await speak(agent) == ["I couldn't finish that request."]
 
 
+def _loop_tool():
+    return Tool("t_t", "t", {"type": "object", "properties": {}}, lambda a: "x")
+
+
+async def test_repeating_the_same_call_is_warned_then_stopped(tmp_path):
+    rounds = [[ToolCallEvent(ToolCall(f"c{i}", "t_t", {"q": "same"}))] for i in range(5)]
+    agent, router, host = make_agent(tmp_path, rounds, [_loop_tool()], max_rounds=8)
+    out = await speak(agent)
+    assert len(host.called) == 4  # the 4th identical call is the second trip and ends the turn
+    assert len(router.calls) == 4  # no 5th model call was made
+    assert "going in circles" in out[-1] and "I stopped" in out[-1]
+    warned = [m for m in agent.history if m.role == "tool" and "Do not repeat" in m.content]
+    assert len(warned) == 1 and warned[0].tool_call_id == "c2"  # the first trip is a tool result the model can act on
+    assert agent.history[-1].role == "assistant" and "going in circles" in agent.history[-1].content
+
+
+async def test_a_run_of_failures_trips_the_guard_even_with_different_arguments(tmp_path):
+    rounds = [[ToolCallEvent(ToolCall(f"c{i}", "t_t", {"n": i}))] for i in range(6)]
+    agent, router, host = make_agent(tmp_path, rounds, [_loop_tool()], max_rounds=8)
+
+    async def failing(name, args):
+        host.called.append((name, args))
+        return f"Error: attempt {args['n']} failed"
+
+    host.call = failing
+    out = await speak(agent)
+    assert len(host.called) == 5 and "going in circles" in out[-1]  # 4th failure warns, 5th ends it
+
+
+async def test_different_calls_with_different_results_are_never_a_loop(tmp_path):
+    rounds = [[ToolCallEvent(ToolCall(f"c{i}", "t_t", {"n": i}))] for i in range(4)] + [[TextDelta("All done.")]]
+    agent, router, host = make_agent(tmp_path, rounds, [_loop_tool()], max_rounds=8)
+
+    async def varied(name, args):
+        host.called.append((name, args))
+        return f"result {args['n']}"
+
+    host.call = varied
+    assert await speak(agent) == ["All done."]
+    assert not [m for m in agent.history if "Do not repeat" in (m.content or "")]
+
+
 async def test_history_trim_starts_on_user_message(tmp_path):
     agent, _, _ = make_agent(tmp_path, [[TextDelta(f"r{i}.")] for i in range(5)], max_history=4)
     for i in range(5):

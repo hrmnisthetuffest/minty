@@ -1,4 +1,5 @@
 import asyncio
+import json
 import time
 import contextlib
 import logging
@@ -7,7 +8,7 @@ from dataclasses import replace
 from typing import AsyncIterator, Awaitable, Callable
 
 from minty_core.config import ConfigStore
-from minty_core.agentloop import trim_old_observations
+from minty_core.agentloop import StuckDetector, fingerprint, trim_old_observations
 from minty_core.toolbreaker import ToolBreaker
 from minty_core import promptlib
 from minty_core.claude_pick import parse_pick
@@ -660,6 +661,7 @@ class Agent:
                     self._after_turn(user_text, reply)
                     yield reply
                     return
+                detector, trips = StuckDetector(), 0  # a model going round in circles: warned once, then stopped
                 for _ in range(self._max_rounds):
                     sensitive = (sensitive or self.force_private or self._store.config.safety.privacy_mode
                                  or self._probe_private()
@@ -700,16 +702,38 @@ class Agent:
                         self._after_turn(user_text, "".join(parts))
                         return
                     local_texts: list[str] = []
+                    stopped = ""
                     for call in calls:
+                        if stopped:  # every call the model made gets an answer, so the history stays well formed
+                            self.history.append(Message("tool", "Not run: the request was stopped to break a loop.",
+                                                        tool_call_id=call.id, name=call.name, private=turn_private))
+                            continue
                         result, private = await self._run_call(call)
                         sensitive = sensitive or private
                         turn_private = turn_private or private
                         if isinstance(result, LocalResult):  # for the user only: shown, never kept or sent on
                             local_texts.append(str(result))
                             result = LOCAL_STUB
+                        why = detector.observe(
+                            f"{call.name}:{json.dumps(call.arguments, sort_keys=True, default=str)}",
+                            fingerprint(str(result)), failed=str(result).startswith("Error"))
+                        if why:
+                            trips += 1
+                            if trips == 1:
+                                result = (f"{result}\n[Do not repeat this: {why}. Try something different, "
+                                          "or tell the user what is blocking you.]")
+                            else:
+                                stopped = why
                         self.history.append(
                             Message("tool", result, tool_call_id=call.id, name=call.name, private=turn_private)
                         )
+                    if stopped:
+                        note = f"I'm going in circles on this, so I stopped: {stopped}. Tell me how you'd like to go on."
+                        self.history.append(Message("assistant", note, private=turn_private))
+                        self._log("assistant", note, turn_private)
+                        self._trim()
+                        yield note
+                        return
                     if local_texts:
                         yield "\n".join(local_texts)
                         self.history.append(Message("assistant", LOCAL_STUB, private=True))

@@ -568,3 +568,7 @@ when it is good enough.
 
 - **Plainer wording.** The README, package description and getting-started guide describe Minty generally (Linux, the AI providers you choose) instead of naming distributions or free tiers.
 - **Tests that fit any release.** The version smoke test and the title test no longer assume an `alpha` version; the fake Slack token in the secret-scanner test is built at run time so GitHub's push protection does not flag it.
+
+## Unreleased
+
+- **A loop guard in the conversation.** If the model repeats the same call with the same result, swaps between two calls with nothing changing, or fails four calls in a row, it is told once not to repeat it; a second trip ends the turn with an honest message instead of spending every round. The planner loop uses the same detector.

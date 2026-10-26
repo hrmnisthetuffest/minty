@@ -31,6 +31,7 @@ MAX_CHECKPOINTS = 8
 CHECKPOINT_STEPS = 12  # model turns for one checkpoint, per attempt
 STUCK_REPEATS = 3  # the same action on the same page this many times in a row
 STUCK_NO_NEWS = 8  # this many steps without the world looking any different
+STUCK_FAILS = 4  # this many failed calls in a row, even when each one is a different call
 MAX_REPLANS = 1  # per job
 MAX_FAILED_CHECKS = 6  # per job: after this many failed verifications, stop and ask
 FAST_PATH_WORDS = 18
@@ -212,18 +213,25 @@ def fingerprint(text: str) -> str:
 
 
 class StuckDetector:
-    def __init__(self, repeats: int = STUCK_REPEATS, no_news: int = STUCK_NO_NEWS):
-        self._repeats, self._no_news = repeats, no_news
+    """Spots going round in circles from outside: the same action with the same result again and again, two actions taking
+    turns with nothing changing (A, B, A, B), a long run of failures, or a world that stops looking different."""
+
+    def __init__(self, repeats: int = STUCK_REPEATS, no_news: int = STUCK_NO_NEWS, fails: int = STUCK_FAILS):
+        self._repeats, self._no_news, self._fails = repeats, no_news, fails
         self._last: tuple[str, str] | None = None
         self._streak = 0
         self._seen: set[str] = set()
         self._since_new = 0
+        self._recent: list[tuple[str, str]] = []
+        self._failed_run = 0
 
-    def observe(self, action: str, observation_fp: str) -> str:
+    def observe(self, action: str, observation_fp: str, failed: bool = False) -> str:
         """Returns a reason when the job is going round in circles, else ''."""
         key = (action, observation_fp)
         self._streak = self._streak + 1 if key == self._last else 1
         self._last = key
+        self._recent = (self._recent + [key])[-4:]
+        self._failed_run = self._failed_run + 1 if failed else 0
         if observation_fp in self._seen:
             self._since_new += 1
         else:
@@ -231,9 +239,17 @@ class StuckDetector:
             self._since_new = 0
         if self._streak >= self._repeats:
             return f"the same action ({action.split(':', 1)[0]}) had no effect {self._streak} times in a row"
+        a, b, c, d = (self._recent + [None] * 4)[:4] if len(self._recent) == 4 else (None,) * 4
+        if a is not None and a == c and b == d and a != b:  # the same two actions with the same two results, twice over
+            return f"it is going back and forth between {a[0].split(':', 1)[0]} and {b[0].split(':', 1)[0]} and nothing changes"
+        if self._failed_run >= self._fails:
+            return f"calls have failed {self._failed_run} times in a row"
         if self._since_new >= self._no_news:
             return f"nothing new appeared in the last {self._since_new} steps"
         return ""
+
+    def failed_run(self) -> int:
+        return self._failed_run
 
 
 @dataclass
@@ -503,7 +519,7 @@ class AgentLoop:
                 result = await env.call(call.name, args)
                 messages.append(Message("tool", result, tool_call_id=call.id, name=call.name))
                 if why := detector.observe(f"{call.name}:{json.dumps(args, sort_keys=True, default=str)}",
-                                           fingerprint(result)):
+                                           fingerprint(result), failed=str(result).startswith("Error")):
                     out.stuck = why
                     return out
         out.claim = ""  # ran out of steps for this checkpoint; verification will say what is missing

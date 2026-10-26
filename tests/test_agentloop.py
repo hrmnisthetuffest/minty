@@ -101,6 +101,23 @@ def test_plan_is_found_inside_prose_and_fences():
     assert [c.goal for c in plan.checkpoints] == ["open", "read"]
 
 
+def test_stuck_detector_catches_two_actions_taking_turns():
+    d = StuckDetector()
+    assert [d.observe(a, "same") for a in ("read:a", "write:b", "read:a")] == ["", "", ""]
+    assert "back and forth" in d.observe("write:b", "same")
+    d = StuckDetector()  # the same alternation while the world keeps changing is progress, not a loop
+    assert [d.observe(a, f"page{i}") for i, a in enumerate(("read:a", "write:b") * 4)] == [""] * 8
+
+
+def test_stuck_detector_counts_failures_in_a_row_even_when_the_calls_differ():
+    d = StuckDetector()
+    assert [d.observe(f"tool{i}:x", f"err{i}", failed=True) for i in range(3)] == ["", "", ""]
+    assert "failed 4 times in a row" in d.observe("tool3:x", "err3", failed=True)
+    d = StuckDetector()  # one success in between starts the count again
+    seen = [d.observe(f"t{i}", f"r{i}", failed=(i != 2)) for i in range(6)]
+    assert seen == [""] * 6
+
+
 def test_stuck_detector():
     d = StuckDetector(repeats=3, no_news=6)
     assert d.observe("click:a", "p1") == "" and d.observe("click:a", "p1") == ""
