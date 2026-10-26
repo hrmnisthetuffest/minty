@@ -9,6 +9,7 @@ from typing import AsyncIterator, Awaitable, Callable
 
 from minty_core.config import ConfigStore
 from minty_core.agentloop import StuckDetector, fingerprint, trim_old_observations
+from minty_core.toolargs import check_args
 from minty_core.toolbreaker import ToolBreaker
 from minty_core import promptlib
 from minty_core.claude_pick import parse_pick
@@ -395,6 +396,10 @@ class Agent:
             return self.toolkits.need(str(asked or ""), wanted_for), False
         tool = self._host.get_tool(call.name)
         approval_id = None
+        if tool is not None:  # a call that cannot work never reaches the safety gate, the user or the tool
+            call.arguments, problem = check_args(tool, call.arguments)
+            if problem:
+                return problem, False
         if tool is not None and self.safety is not None:
             blocked = self.safety.precheck(call.name, call.arguments, tool)
             if blocked:

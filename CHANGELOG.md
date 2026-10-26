@@ -572,3 +572,4 @@ when it is good enough.
 ## Unreleased
 
 - **A loop guard in the conversation.** If the model repeats the same call with the same result, swaps between two calls with nothing changing, or fails four calls in a row, it is told once not to repeat it; a second trip ends the turn with an honest message instead of spending every round. The planner loop uses the same detector.
+- **Tool calls are checked before they run.** Missing required arguments, wrong types and values outside a tool's allowed list come back to the model as an `Error:` it can fix in one more try; a number or true/false written as text is repaired. A malformed call never asks you to approve anything and never reaches the tool, and repeated bad calls count toward the loop guard.
