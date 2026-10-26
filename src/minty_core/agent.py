@@ -200,6 +200,7 @@ class Agent:
         self.safety = None  # safety.SafetyKit: checks that run before the gate and can only block
         self.provenance = None  # provenance.Provenance: what untrusted content this request read
         self.receipts = None  # receipts.ReceiptStore: every change, with why
+        self._changed: list[str] = []  # what this turn has already changed (a send, a delete), for an interrupted answer
         self.on_reset: list[Callable[[], None]] = []  # called when the conversation is started over
         # (text) -> a fixed reply or None: asked before any model call (the coach's safety gate); a reply ends the turn
         self.input_gates: list[Callable[[str], str | None]] = []
@@ -447,9 +448,22 @@ class Agent:
             failed = result.startswith("Error")
             self._receipt(tool, call, "failed" if failed else "ok", approval_id,
                           detail=result[:160] if failed else standing_note)
+            if not failed and self._changes_something(tool, call):
+                self._changed.append(self._what(call))
         if tool is not None and tool.local_only and not result.startswith("Error"):
             return LocalResult(result), True
         return result, bool(tool is not None and tool.sensitive)
+
+    @staticmethod
+    def _what(call: ToolCall) -> str:
+        args = call.arguments if isinstance(call.arguments, dict) else {}
+        shown = ", ".join(f"{k} {str(v)[:40]}" for k, v in list(args.items())[:3])
+        return call.name.replace("_", " ") + (f" with {shown}" if shown else "")
+
+    @staticmethod
+    def _changes_something(tool, call: ToolCall) -> bool:
+        from minty_core.policy import classify
+        return classify(tool, call.arguments if isinstance(call.arguments, dict) else {}) >= 1
 
     def _receipt(self, tool, call: ToolCall, outcome: str, approval_id: int | None = None, detail: str = "") -> None:
         """A receipt for anything that changes something (class 1 and up); reads leave none."""
@@ -460,9 +474,7 @@ class Agent:
             risk = classify(tool, call.arguments if isinstance(call.arguments, dict) else {})
             if risk < 1:
                 return
-            args = call.arguments if isinstance(call.arguments, dict) else {}
-            shown = ", ".join(f"{k} {str(v)[:40]}" for k, v in list(args.items())[:3])
-            summary = call.name.replace("_", " ") + (f" with {shown}" if shown else "")
+            summary = self._what(call)
             request = next((m.content for m in reversed(self.history) if m.role == "user"), "")
             self.receipts.record(call.name, risk, summary, request=" ".join(request.split()), approval_id=approval_id,
                                  outcome=outcome, detail=detail, turn_id=current_turn_id() or "")
@@ -637,6 +649,7 @@ class Agent:
                     yield fixed
                     return
             start = len(self.history)
+            self._changed = []
             self._chat_turn, self._turn_start = chat, start  # a Telegram chat turn is kept longer (_mark_chat)
             turn_private = False
             self.history.append(Message("user", user_text))
@@ -749,5 +762,11 @@ class Agent:
                 yield "I couldn't finish that request."
                 self._trim()
             except BaseException:
+                done = list(self._changed)
                 del self.history[start:]
+                if done:  # the answer is gone but the changes are not: the next turn must know they happened
+                    self.history.append(Message("user", user_text, private=turn_private))
+                    self.history.append(Message(
+                        "assistant", "(That answer was cut off. Before it stopped I had already done: "
+                        + "; ".join(done[:5]) + ".)", private=turn_private))
                 raise
