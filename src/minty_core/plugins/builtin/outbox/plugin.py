@@ -3,6 +3,7 @@ import logging
 import smtplib
 import socket
 import ssl
+import time
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
@@ -17,6 +18,7 @@ SMTP_TIMEOUT_S = 30
 NOT_SENT = (smtplib.SMTPAuthenticationError, smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused,
             smtplib.SMTPConnectError, smtplib.SMTPNotSupportedError, ConnectionRefusedError, socket.gaierror,
             ssl.SSLError)
+DAY_S = 86400
 DEFAULT_SIGNATURE = "(Sent automatically by Minty, my assistant.)"
 
 
@@ -211,6 +213,26 @@ def register(ctx):
         if store.get(int(ident or 0)) is None:
             return f"No outbox item {ident}."
         return f"Discarded outbox item {ident}." if store.discard(int(ident)) else f"Outbox item {ident} cannot be discarded now."
+
+    def attention() -> list:
+        """What in the outbox needs the user: a message that may not have gone, one that failed, a draft left waiting."""
+        from minty_core.attention import Loop
+
+        now, out = time.time(), []
+        for item in store.recent(30):
+            to = ", ".join(item.recipients)
+            if item.status == outbox.UNKNOWN:
+                out.append(Loop(f"outbox:{item.id}:unknown", "outbox", f"The e-mail to {to} may not have gone out. Check "
+                                f"your Sent folder, then discard outbox item {item.id} or ask me to send it.", item.updated, "today"))
+            elif item.status == outbox.FAILED:
+                out.append(Loop(f"outbox:{item.id}:failed", "outbox", f"The e-mail to {to} was not sent ({item.error}). "
+                                f"Say send outbox item {item.id} to try again.", item.updated, "today"))
+            elif item.status == outbox.DRAFTED and now - item.created > DAY_S:
+                out.append(Loop(f"outbox:{item.id}:waiting", "outbox",
+                                f"The draft to {to} ('{item.subject[:50]}') is still waiting for you to decide.", item.created, "later"))
+        return out
+
+    ctx.services["outbox_attention"] = attention
 
     s, i = {"type": "string"}, {"type": "integer"}
     return [

@@ -32,6 +32,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "missions": (("missions",), "hand over a whole goal, then check on it, answer it or resume it",
                  "mission missions goal objective delegate handle ownership autonomously unattended overnight resume "
                  "blocked proof report accomplished"),
+    "attention": (("attention",), "what needs the user: blocked missions, overdue items, follow-ups, dismiss or snooze them",
+                  "attention pending waiting overdue outstanding unfinished loose open items needs dismiss snooze nag "
+                  "forgetting whats"),
     "terminal": (("shell",), "run a command in the terminal (always asked first, except a few read-only ones)",
                  "terminal shell command commands run execute bash cli console script ls pwd git status log diff "
                  "directory uptime disk whoami hostname uname"),

@@ -1,0 +1,3 @@
+name = "attention"
+description = "What needs you: blocked missions, e-mails that may not have gone, overdue items and follow-ups. Said rarely, never twice for the same thing, and you can dismiss or snooze any of it."
+default_enabled = true

@@ -11,6 +11,9 @@ apis_register                      2 visible
 apis_search_catalog                0 read
 apis_send                          2 visible  +args
 apis_unregister                    2 visible
+attention_dismiss                  1 change
+attention_review                   0 read
+attention_snooze                   1 change
 briefing_now                       0 read     sensitive
 browser_back                       0 read
 browser_click                      0 read     +args

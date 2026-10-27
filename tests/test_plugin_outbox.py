@@ -225,3 +225,27 @@ async def test_a_send_that_never_went_through_the_safety_check_is_refused(tmp_pa
         await host.call("outbox_draft", {"reply_to": "8", "body": "and another"})
         assert "safety check" in await host.call("outbox_send", {"id": 2})  # the first check does not cover the next
         assert len(smtp.messages) == 1
+
+
+async def test_outbox_trouble_is_offered_to_the_attention_list(tmp_path):
+    async with FakeSMTP(drop_after_data=True) as smtp:
+        host, _ = build(tmp_path, smtp.port)
+        await host.call("outbox_draft", {"reply_to": "7", "body": "ok"})
+        await gated(host, 1)  # the connection drops: unknown
+        await host.call("outbox_draft", {"reply_to": "8", "body": "a stranger's draft"})  # waiting for a decision
+        loops = {l.key: l for l in host._services["outbox_attention"]()}
+        assert set(loops) == {"outbox:1:unknown"}  # a draft is not nagged about on its first day
+        assert "mum@home.in" in loops["outbox:1:unknown"].text and "Sent folder" in loops["outbox:1:unknown"].text
+        assert loops["outbox:1:unknown"].urgency == "today"
+
+
+async def test_a_draft_left_waiting_for_a_day_is_offered_as_a_loop(tmp_path):
+    host, _ = build(tmp_path, 1)
+    await host.call("outbox_draft", {"reply_to": "8", "body": "a stranger's draft"})
+    import sqlite3, time
+    db = sqlite3.connect(tmp_path / "outbox.sqlite")
+    db.execute("UPDATE outbox SET created=?, updated=?", (time.time() - 2 * 86400,) * 2)
+    db.commit()
+    db.close()
+    loops = host._services["outbox_attention"]()
+    assert [l.key for l in loops] == ["outbox:1:waiting"] and loops[0].urgency == "later"

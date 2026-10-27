@@ -808,6 +808,20 @@ async def _heartbeat_loop(ctx, directory: Path) -> None:
         await asyncio.sleep(60)
 
 
+async def _attention_loop(ctx, *, first_s: float = 120.0, every_s: float = 600.0) -> None:
+    """Every ten minutes, look for things that need the user (a blocked mission, an e-mail that may not have gone, an overdue
+    follow-up). What is said goes through the scheduler's own gate, so night hours and the hourly limit still apply."""
+    await asyncio.sleep(first_s)
+    while True:
+        att = ctx.services.get("attention")
+        if att is not None and ctx.store.config.proactive.attention:
+            try:
+                await asyncio.to_thread(att.tick)
+            except Exception:  # noqa: BLE001 — a look that fails is tried again next time
+                log.warning("attention check failed", exc_info=True)
+        await asyncio.sleep(every_s)
+
+
 async def _leak_loop(ctx, directory: Path) -> None:
     """Every five minutes: memory, open files, threads, database logs. A growth trend is said once a day."""
     from minty_core import leakguard
@@ -1219,6 +1233,8 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
     update_task.add_done_callback(lambda t: _log_task_failure(t, "update check"))
     heart_task = asyncio.create_task(_heartbeat_loop(ctx, directory))
     heart_task.add_done_callback(lambda t: _log_task_failure(t, "heartbeat"))
+    attention_task = asyncio.create_task(_attention_loop(ctx))
+    attention_task.add_done_callback(lambda t: _log_task_failure(t, "attention"))
     maintain_task = asyncio.create_task(_maintenance_loop(ctx, directory))
     maintain_task.add_done_callback(lambda t: _log_task_failure(t, "maintenance"))
     from minty_core.loopwatch import watch as watch_loop
@@ -1276,13 +1292,14 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
             feed_task.cancel()
         maintain_task.cancel()
         heart_task.cancel()
+        attention_task.cancel()
         power_task.cancel()
         leak_task.cancel()
         schedule_task.cancel()
         loop_task.cancel()
         checks_task.cancel()
         await asyncio.gather(compact_task, telegram_task, health_task, coach_task, finance_task, life_task,
-                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, power_task, leak_task, schedule_task,
+                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, power_task, leak_task, schedule_task,
                              loop_task, checks_task, return_exceptions=True)
         if tui_task is not None:
             tui_task.cancel()

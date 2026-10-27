@@ -34,6 +34,18 @@ On by default: yes.
 | `apis_register` | Register a web API by base URL so it can be called. Needs confirmation. Keys are never passed here: the user sets them separately. | asks first |
 | `apis_unregister` | Remove a registered API and its stored key. Needs confirmation. | asks first |
 
+## attention
+
+What needs you: blocked missions, e-mails that may not have gone, overdue items and follow-ups. Said rarely, never twice for the same thing, and you can dismiss or snooze any of it.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `attention_review` | What needs the user right now: blocked missions, e-mails that may not have gone, overdue items, follow-ups due. Each has a key for dismiss or snooze. |  |
+| `attention_dismiss` | Stop mentioning an item from the attention list, by its key. | risk varies |
+| `attention_snooze` | Stop mentioning an item for some hours (default 24). | risk varies |
+
 ## briefing
 
 A short spoken brief of your day: weather, reminders, homework, mail. Said by itself each morning (if you allow it) or when you ask.

@@ -690,6 +690,7 @@ class ProactiveConfig(BaseModel):
     brief: bool = True  # a short morning brief
     brief_time: str = "07:00"
     due_nudges: bool = True  # homework and notices that are due
+    attention: bool = True  # things that need you (a blocked mission, an e-mail that may not have gone, an overdue follow-up)
     night_from: str = "22:00"  # nothing spoken on its own between these (held, shown on the display)
     night_to: str = "07:00"
     max_per_hour: int = Field(4, ge=1, le=60)
