@@ -225,7 +225,9 @@ class JobManager:
                 job.verdict, job.status = verdict.verdict, "done" if verdict.ok else "failed"
                 job.summary = verdict.sentence + (f" Its note: {parsed.summary[:160]}" if parsed.summary else "")
                 return
-        except Exception as e:  # could not even start (binary missing, bad cwd)
+        except FileNotFoundError:  # the agent's program is not on this computer
+            job.status, job.summary = "failed", f"{job.agent.replace('_', ' ')} is not installed on this computer."
+        except Exception as e:  # could not even start (bad folder ...)
             job.status, job.summary = "failed", f"{type(e).__name__}: {e}"
         finally:
             job.finished = time.time()
@@ -323,6 +325,18 @@ class JobManager:
             "stopped": f"Stopped the {job.agent} job on {job.project}.",
         }
         self._notify(messages.get(job.status, who))
+
+    async def wait(self, job_id: int) -> str:
+        """Block until the job has finished and return its checked status. If the waiter is cancelled (a mission was
+        stopped) the agent is stopped too: nothing keeps working for someone who stopped listening."""
+        task = self._tasks.get(job_id)
+        try:
+            if task is not None:
+                await asyncio.shield(task)
+        except asyncio.CancelledError:
+            await self.stop(job_id)
+            raise
+        return self.status(job_id)
 
     def status(self, job_id: int | None = None) -> str:
         if job_id is not None:

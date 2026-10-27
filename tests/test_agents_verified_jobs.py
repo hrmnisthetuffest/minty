@@ -207,3 +207,35 @@ async def test_a_corrupt_store_is_ignored(tmp_path):
     store.write_text("{not json")
     mgr, _, _, _ = make(tmp_path, store_path=store)
     assert mgr.status() == "No jobs yet."
+
+
+async def test_waiting_for_a_job_returns_its_checked_status(tmp_path):
+    mgr, _, _, _ = make(tmp_path)
+    job = await mgr.start("fake", "p", WRITE)
+    text = await mgr.wait(job.id)
+    assert job.status == "done" and "(verified)" in text and "1 file changed" in text
+
+
+async def test_cancelling_a_wait_stops_the_agent_it_was_waiting_for(tmp_path):
+    mgr, _, _, _ = make(tmp_path)
+    job = await mgr.start("fake", "p", "import time; time.sleep(30)")
+    waiter = asyncio.create_task(mgr.wait(job.id))
+    await asyncio.sleep(0.3)
+    waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+    await asyncio.wait_for(mgr._tasks[job.id], 10)
+    assert job.status == "stopped"
+
+
+async def test_an_agent_that_is_not_installed_says_so_plainly(tmp_path):
+    class Missing(Coder):
+        binary = "definitely-not-installed-xyz"
+
+        def build(self, project, prompt, session_id, readonly=False):
+            return Invocation(["definitely-not-installed-xyz", "-p", prompt], project)
+
+    mgr, heard, _, _ = make(tmp_path, adapter=Missing())
+    job = await run(mgr, WRITE)
+    assert job.status == "failed" and "not installed" in job.summary and "Errno" not in job.summary
+    assert "not installed" in heard[0]

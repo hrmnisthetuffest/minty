@@ -9,8 +9,9 @@ def host(tmp_path, **settings):
     return make_host(tmp_path, plugins={"agents": {"enabled": True, "root": str(root), **settings}})
 
 
-def test_disabled_by_default(tmp_path):
-    assert make_host(tmp_path).get_tool("agents_start_task") is None
+def test_on_by_default_but_every_start_asks_first(tmp_path):
+    tool = make_host(tmp_path).get_tool("agents_start_task")
+    assert tool is not None and tool.risky is True
 
 
 def test_starting_tools_are_risky_and_reads_are_not(tmp_path):
@@ -138,3 +139,23 @@ def test_a_check_command_with_shell_syntax_is_ignored(tmp_path, caplog):
 async def test_status_of_a_fresh_install(tmp_path):
     h = host(tmp_path, check_command="pytest -q", max_rounds=3)
     assert await h.call("agents_task_status", {}) == "No jobs yet."
+
+
+async def test_a_mission_can_wait_for_the_coding_job_and_gets_the_checked_result(tmp_path, monkeypatch):
+    h = host(tmp_path)
+    (tmp_path / "projects" / "alpha").mkdir()
+    schema = h.get_tool("agents_start_task").parameters["properties"]
+    assert schema["wait"]["type"] == "boolean"
+    from minty_core.plugins.builtin.agents.jobs import JobManager
+
+    async def start(self, agent, project, prompt, *, create=False, mode="work"):
+        from types import SimpleNamespace as NS
+        return NS(id=7, agent=agent, project=project, status="done", summary="", mode=mode)
+
+    async def wait(self, job_id):
+        return "Job 7 (claude_code on alpha): done (verified) - 1 file changed (a.py) and the tests passed (3 passed)."
+
+    monkeypatch.setattr(JobManager, "start", start)
+    monkeypatch.setattr(JobManager, "wait", wait)
+    out = await h.call("agents_start_task", {"agent": "claude_code", "project": "alpha", "prompt": "fix it", "wait": True})
+    assert "(verified)" in out and "tests passed" in out

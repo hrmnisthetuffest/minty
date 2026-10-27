@@ -1,6 +1,6 @@
 name = "agents"
 description = "Start and watch coding-agent jobs (Claude Code, Hermes, OpenClaw) in your project folder."
-default_enabled = false
+default_enabled = true
 
 [settings.root]
 type = "string"

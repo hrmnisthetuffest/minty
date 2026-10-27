@@ -90,6 +90,8 @@ def register(ctx):
     async def start_task(args):
         job = await manager.start(args["agent"], args["project"], args["prompt"], mode=args.get("mode") or "work")
         mirror(job, args["prompt"])
+        if args.get("wait") is True:  # for a mission: block until the files and tests have been looked at
+            return await manager.wait(job.id)
         if job.mode == "ask":
             return f"Started job {job.id}: {job.agent} will look and answer, and change nothing."
         return (f"Started job {job.id}. I'll tell you when {job.agent} finishes, and whether the files and tests show "
@@ -124,11 +126,12 @@ def register(ctx):
 
     agent = ("string", True)
     return [
-        Tool("start_task", "Run a coding agent on a project. agent: claude_code, hermes or openclaw. mode ask = only read "
-                           "and answer (claude_code); work (default) = change files, then I check the files and tests.",
+        Tool("start_task", "Run a coding agent (claude_code, hermes, openclaw) on a project; files and tests are checked "
+                           "afterwards. mode=ask: read-only question. wait=true (in a mission): block, return the check.",
              {"type": "object", "properties": {"agent": {"type": "string"}, "project": {"type": "string"},
                                                "prompt": {"type": "string"},
-                                               "mode": {"type": "string", "enum": list(MODES)}},
+                                               "mode": {"type": "string", "enum": list(MODES)},
+                                               "wait": {"type": "boolean"}},
               "required": ["agent", "project", "prompt"]}, start_task, risky=not auto_start, risk=R1,
              describe=lambda a: describe_start(a, target="project")),
         Tool("start_project", "Create a new project folder and start a coding agent on it.",
