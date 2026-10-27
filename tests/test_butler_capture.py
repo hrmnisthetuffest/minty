@@ -257,3 +257,9 @@ def test_a_decision_is_kept_as_something_to_decide_and_the_original_ramble_is_fi
     assert [i.name for i in butler.list("tasks")] == ["email sir"]
     assert ("Brain dump", "the whole ramble") in saved and sum(1 for t, _ in saved if t == "Brain dump") == 1
     assert "2 added" in out
+
+
+def test_what_if_and_how_about_are_ideas_even_when_they_start_like_a_question():  # found by a held-out example
+    assert kinds("what if Minty could read my calendar")[0][0] == "idea"
+    assert kinds("how about a dark mode?")[0][0] == "idea"
+    assert kinds("what time is the match?")[0][0] == "question"

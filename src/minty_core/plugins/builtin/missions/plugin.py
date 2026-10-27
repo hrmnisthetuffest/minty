@@ -3,7 +3,7 @@ import math
 
 from minty_core.agentloop import Budget
 from minty_core.jobs import RESUME_FROM, JobOutcome
-from minty_core.missions import Ledger, run_mission
+from minty_core.missions import Ledger, reseed_provenance, run_mission
 from minty_core.worklessons import delegation_lessons, mission_lessons, render, tool_lessons
 from minty_core.plugins.host import Tool
 from minty_core.policy import R1
@@ -42,17 +42,27 @@ def register(ctx):
                 return JobOutcome("failed", "Missions are unavailable: no model or tools are connected.")
             job_ctx.job.question = ""
 
-            async def confirm(prompt: str) -> bool:  # a risky step: park the mission until the user decides (no answer is a no)
+            async def confirm(prompt: str) -> bool:
+                """A risky step: park the mission until the user decides (no answer is a no). The safety gate has already put
+                the question to the user; wait on that one rather than asking twice."""
+                adopted = await job_ctx.wait_on_open_approval(prompt)
+                if adopted is not None:
+                    return adopted
                 return await job_ctx.ask_approval("mission_step", {"prompt": prompt}, prompt, risk=2, ttl_s=APPROVAL_TTL_S)
 
             worker = factory(goal, confirm)
+            resume = job_ctx.resumed_from or None
+            helper = getattr(worker, "helper", None)
+            if resume and helper is not None and getattr(helper, "provenance", None) is not None:
+                reseed_provenance(helper.provenance, resume.get("ledger"))  # what it read before the restart is still untrusted
             is_private = ctx.services.get("is_private")
             result = await run_mission(
                 router, goal, specs=worker.specs, call_tool=worker.call, progress=job_ctx.progress, save=job_ctx.checkpoint,
                 tracer=ctx.services.get("tracer"), sensitive=(lambda: bool(is_private())) if is_private else (lambda: False),
                 budget=Budget(steps=max_steps, seconds=max(60.0, max_runtime - 30), tokens=TOKENS),
-                resume=job_ctx.resumed_from or None, question=question, answer=answer)
-            job_ctx.checkpoint({"verified": result.verified, "plan": result.plan_json, "ledger": result.ledger})
+                resume=resume, question=question, answer=answer)
+            job_ctx.checkpoint({"verified": result.verified, "plan": result.plan_json, "ledger": result.ledger,
+                                "step_mark": len(result.ledger)})
             if result.status == "done":
                 return JobOutcome("done", result.text)
             if result.status == "blocked":

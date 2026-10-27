@@ -10,7 +10,10 @@ from minty_core.plugins.builtin.agents.jobs import JobManager
 PASS = [sys.executable, "-c", "print('3 passed in 0.01s')"]
 NEEDS_FLAG = [sys.executable, "-c", "import os, sys; print('ok' if os.path.exists('ok.flag') else '1 failed'); "
               "sys.exit(0 if os.path.exists('ok.flag') else 1)"]
-ALWAYS_FAIL = [sys.executable, "-c", "print('FAILED test_x - assert 1 == 2'); print('1 failed'); raise SystemExit(1)"]
+# passes on the untouched project, fails once the agent has written a.txt (and passes again if it also writes ok.flag)
+BREAKS = [sys.executable, "-c", "import os, sys; bad = os.path.exists('a.txt') and not os.path.exists('ok.flag'); "
+          "print('FAILED test_x - assert 1 == 2' if bad else 'ok'); print('1 failed' if bad else '1 passed'); sys.exit(1 if bad else 0)"]
+ALWAYS_FAIL = BREAKS
 
 
 class Coder:
@@ -88,12 +91,12 @@ async def test_tests_are_found_from_the_project_when_none_is_configured(tmp_path
 
     mgr._run_check = fake_check
     job = await run(mgr, WRITE)
-    assert seen == [["npm", "test", "--silent"]] and job.verdict == "verified"
+    assert seen == [["npm", "test", "--silent"]] * 2 and job.verdict == "verified"  # once before the agent, once after
 
 
 async def test_failing_tests_send_the_agent_back_with_the_failure(tmp_path):
     fix = "open('ok.flag','w').write('1'); print('fixed')"
-    mgr, heard, adapter, _ = make(tmp_path, adapter=Coder(fix=fix), check=NEEDS_FLAG)
+    mgr, heard, adapter, _ = make(tmp_path, adapter=Coder(fix=fix), check=BREAKS)
     job = await run(mgr, WRITE)
     assert (job.status, job.verdict, job.rounds) == ("done", "verified", 2)
     second = adapter.builds[1]
@@ -158,10 +161,10 @@ async def test_what_the_agent_is_doing_can_be_watched_while_it_runs(tmp_path):
     mgr, _, _, _ = make(tmp_path, watch_s=0.1)
     job = await mgr.start("fake", "p", "open('w1.txt','w').write('x'); import time; time.sleep(1.5)")
     for _ in range(40):
-        if job.progress:
+        if any("file changed" in line for line in job.progress):
             break
         await asyncio.sleep(0.1)
-    assert job.progress and "1 file changed" in job.progress[-1]
+    assert any("1 file changed" in line for line in job.progress)
     assert "1 file changed" in mgr.status(job.id)
     await mgr.stop(job.id)
     await asyncio.wait_for(mgr._tasks[job.id], 10)
@@ -239,3 +242,37 @@ async def test_an_agent_that_is_not_installed_says_so_plainly(tmp_path):
     job = await run(mgr, WRITE)
     assert job.status == "failed" and "not installed" in job.summary and "Errno" not in job.summary
     assert "not installed" in heard[0]
+
+
+# ---- tests that were failing before the agent started -----------------------------------------------------------------
+BROKEN_ENV = [sys.executable, "-c", "print('ModuleNotFoundError: no module named app'); print('1 failed in 0.02s'); raise SystemExit(1)"]
+COUNTS_FILES = [sys.executable, "-c", "import os; n = len([f for f in os.listdir('.') if f.endswith('.txt')]); "
+                "print(n, 'failed'); raise SystemExit(1 if n < 9 else 0)"]
+
+
+async def test_tests_that_were_already_failing_are_not_blamed_on_the_agent(tmp_path):
+    mgr, heard, adapter, _ = make(tmp_path, check=BROKEN_ENV)
+    job = await run(mgr, WRITE)
+    assert (job.status, job.verdict, job.rounds) == ("failed", "already_failing", 1)
+    assert len(adapter.builds) == 1  # not sent back to "fix" code that was never broken
+    assert "already failing" in heard[0].lower() and job.checks_before
+
+
+async def test_failing_tests_that_the_agent_fixes_are_verified(tmp_path):
+    mgr, _, _, _ = make(tmp_path, check=NEEDS_FLAG)  # fails before: there is no ok.flag yet
+    job = await run(mgr, "open('ok.flag','w').write('1'); print('made the tests pass')")
+    assert (job.status, job.verdict) == ("done", "verified") and job.checks_before
+
+
+async def test_tests_that_fail_differently_after_the_change_still_get_a_fix_round(tmp_path):
+    fix = "open('b.txt','w').write('y')"
+    mgr, _, adapter, _ = make(tmp_path, adapter=Coder(fix=fix), check=COUNTS_FILES)
+    job = await run(mgr, WRITE)  # 0 txt files before, 1 after the first round, 2 after the second: never the same output
+    assert (job.verdict, job.rounds) == ("checks_failed", 2) and len(adapter.builds) == 2
+
+
+async def test_the_check_run_before_the_job_does_not_count_as_the_agents_change(tmp_path):
+    litter = [sys.executable, "-c", "open('coverage.out','w').write('x'); print('1 passed')"]
+    mgr, _, _, _ = make(tmp_path, check=litter)
+    job = await run(mgr, "print('did nothing')")
+    assert job.verdict == "no_changes" and job.changed == []

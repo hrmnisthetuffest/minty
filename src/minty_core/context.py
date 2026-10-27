@@ -457,7 +457,7 @@ def build_context(config_dir: Path) -> AppContext:
         return bool(getattr(agent, "force_private", False) or any(m.private for m in agent.history))
 
     def make_subagent(tier: str = "fast") -> Agent:
-        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "agents", "installer")), store,
+        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "agents", "installer", "missions", "outbox")), store,
                        personalities, memory, _deny, max_rounds=8, tier=tier)
         helper.guard = guard  # same rules and audit trail as the main conversation
         return helper
@@ -472,6 +472,7 @@ def build_context(config_dir: Path) -> AppContext:
         helper.guard, helper.safety, helper.receipts = guard, safety, receipts
         helper.provenance = Provenance()  # what this mission reads does not taint the conversation, and the other way round
         helper.force_private = is_private()
+        helper.history.append(Message("user", goal))  # the user's own words: the gate tells them from what the mission reads
         helper.toolkits = ToolkitRouter(
             lambda: {p["name"]: p["tools"] for p in host.list_plugins() if p["enabled"] and not p["error"]}, tracer=tracer)
         specs: list = []

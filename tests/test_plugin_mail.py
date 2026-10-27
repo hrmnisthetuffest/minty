@@ -23,6 +23,14 @@ MAILS = {
     b"6": b"From: Mum <mum@home.in>\r\nSubject: no checks\r\nMessage-ID: <n@home.in>\r\n\r\nhi",
     b"7": (b"Authentication-Results: mx.example; dkim=fail; spf=pass; dmarc=fail\r\nFrom: Mum <mum@home.in>\r\n"
            b"Subject: spoof\r\nMessage-ID: <s@home.in>\r\n\r\nhi"),
+    b"9": (b"Authentication-Results: mx.example; dkim=pass header.d=evil.com; spf=pass smtp.mailfrom=evil.com\r\n"
+           b"From: Mum <mum@home.in>\r\nSubject: both pass, for the wrong domain\r\nMessage-ID: <e@evil.com>\r\n\r\nhi"),
+    b"10": (b"Authentication-Results: mx.example; dkim=pass header.d=home.in; spf=fail smtp.mailfrom=home.in\r\n"
+            b"From: Mum <mum@home.in>\r\nSubject: signed by her domain\r\nMessage-ID: <d@home.in>\r\n\r\nhi"),
+    b"11": (b"Authentication-Results: mx.example; dkim=fail header.d=home.in; spf=pass smtp.mailfrom=bounce@mail.home.in\r\n"
+            b"From: Mum <mum@home.in>\r\nSubject: sent from her mail server\r\nMessage-ID: <m@home.in>\r\n\r\nhi"),
+    b"12": (b"Authentication-Results: mx.example; dkim=pass header.d=evil.com; dkim=fail header.d=home.in\r\n"
+            b"From: Mum <mum@home.in>\r\nSubject: a pass for someone else\r\nMessage-ID: <x@evil.com>\r\n\r\nhi"),
     b"8": (b"Authentication-Results: mx.example; dmarc=fail\r\nAuthentication-Results: forged.example; dmarc=pass\r\n"
            b"From: Mum <mum@home.in>\r\nSubject: forged\r\nMessage-ID: <f@home.in>\r\n\r\nhi"),
 }
@@ -125,3 +133,16 @@ async def test_the_details_needed_to_answer_a_message_come_from_its_headers(tmp_
     assert await thread("not-a-number") is None
     assert not any("STORE" in str(e) or "EXPUNGE" in str(e) for e in FakeIMAP.log)
     assert all("PEEK" in str(e) for e in FakeIMAP.log if e[0] == "FETCH")
+
+
+async def test_dkim_and_spf_passing_for_another_domain_do_not_prove_the_sender(tmp_path, monkeypatch):
+    FakeIMAP.log = []
+    monkeypatch.setattr(imaplib, "IMAP4_SSL", FakeIMAP)
+    services = {}
+    make_host(tmp_path, plugins={"mail": {"enabled": True, "user": "me@example.com"}},
+              secrets={"plugin.mail.password": "app-password"}, services=services)
+    thread = services["mail_thread"]
+    assert (await thread("9"))["authenticated"] is False  # both pass, but for evil.com while the From line says home.in
+    assert (await thread("10"))["authenticated"] is True  # signed by the sender's own domain
+    assert (await thread("11"))["authenticated"] is True  # sent by the sender's own mail server (a subdomain is fine)
+    assert (await thread("12"))["authenticated"] is False  # one pass is for somebody else, the sender's own signature failed

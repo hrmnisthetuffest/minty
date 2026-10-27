@@ -816,7 +816,7 @@ async def _attention_loop(ctx, *, first_s: float = 120.0, every_s: float = 600.0
         att = ctx.services.get("attention")
         if att is not None and ctx.store.config.proactive.attention:
             try:
-                await asyncio.to_thread(att.tick)
+                att.tick()  # on the loop on purpose: it reads the job table and the scheduler, which the loop is changing
             except Exception:  # noqa: BLE001 — a look that fails is tried again next time
                 log.warning("attention check failed", exc_info=True)
         await asyncio.sleep(every_s)

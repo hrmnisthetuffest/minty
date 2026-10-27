@@ -151,3 +151,20 @@ def test_a_verdict_says_in_words_what_was_and_was_not_shown():
     assert "could not confirm" in sentence("work", False, ["a.py"], None)
     assert "no files changed" in sentence("work", False, [], None).lower()
     assert "tests failed" in sentence("work", False, ["a.py"], check(False))
+
+
+def test_failing_the_same_way_before_and_after_is_not_a_failure_of_the_change():
+    before = verify.CheckResult(True, False, "1 failed in 0.02s", "ModuleNotFoundError: app\n1 failed in 0.02s")
+    after = verify.CheckResult(True, False, "1 failed in 0.31s", "ModuleNotFoundError: app\n1 failed in 0.31s")
+    out = verify.judge("work", False, ["a.py"], after, before=before)
+    assert (out.verdict, out.ok) == ("already_failing", False) and "already failing" in out.sentence
+    other = verify.CheckResult(True, False, "3 failed in 0.3s", "FAILED test_b\n3 failed in 0.3s")
+    assert verify.judge("work", False, ["a.py"], other, before=before).verdict == "checks_failed"
+    assert verify.judge("work", False, ["a.py"], after).verdict == "checks_failed"  # no starting point known
+
+
+def test_failures_that_got_fixed_or_broke_newly_are_judged_normally():
+    failing = verify.CheckResult(True, False, "1 failed", "1 failed")
+    passing = verify.CheckResult(True, True, "1 passed", "1 passed")
+    assert verify.judge("work", False, ["a.py"], passing, before=failing).verdict == "verified"
+    assert verify.judge("work", False, ["a.py"], failing, before=passing).verdict == "checks_failed"

@@ -202,7 +202,7 @@ async def test_sending_is_blocked_until_the_account_is_set_up(tmp_path):
 async def test_the_message_is_checked_for_secrets_before_it_can_go_automatically(tmp_path):
     async with FakeSMTP() as smtp:
         host, _ = build(tmp_path, smtp.port)
-        out = await host.call("outbox_draft", {"reply_to": "7", "body": "my key is sk-abcdefghijklmnopqrstuvwxyz123456"})
+        out = await host.call("outbox_draft", {"reply_to": "7", "body": "my key is " + "sk-" + "abcdefghijklmnopqrstuvwxyz123456"})
         assert "ask you first" in out and "secret" in out
 
 

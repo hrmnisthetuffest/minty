@@ -147,3 +147,39 @@ def test_the_ledger_is_bounded_and_round_trips():
     again = Ledger.from_data(ledger.to_data())
     assert again.entries == ledger.entries
     assert Ledger.from_data("junk").entries == [] and Ledger.from_data([{"bad": 1}]).entries == []
+
+
+async def test_an_action_taken_in_the_middle_of_a_step_is_saved_at_once_and_not_repeated_after_a_crash():
+    import asyncio
+    goal = "look for a and then send sam a note and look for b, then tell me"
+    steps = [tool("notes_find", q="a"), say("a done"), tool("mail_send", to="sam"), tool("notes_find", q="b"), say("b done")]
+    saved = []
+
+    class Crashy(Tools):
+        async def __call__(self, name, args):
+            if args.get("q") == "b":
+                raise asyncio.CancelledError  # the program stops after the mail has gone
+            return await super().__call__(name, args)
+
+    router = ScriptedRouter(steps, planner=plan(("look for a", "a looked for"), ("send sam a note, then look for b", "sent and looked")))
+    try:
+        await mission(router, Crashy({"notes_find": "hit", "mail_send": "sent to sam"}), goal=goal, save=saved.append)
+    except asyncio.CancelledError:
+        pass
+    state = saved[-1]
+    assert any(e["tool"] == "mail_send" for e in state["ledger"])  # saved right after the send, not only at a step's end
+    resumed_router = ScriptedRouter([say("b done")])
+    out = await mission(resumed_router, Tools(), goal=goal, resume=state)
+    first = resumed_router.executor_inputs[0]
+    assert "Already done before the interruption" in first and "mail_send" in first and "do not repeat" in first.lower()
+    assert out.status == "done"
+
+
+async def test_a_ledger_that_outgrows_its_limit_keeps_the_step_marker_pointing_at_the_same_actions():
+    ledger = Ledger()
+    for i in range(38):
+        ledger.add("t", {"i": i}, "x", ok=True)
+    ledger.begin_step()
+    for i in range(6):
+        ledger.add("u", {"i": i}, "x", ok=True)
+    assert len(ledger.entries) == 40 and [e["tool"] for e in ledger.step_entries()] == ["u"] * 6

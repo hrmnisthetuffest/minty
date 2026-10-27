@@ -280,7 +280,9 @@ class FilteredHost:
     def _allowed(self, tool: Tool | None) -> bool:
         if tool is None or tool.name.startswith(self._exclude):
             return False
-        always_asked = tool.risky or tool.confirm_when is not None or (isinstance(tool.risk, int) and tool.risk >= 2)
+        # a risk worked out from the arguments (a send, a delete) can turn out to be a question, and a helper cannot answer
+        always_asked = tool.risky or tool.confirm_when is not None or callable(tool.risk) or \
+            (isinstance(tool.risk, int) and tool.risk >= 2)
         return self._allow_risky or not always_asked  # helpers cannot confirm
 
     def tool_specs(self) -> list[ToolSpec]:

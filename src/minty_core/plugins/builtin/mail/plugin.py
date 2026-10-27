@@ -184,14 +184,31 @@ def register(ctx):
         return (f"{TAG}\nFrom: {safe_text(name or addr, 60)} <{safe_text(addr, 80)}>\n"
                 f"Subject: {safe_text(header(msg, 'Subject'), 120)}\nText: {safe_text(body[:BODY_CHARS], BODY_CHARS)}{more}")
 
-    def authenticated(msg) -> bool | None:
-        """Did the receiving server check that this message really came from its sender? Only its own result (the topmost
-        header) counts: anything lower down was written by someone else. None when there is no result at all."""
+    def _aligned(domain: str, sender: str) -> bool:
+        domain = domain.strip().lower().rstrip(".")
+        return "." in domain and "." in sender and (domain == sender or domain.endswith("." + sender)
+                                                    or sender.endswith("." + domain))
+
+    def authenticated(msg, sender_domain: str = "") -> bool | None:
+        """Did the receiving server check that this message really came from the address in its From line? Only its own result
+        (the topmost header) counts, and a pass counts only for the sender's own domain: DKIM or SPF passing for some other
+        domain proves nothing about who wrote it. None when there is no result at all."""
         results = msg.get_all("Authentication-Results") or []
         if not results:
             return None
         top = str(results[0]).lower()
-        return "dmarc=pass" in top or ("dkim=pass" in top and "spf=pass" in top)
+        sender = sender_domain.strip().lower()
+        if "dmarc=pass" in top:
+            return True
+        for clause in top.split(";"):
+            clause = clause.strip()
+            if clause.startswith("dkim=pass"):
+                if any(_aligned(d, sender) for d in re.findall(r"header\.d=([\w.-]+)", clause)):
+                    return True
+            elif clause.startswith("spf=pass"):
+                if any(_aligned(d, sender) for d in re.findall(r"smtp\.mailfrom=(?:[^@\s;]*@)?([\w.-]+)", clause)):
+                    return True
+        return False
 
     def _thread(uid: str) -> dict | None:
         """What is needed to answer a message: who wrote, its subject and ids, and whether the sender was checked."""
@@ -212,7 +229,8 @@ def register(ctx):
         reply_to = parseaddr(header(msg, "Reply-To"))[1]
         return {"uid": str(uid), "from_addr": addr, "from_name": safe_text(name or addr, 60),
                 "subject": safe_text(header(msg, "Subject"), 200), "message_id": header(msg, "Message-ID").strip(),
-                "references": header(msg, "References").strip(), "authenticated": authenticated(msg),
+                "references": header(msg, "References").strip(),
+                "authenticated": authenticated(msg, addr.rsplit("@", 1)[-1]),
                 "reply_to_differs": bool(reply_to) and reply_to.lower() != addr.lower()}
 
     async def mail_thread(uid) -> dict | None:

@@ -21,6 +21,7 @@ _NEED = re.compile(r"^(?:i )?(?:need to|have to|got to|gotta|must|should|remembe
                    r"todo:?|to do:?|promised to|promised|will|'?ll)\s+(?P<text>.+)$|^(?:i'?ll|i will)\s+(?P<text2>.+)$|"
                    r"^need to\s+(?P<text3>.+)$", re.I)
 _THING_NEEDS = re.compile(r"^(?:the |my |our )?(?!(?:i|we|you|it|there|this|that)\b)[\w' -]{3,40}?\s+(?:needs|need|should|must)\s+\S", re.I)
+_WHAT_IF = re.compile(r"^(?:what if|how about)\b", re.I)
 _FIRM = re.compile(r"^(?:i )?(?:need to|have to|got to|gotta|must|remember to|don'?t forget to|remind me to|promised|i'?ll|will)\b", re.I)
 _STOP = frozenset({"the", "a", "an", "to", "my", "our", "of", "and", "for", "on", "in"})
 _VERB = re.compile(r"^(?:buy|call|email|text|finish|submit|book|fix|clean|pay|order|send|print|return|renew|cancel|"
@@ -58,7 +59,7 @@ def sort(text: str) -> list[Candidate]:
             body, when = _split_when(m.group("text"))
             who = m.group("who")
             out.append(Candidate(n, "waiting", body, when, who[:1].upper() + who[1:]))
-        elif asked and not _FIRM.match(piece):
+        elif asked and not _FIRM.match(piece) and not _WHAT_IF.match(piece):
             out.append(Candidate(n, "question", piece))
         elif _IDEA.search(piece):
             out.append(Candidate(n, "idea", piece))

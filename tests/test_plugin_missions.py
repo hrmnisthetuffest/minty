@@ -199,3 +199,36 @@ async def test_the_review_reads_the_record_and_proposes_without_changing_anythin
     assert "web" in out and "check_command" in out and "Nothing was changed" in out
     assert host.get_tool("missions_review").risk == 0
     assert "Not enough" in await build(tmp_path / "fresh", router, World())[0].call("missions_review", {})
+
+
+async def test_a_resumed_mission_gives_its_gate_back_what_it_had_read(tmp_path):
+    seen = []
+
+    class Prov:
+        def note_result(self, tool, result):
+            seen.append(tool)
+
+    class Resumed(World):
+        def factory(self, goal, confirm):
+            worker = super().factory(goal, confirm)
+            worker.helper = SimpleNamespace(provenance=Prov())
+            return worker
+
+    cut = {"first": True}
+
+    async def cut_off(name, args, world):
+        if cut["first"] and name == "notes_find":
+            cut["first"] = False
+            raise asyncio.CancelledError
+
+    router = ScriptedRouter([tool("mail_send", to="x"), tool("notes_find", q="a"), say("done")])
+    host, runner = build(tmp_path, router, Resumed(on_call=cut_off))
+    await host.call("missions_start", {"goal": "tell sam, then look for my notes"})
+    job = max(runner.jobs.values(), key=lambda j: j.id)
+    await runner.wait(job.id)
+    assert runner.get(job.id).status == "interrupted" and runner.get(job.id).checkpoint["ledger"]
+    seen.clear()
+    host2, runner2 = build(tmp_path, ScriptedRouter([say("done")]), Resumed())
+    await host2.call("missions_resume", {"id": job.id})
+    await runner2.wait(job.id)
+    assert "mail_send" in seen  # what it did before the restart is known again to the gate

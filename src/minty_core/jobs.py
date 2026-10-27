@@ -269,6 +269,31 @@ class JobContext:
         """The checkpoint this run continues from; empty on a first run."""
         return dict(self.job.checkpoint) if self.job.resumed else {}
 
+    async def wait_on_open_approval(self, question: str, *, poll_s: float = 0.5) -> bool | None:
+        """Wait for the user's answer to a question the safety gate has already put to them, instead of asking a second time.
+        True for a yes, False for a no or an expiry, None when the gate opened no such question. The gate itself uses up the
+        yes, so this only watches it."""
+        approvals = self._runner._approvals
+        record = approvals.find_pending(question) if approvals is not None else None
+        if record is None:
+            return None
+        approvals.attach_job(record.id, self.job.id)
+        self.job.status, self.job.approval_id, self.job.question = "waiting_approval", record.id, question
+        self._runner._persist(self.job)
+        self._runner._say(f"{self.job.label().capitalize()} needs your approval: {question}")
+        try:
+            while True:
+                current = approvals.get(record.id)
+                if current is None or current.status not in ("pending", "approved"):
+                    return False
+                if current.status == "approved":
+                    return True
+                await asyncio.sleep(poll_s)
+        finally:
+            if self.job.status == "waiting_approval":
+                self.job.status, self.job.question = "running", ""
+                self._runner._persist(self.job)
+
     async def ask_approval(self, name: str, args: dict, question: str, *, risk: int = 3, ttl_s: float | None = None,
                            poll_s: float = 0.5) -> bool:
         """Park this job until the user decides. True only for a yes that covers exactly this action; a no, an

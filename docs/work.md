@@ -14,7 +14,8 @@ works in the background with the tools your goal needs, and checks each step aga
 
 - It ends **done** (and says whether every step was double-checked), **failed** (with the reason), or **blocked** on one question
   only you can answer. `missions_answer` gives the answer and it carries on; `missions_resume` picks up a failed or interrupted one
-  from its saved plan. A restart loses at most the step in progress.
+  from its saved plan. Every action is saved the moment it is taken, and a resumed step is told what it already did, so a restart
+  does not send the same message twice.
 - `missions_report` is the proof: the plan with what was checked, every action with its result, and the final answer.
 - `missions_review` reads that record and says what could work better (a tool that keeps failing, goals that run out of steps). It
   gives evidence and proposals; it never changes a setting, a prompt or a permission by itself.
@@ -28,11 +29,13 @@ works in the background with the tools your goal needs, and checks each step aga
 `agents_start_task` runs Claude Code (or Hermes, OpenClaw) on a project folder, and asks first every time. Afterwards Minty does not
 take the agent's word for it:
 
-1. The folder is compared before and after, so "nothing changed" and "these files changed" are facts.
+1. The tests are run once on the untouched folder, so a failure that was already there (or a project that needs setup the check does not
+   have: set `check_command`, for example `env PYTHONPATH=src pytest -q`) is never blamed on the agent. The folder is compared before and after, so "nothing changed" and "these files changed" are facts.
 2. The project's own tests are run (found from its files, or the command you set in `check_command`), with no keys in their
    environment. If they fail, the agent is sent back with the failure, up to `max_rounds` times.
 3. The verdict is what is reported: **verified** (files changed and tests pass), **not confirmed** (changed, nothing to test),
-   **tests failing**, or **nothing changed**. The last two count as failed jobs.
+   **tests failing**, **tests were already failing** (and fail the same way, so nothing shows the change works), or **nothing
+   changed**. The last three count as failed jobs.
 
 `mode: ask` runs Claude Code read-only for questions; `wait: true` (used inside missions) blocks until the check is done. Claude is
 told not to push, reset, rebase or rewrite history. These are guard rails, not a sandbox: an agent that can run `python` can run
@@ -72,7 +75,7 @@ until you pick numbers; what is already on your list is skipped, and the origina
 
 `PYTHONPATH=src python -m tests.agent_eval.work_eval` runs ten scenarios with failures injected on purpose (a worker that claims work it
 did not do, a failing tool, a crash, an injected instruction, a spoofed sender, a coding agent that changed nothing) and counts how
-often Minty reported anything but the truth. They run in the normal test suite, with a stored baseline that may not get worse.
+often Minty reported anything but the truth (and, for coding jobs, how often the old trust-the-agent rule would have said "done" when nothing changed). They run in the normal test suite (`flow check`), with a stored baseline that may not get worse. The brain-dump accuracy is measured on sentences the rules were tuned on and on a second set written afterwards (9 of 10 the first time, then one bug fixed, so both are tuning data now); treat it as a regression check, not as a promise about your own rambling.
 
 ## What has and has not been tested
 

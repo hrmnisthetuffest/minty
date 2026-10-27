@@ -173,8 +173,10 @@ def test_subagent_factory_builds_a_restricted_agent(ctx):
     agent = ctx.services["agent_factory"]()
     names = {s.name for s in agent._host.tool_specs()}
     assert "clock_get_time" in names
-    assert not any(n.startswith(("subagents_", "agents_", "installer_")) for n in names)
+    assert not any(n.startswith(("subagents_", "agents_", "installer_", "missions_", "outbox_", "shell_")) for n in names)
     assert all(not ctx.host.get_tool(n).risky for n in names)
+    # a tool whose risk depends on its arguments (a send, a delete) can be a question, which a helper cannot answer
+    assert all(not callable(ctx.host.get_tool(n).risk) for n in names)
 
 
 def test_is_private_follows_main_agent_history_and_force_flag(tmp_path):

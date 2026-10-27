@@ -40,15 +40,19 @@ the user's yes are asked for automatically; if the user says no, do not try anot
 class Ledger:
     """What the worker actually did, as facts: the tool, its arguments, whether it worked, and the start of what it said."""
 
-    def __init__(self, entries: list[dict] | None = None):
-        self.entries: list[dict] = list(entries or [])[-LEDGER_KEEP:]
-        self.mark = len(self.entries)  # where the current step began
+    def __init__(self, entries: list[dict] | None = None, mark: int | None = None):
+        entries = list(entries or [])
+        cut = max(0, len(entries) - LEDGER_KEEP)
+        self.entries: list[dict] = entries[cut:]
+        self.mark = len(self.entries) if mark is None else max(0, min(int(mark) - cut, len(self.entries)))  # where the step began
 
     def add(self, tool: str, args: dict, result: str, ok: bool) -> None:
         self.entries.append({"tool": tool, "args": json.dumps(args, default=str, sort_keys=True)[:ARGS_CHARS],
                              "ok": bool(ok), "result": " ".join(str(result).split())[:RESULT_CHARS], "at": round(time.time())})
-        del self.entries[:-LEDGER_KEEP]
-        self.mark = min(self.mark, len(self.entries))
+        over = len(self.entries) - LEDGER_KEEP
+        if over > 0:
+            del self.entries[:over]
+            self.mark = max(0, self.mark - over)
 
     def begin_step(self) -> None:
         self.mark = len(self.entries)
@@ -60,9 +64,9 @@ class Ledger:
         return list(self.entries)
 
     @classmethod
-    def from_data(cls, data: Any) -> "Ledger":
+    def from_data(cls, data: Any, mark: int | None = None) -> "Ledger":
         ok = isinstance(data, list) and all(isinstance(e, dict) and {"tool", "ok", "result"} <= set(e) for e in data)
-        return cls(data if ok else [])
+        return cls(data if ok else [], mark if ok else None)
 
     def evidence(self) -> str:
         step = self.step_entries()
@@ -78,6 +82,14 @@ class Ledger:
             return "No actions were taken."
         return "\n".join(f"{i}. {e['tool']} {e['args']} -> {'ok' if e['ok'] else 'FAILED'}: {e['result']}"
                          for i, e in enumerate(self.entries[-limit:], 1))
+
+
+def reseed_provenance(provenance, entries) -> None:
+    """After a restart, tell the gate again what the mission had read, so untrusted content it saw before is still treated
+    as untrusted (a damaged record is skipped)."""
+    for entry in entries or []:
+        if isinstance(entry, dict) and entry.get("tool"):
+            provenance.note_result(str(entry["tool"]), str(entry.get("result") or ""))
 
 
 @dataclass
@@ -97,18 +109,29 @@ async def run_mission(router, goal: str, *, specs: list[ToolSpec], call_tool: Ca
                       budget: Budget | None = None, resume: dict | None = None, question: str = "", answer: str = "",
                       prefer: str | None = None, planner_prefer: str | None = None,
                       strong_prefer: str | None = None) -> MissionResult:
-    ledger = Ledger.from_data((resume or {}).get("ledger"))
+    ledger = Ledger.from_data((resume or {}).get("ledger"), (resume or {}).get("step_mark"))
     effective = goal
     if answer:
         effective += f"\n\nYou asked: {question or '(a question)'}\nThe user answered: {answer}"
+    interrupted = ledger.step_entries() if resume else []
+    if interrupted:  # the step was cut off part-way: what it already did must not be done twice
+        effective += ("\n\nAlready done before the interruption, in this step (do not repeat these, check their results "
+                      "instead):\n" + "\n".join(f"- {e['tool']} {e['args']} -> {'ok' if e['ok'] else 'FAILED'}: {e['result']}"
+                                               for e in interrupted[-STEP_ENTRIES:]))
+    state: dict[str, str] = {"plan": (resume or {}).get("plan") or ""}
+
+    def snapshot() -> None:
+        if save is not None and state["plan"]:
+            save({"plan": state["plan"], "ledger": ledger.to_data(), "step_mark": ledger.mark})
 
     async def call(name: str, args: dict) -> str:
         if name not in {s.name for s in specs}:
             result, ok = f"Error: {name} is not a tool you have in this job.", False
         else:
             result = str(await call_tool(name, args))  # StopJob (the user declined) passes through, and is not an action
-            ok = not result.startswith("Error")
+            ok = not result.startswith(("Error", "The user declined", "Blocked by", "The user did not allow"))
         ledger.add(name, args, result, ok)
+        snapshot()  # at once: an action taken in the middle of a step must survive a crash, or a resume could repeat it
         return result
 
     async def evidence() -> str:
@@ -121,8 +144,8 @@ async def run_mission(router, goal: str, *, specs: list[ToolSpec], call_tool: Ca
                       on_checkpoint=lambda cp: ledger.begin_step(), left_as="Nothing else was changed.")
 
     def persist(plan: Plan) -> None:
-        if save is not None:
-            save({"plan": plan.to_json(), "ledger": ledger.to_data()})
+        state["plan"] = plan.to_json()
+        snapshot()
 
     loop = AgentLoop(router, env, prefer=prefer, planner_prefer=planner_prefer, strong_prefer=strong_prefer,
                      sensitive=sensitive, tracer=tracer, progress=progress, ask_user=ask_user, budget=budget, save=persist)
@@ -132,7 +155,7 @@ async def run_mission(router, goal: str, *, specs: list[ToolSpec], call_tool: Ca
             plan = Plan.from_json(resume["plan"])
         except (ValueError, KeyError, TypeError):
             plan = None
-    if plan is not None and answer:
+    if plan is not None and effective != goal:
         plan.goal = effective
     result = await loop.run(effective, plan)
     return _result(result, ledger)

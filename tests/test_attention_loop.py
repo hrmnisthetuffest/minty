@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from types import SimpleNamespace
 
 from minty_core.app import _attention_loop
@@ -11,9 +12,10 @@ def ctx(enabled=True, attention=None):
 
 class Counting:
     def __init__(self, fail=False):
-        self.ticks, self.fail = 0, fail
+        self.ticks, self.fail, self.threads = 0, fail, set()
 
     def tick(self):
+        self.threads.add(threading.get_ident())
         self.ticks += 1
         if self.fail:
             raise RuntimeError("boom")
@@ -46,3 +48,9 @@ async def test_a_failing_look_does_not_end_the_loop():
 
 async def test_without_the_plugin_it_just_waits():
     await run_for(ctx(), seconds=0.1)
+
+
+async def test_it_looks_on_the_event_loop_because_the_things_it_reads_are_changed_there():
+    att = Counting()
+    await run_for(ctx(attention=att))
+    assert att.threads == {threading.get_ident()}

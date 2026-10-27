@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -158,7 +159,21 @@ def describe_files(files: list[str]) -> str:
     return f"{n} file{'s' * (n != 1)} changed ({shown})"
 
 
-def judge(mode: str, agent_failed: bool, files: list[str], check: CheckResult | None) -> Verdict:
+_DURATIONS = re.compile(r"\bin \d+(?:\.\d+)?s\b|\b\d+(?:\.\d+)?s\b|\(\d+:\d+:\d+\)|0x[0-9a-f]+")
+
+
+def _signature(check: CheckResult) -> str:
+    """The failure with the timings taken out, so the same failure on two runs compares equal."""
+    return " ".join(_DURATIONS.sub("", check.tail or check.summary).split())[-500:]
+
+
+def same_failure(before: CheckResult | None, after: CheckResult | None) -> bool:
+    return bool(before and after and before.ran and after.ran and before.passed is False and after.passed is False
+                and _signature(before) == _signature(after))
+
+
+def judge(mode: str, agent_failed: bool, files: list[str], check: CheckResult | None,
+          before: CheckResult | None = None) -> Verdict:
     if agent_failed:
         return Verdict("failed", False, "The agent reported an error.")
     if mode == "ask":
@@ -167,6 +182,9 @@ def judge(mode: str, agent_failed: bool, files: list[str], check: CheckResult | 
         return Verdict("answered", True, "Answered; nothing was changed.")
     if not files:
         return Verdict("no_changes", False, "It reports it is done, but no files changed.")
+    if same_failure(before, check):  # nothing the agent did changed the result: the tests, or the setup, were the problem
+        return Verdict("already_failing", False, f"{describe_files(files)}, but the tests were already failing before it started "
+                       f"and fail the same way now ({check.summary}), so nothing shows the change works.")
     if check is not None and check.ran and check.passed is False:
         return Verdict("checks_failed", False, f"{describe_files(files)}, but the tests failed ({check.summary}).")
     if check is not None and check.ran and check.passed:

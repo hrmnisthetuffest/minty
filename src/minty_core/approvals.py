@@ -111,6 +111,20 @@ class ApprovalStore:
             self._db.commit()
             return cur.rowcount == 1
 
+    def find_pending(self, question: str) -> "Approval | None":
+        """The newest open question with exactly these words that no job is waiting on yet (the one the safety gate just opened)."""
+        with self._lock:
+            self._expire(self._clock())
+            row = self._db.execute(
+                f"SELECT {_COLS} FROM approvals WHERE status=? AND question=? AND job_id IS NULL ORDER BY id DESC LIMIT 1",
+                (PENDING, str(question)[:300])).fetchone()
+        return Approval(*row) if row else None
+
+    def attach_job(self, ident: int, job_id: int) -> None:
+        with self._lock:
+            self._db.execute("UPDATE approvals SET job_id=? WHERE id=? AND job_id IS NULL", (int(job_id), int(ident)))
+            self._db.commit()
+
     def deny_all(self, via: str = "lockdown") -> int:
         """Refuse everything still open: waiting questions and approvals not yet used."""
         with self._lock:
