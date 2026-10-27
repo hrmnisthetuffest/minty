@@ -16,7 +16,7 @@ from minty_core.llm.types import ToolSpec
 NEED_TOOLKIT = "need_toolkit"
 CORE_TOOLS = (
     "clock_get_time", "memory_remember", "memory_recall", "web_search_search", "weather_get_weather", "timers_set_timer",
-    "jobs_status", "jobs_cancel", "browser_task", "deep_think_think_in_background", "display_show",
+    "jobs_status", "jobs_cancel", "browser_task", "deep_think_think_in_background", "display_show", "missions_start",
 )
 # toolkit -> (plugins, what it is for, keywords). A plugin not listed here becomes its own toolkit.
 KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
@@ -29,6 +29,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "home": (("smart_home",), "lights, locks, devices",
              "light lights lamp fan switch brightness dim scene lock unlock door garage blinds cover home "
              "device devices sensor thermostat temperature bedroom kitchen"),
+    "missions": (("missions",), "hand over a whole goal, then check on it, answer it or resume it",
+                 "mission missions goal objective delegate handle ownership autonomously unattended overnight resume "
+                 "blocked proof report accomplished"),
     "terminal": (("shell",), "run a command in the terminal (always asked first, except a few read-only ones)",
                  "terminal shell command commands run execute bash cli console script ls pwd git status log diff "
                  "directory uptime disk whoami hostname uname"),

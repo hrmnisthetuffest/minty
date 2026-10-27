@@ -368,6 +368,20 @@ On by default: yes.
 | `memory_resolve` | Answer an open question about two facts that disagree: choice new, old or both. | risk varies |
 | `memory_recall` | Older memories: query=words finds numbered one-line gists; id=N opens one (level=full: the original passages matching query). | sensitive |
 
+## missions
+
+Hand Minty a goal: it plans, works in the background with your tools, checks each step against what really happened, and reports what is done, stuck or needs you.
+
+On by default: yes.
+Settings: `max_concurrent`, `max_runtime_s`, `max_steps`.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `missions_start` | Hand over a multi-step goal to work on in the background (research, compare, organise, delegate, check). Give the outcome wanted, not the steps. It checks its own steps against what really happened. | risk varies |
+| `missions_answer` | Give a blocked mission the answer to its question; it carries on. | risk varies |
+| `missions_resume` | Carry on with a mission that stopped, was interrupted or failed, from its saved plan. | risk varies |
+| `missions_report` | Proof of what a mission did: its plan, each action and result, and whether it was checked. No id: the latest. |  |
+
 ## music_id
 
 Tells you what song is playing: from your music apps, the computer's sound, or by listening to the room (Shazam).

@@ -141,6 +141,10 @@ memory_learned                     0 read     sensitive
 memory_recall                      0 read     sensitive
 memory_remember                    1 change
 memory_resolve                     1 change
+missions_answer                    1 change
+missions_report                    0 read
+missions_resume                    1 change
+missions_start                     1 change
 music_id_identify                  0 read
 n8n_activate_workflow              2 visible
 n8n_create_workflow                1 change

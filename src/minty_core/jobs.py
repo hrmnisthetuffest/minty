@@ -16,16 +16,19 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, NamedTuple
 
 log = logging.getLogger(__name__)
 
-FINAL = frozenset({"done", "failed", "cancelled", "timeout", "interrupted"})
+FINAL = frozenset({"done", "failed", "cancelled", "timeout", "interrupted", "blocked"})
+OUTCOMES = frozenset({"done", "failed", "blocked"})  # the statuses a work function may end the job with
+OFFERED = frozenset({"interrupted", "blocked"})  # resumable jobs Minty offers by itself (a failed one is only retried on request)
+RESUME_FROM = OFFERED | {"failed", "timeout"}
 ACTIVE = frozenset({"queued", "running", "needs_user", "waiting_approval"})
 MAX_BACKOFF_S = 60.0
 PROGRESS_KEEP = 20
 STORE_MAX_BYTES = 1_000_000
-KIND_LABEL = {"browser": "browser job", "subagent": "helper", "think": "deep thinking", "coding": "coding job",
+KIND_LABEL = {"mission": "mission", "browser": "browser job", "subagent": "helper", "think": "deep thinking", "coding": "coding job",
               "research": "research"}
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
@@ -39,6 +42,13 @@ def two_sentences(text: str, limit: int = 300) -> str:
 def short(goal: str, limit: int = 60) -> str:
     goal = " ".join((goal or "").split())
     return goal if len(goal) <= limit else goal[: limit - 1].rstrip() + "…"
+
+
+class JobOutcome(NamedTuple):
+    """What a work function returns when "it returned" is not the whole story: failed (with its own reason), or blocked
+    (it needs the user's answer). A plain string still means done."""
+    status: str
+    text: str
 
 
 @dataclass
@@ -356,12 +366,13 @@ class JobRunner:
     def resumable(self) -> list[Job]:
         if not self._resume_enabled:
             return []
-        return [j for j in self.select() if j.status == "interrupted" and j.resumable and j.kind in self._resumers]
+        return [j for j in self.select() if j.status in OFFERED and j.resumable and j.kind in self._resumers]
 
     def resume(self, job_id: int) -> Job | None:
         """Start an interrupted job again from its checkpoint (same id). None when it cannot be resumed."""
         job = self.get(job_id)
-        if job is None or job not in self.resumable():
+        if job is None or not self._resume_enabled or not job.resumable or job.kind not in self._resumers \
+                or job.status not in RESUME_FROM:
             return None
         try:
             work = self._resumers[job.kind](job)
@@ -458,8 +469,15 @@ class JobRunner:
                                 160)])[-PROGRESS_KEEP:]
                             self._persist(job)
                             await asyncio.sleep(delay)
+                    status = "done"
+                    if isinstance(result, JobOutcome):
+                        status, result = result.status, result.text
+                        if status not in OUTCOMES:
+                            result, status = f"The work ended with an unknown status {status!r}: {result}", "failed"
                     job.result = " ".join(str(result or "").split()) or "Done."
-                    job.status = "done"
+                    job.status = status
+                    if status == "blocked":
+                        job.question = job.result
         except asyncio.TimeoutError:
             job.status = "timeout"
             job.result = "Stopped after " + f"{int(job.budget_s)} seconds" + (
@@ -487,12 +505,14 @@ class JobRunner:
                     listener(job)
                 except Exception:  # noqa: BLE001 — bookkeeping must never disturb a job's end
                     log.warning("a job listener failed", exc_info=True)
-            if announce and job.status in ("done", "failed", "timeout"):
+            if announce and job.status in ("done", "failed", "timeout", "blocked"):
                 self._say(announce(job) if callable(announce) else self.announcement(job))
 
     def announcement(self, job: Job) -> str:
         if job.status == "done":
             return two_sentences(job.result) or f"{job.label().capitalize()} is done."
+        if job.status == "blocked":
+            return f"{job.label().capitalize()} needs you: {two_sentences(job.result)}"
         if job.status == "timeout":
             return f"The {job.label()} to {short(job.goal, 50)} took too long, so I stopped it."
         return f"The {job.label()} to {short(job.goal, 50)} failed: {two_sentences(job.result, 160)}"

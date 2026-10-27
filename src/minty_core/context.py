@@ -4,6 +4,7 @@ import logging
 import secrets as pysecrets
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from minty_core.agent import Agent
@@ -27,9 +28,10 @@ from minty_core.memory import MemoryStore
 from minty_core.personality import PersonalityStore
 from minty_core.prompts import PromptLayers, section as prompt_section
 from minty_core.history import DAY_SUMMARY_CHARS, ConversationArchive, extractive_summary
-from minty_core.llm.types import LLMError, Message, TextDelta
+from minty_core.llm.types import LLMError, Message, TextDelta, ToolCall
 from minty_core.plugins.host import BUILTIN_PLUGIN_DIR, FilteredHost, PluginHost
 from minty_core.policy import Guard
+from minty_core.toolkits import NEED_TOOLKIT
 from minty_core.permissions import explain_last, review
 from minty_core.offline import OfflineHandler
 from minty_core.provenance import Provenance
@@ -460,6 +462,35 @@ def build_context(config_dir: Path) -> AppContext:
         helper.guard = guard  # same rules and audit trail as the main conversation
         return helper
 
+    def make_worker(goal: str, confirm):
+        """The tools and the gate for one background mission: a helper agent under the whole safety layer (the same rules,
+        receipts and secret checks as the conversation) with its own record of what it read, the toolkits its goal needs
+        (and need_toolkit for more), and a confirm that waits for the user instead of refusing. Never the terminal, other
+        helpers, the installer or missions themselves."""
+        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "installer", "missions"), allow_risky=True),
+                       store, personalities, memory, confirm or _deny, max_rounds=8, tier="deep")
+        helper.guard, helper.safety, helper.receipts = guard, safety, receipts
+        helper.provenance = Provenance()  # what this mission reads does not taint the conversation, and the other way round
+        helper.force_private = is_private()
+        helper.toolkits = ToolkitRouter(
+            lambda: {p["name"]: p["tools"] for p in host.list_plugins() if p["enabled"] and not p["error"]}, tracer=tracer)
+        specs: list = []
+
+        def refresh() -> None:  # the same list object, so the loop sees the new tools
+            offered = helper.toolkits.tool_names(goal)
+            specs[:] = [s for s in helper._host.tool_specs() if s.name in offered] + [helper.toolkits.spec()]
+
+        refresh()
+        ids = iter(range(1, 10**9))
+
+        async def call(name: str, args: dict) -> str:
+            result, _sensitive = await helper._run_call(ToolCall(f"m{next(ids)}", name, args))
+            if name == NEED_TOOLKIT:
+                refresh()
+            return str(result)
+
+        return SimpleNamespace(specs=specs, call=call, helper=helper)
+
     async def confirm(prompt: str) -> bool:
         """Ask the user a yes/no question from inside a tool (the browser agent before a risky click)."""
         if store.config.audio.voice_mode == "live":
@@ -469,6 +500,7 @@ def build_context(config_dir: Path) -> AppContext:
     services["call_tool"] = host.call
     services["proactive_control"] = ProactiveControl(store)
     services["agent_factory"] = make_subagent
+    services["mission_worker"] = make_worker
     services["confirm"] = confirm
     services["is_private"] = is_private
     services["quick_only"] = lambda: bool(getattr(agent, "quick_only", False))

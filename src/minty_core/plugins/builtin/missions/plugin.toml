@@ -1,0 +1,15 @@
+name = "missions"
+description = "Hand Minty a goal: it plans, works in the background with your tools, checks each step against what really happened, and reports what is done, stuck or needs you."
+default_enabled = true
+
+[settings.max_concurrent]
+type = "number"
+label = "Missions at once (default 2)"
+
+[settings.max_runtime_s]
+type = "number"
+label = "Max seconds per mission (default 1800)"
+
+[settings.max_steps]
+type = "number"
+label = "Max tool-using steps per mission (default 40)"

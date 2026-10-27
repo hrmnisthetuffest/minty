@@ -6,6 +6,7 @@ PLUGINS = {
     "clock": ["clock_get_time"], "memory": ["memory_remember", "memory_recall"], "web_search": ["web_search_search"],
     "weather": ["weather_get_weather"], "timers": ["timers_set_timer", "timers_list_timers"],
     "jobs": ["jobs_status", "jobs_cancel"], "deep_think": ["deep_think_think_in_background"],
+    "missions": ["missions_start", "missions_answer", "missions_resume", "missions_report"],
     "display": ["display_show", "display_clear", "display_open_url"],
     "browser": ["browser_task", "browser_open", "browser_click", "browser_look"],
     "spotify": ["spotify_play", "spotify_pause", "spotify_volume"], "music_id": ["music_id_identify"],

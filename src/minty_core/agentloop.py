@@ -292,6 +292,7 @@ class Environment:
     evidence: Callable[[], Awaitable[str]]  # facts about the world now, for the verifier
     caption: Callable[[str, dict], str] | None = None  # progress text for one tool call
     left_as: str = ""  # what to tell the user about the state things were left in
+    on_checkpoint: Callable[[Checkpoint], None] | None = None  # called as each checkpoint starts (its evidence starts fresh)
 
 
 @dataclass
@@ -420,6 +421,8 @@ class AgentLoop:
             if why := self.budget.exhausted():
                 return self._budget_result(plan, why)
             total = len(plan.checkpoints)
+            if self._env.on_checkpoint is not None:
+                self._env.on_checkpoint(cp)
             if total > 1:
                 self._progress(f"step {cp.id} of {total}: {cp.goal}")
             outcome = await self._execute(plan, cp, failures.get(cp.id, []), detector)
