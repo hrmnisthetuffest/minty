@@ -50,8 +50,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "school": (("school",), "homework, school notices, the school portal",
                "homework school notice notices circular circulars portal schoolpad assignment assignments "
                "teacher class due exam timetable"),
-    "mail": (("mail",), "your e-mail (read only)",
-             "mail email emails inbox unread message messages sender gmail letter received"),
+    "mail": (("mail", "outbox"), "your e-mail: read it, and write or send replies under your rules (the outbox)",
+             "mail email emails inbox unread message messages sender gmail letter received reply replies respond answer "
+             "write draft send sent outbox compose follow"),
     "research": (("research",), "research notes and the library",
                  "research investigate sources notes library study literature deep dive findings cited"),
     "learn": (("learn",), "routines Minty can remember how to do",

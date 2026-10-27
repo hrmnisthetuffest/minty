@@ -1,0 +1,47 @@
+name = "outbox"
+description = "Writes and sends e-mail for you under rules you set: replies to people you list go by themselves, everything else asks you with the whole message shown. Every message is recorded."
+default_enabled = false
+
+[settings.user]
+type = "string"
+label = "E-mail address to send from"
+
+[settings.smtp_host]
+type = "string"
+label = "SMTP server (default smtp.gmail.com)"
+
+[settings.smtp_port]
+type = "number"
+label = "SMTP port (default 465)"
+
+[settings.smtp_security]
+type = "string"
+label = "ssl (default) or starttls; 'none' only for a relay on this computer"
+
+[settings.auto_reply_to]
+type = "string"
+label = "Answered without asking: addresses or @domains, comma separated. Empty: everything asks"
+
+[settings.never_write_to]
+type = "string"
+label = "Never written to, whatever else: addresses or @domains, comma separated"
+
+[settings.auto_max_per_day]
+type = "number"
+label = "Most automatic replies per day (default 5)"
+
+[settings.auto_max_chars]
+type = "number"
+label = "Longest automatic reply in characters (default 800)"
+
+[settings.auto_blocked_words]
+type = "string"
+label = "Words that make a reply ask first, comma separated (default: passwords, bank, pay, legal ...)"
+
+[settings.auto_require_authenticated]
+type = "boolean"
+label = "Only answer automatically when the original sender passed SPF/DKIM/DMARC (default on)"
+
+[settings.auto_signature]
+type = "string"
+label = "Line added to automatic replies (default says Minty sent it; empty for none)"

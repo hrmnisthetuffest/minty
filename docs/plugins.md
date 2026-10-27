@@ -411,6 +411,20 @@ Settings: `base_url`.
 | `n8n_list_executions` | Recent workflow runs and whether they succeeded. |  |
 | `n8n_trigger_webhook` | Run a workflow that starts with a Webhook node, sending an optional JSON payload. | asks first |
 
+## outbox
+
+Writes and sends e-mail for you under rules you set: replies to people you list go by themselves, everything else asks you with the whole message shown. Every message is recorded.
+
+On by default: no.
+Settings: `user`, `smtp_host`, `smtp_port`, `smtp_security`, `auto_reply_to`, `never_write_to`, `auto_max_per_day`, `auto_max_chars`, `auto_blocked_words`, `auto_require_authenticated`, `auto_signature`.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `outbox_draft` | Write an e-mail into the outbox without sending it. reply_to = the number of a message in your mail (the recipient is then the person who wrote, never anyone else); or to + subject for a new one. follow_up_days adds a reminder to follow up. |  |
+| `outbox_send` | Send an outbox item. Within the user's auto-reply rules it goes by itself; anything else asks the user with the whole message shown. | sensitive, risk varies |
+| `outbox_list` | What is in the outbox: drafted, sent (and how), failed or unknown. |  |
+| `outbox_discard` | Throw away an unsent outbox item. | risk 1 |
+
 ## productivity
 
 Habits, people, trips, meals, alarms, the day's plan and the recorder.

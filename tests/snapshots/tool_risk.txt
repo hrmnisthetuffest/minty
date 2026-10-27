@@ -154,6 +154,10 @@ n8n_get_workflow                   0 read
 n8n_list_executions                0 read
 n8n_list_workflows                 0 read
 n8n_trigger_webhook                2 visible
+outbox_discard                     1 change
+outbox_draft                       0 read
+outbox_list                        0 read
+outbox_send                        3 critical +args sensitive
 productivity_alarm                 0 read     +args
 productivity_day                   0 read     sensitive
 productivity_habit                 0 read     +args

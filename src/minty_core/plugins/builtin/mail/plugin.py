@@ -184,6 +184,45 @@ def register(ctx):
         return (f"{TAG}\nFrom: {safe_text(name or addr, 60)} <{safe_text(addr, 80)}>\n"
                 f"Subject: {safe_text(header(msg, 'Subject'), 120)}\nText: {safe_text(body[:BODY_CHARS], BODY_CHARS)}{more}")
 
+    def authenticated(msg) -> bool | None:
+        """Did the receiving server check that this message really came from its sender? Only its own result (the topmost
+        header) counts: anything lower down was written by someone else. None when there is no result at all."""
+        results = msg.get_all("Authentication-Results") or []
+        if not results:
+            return None
+        top = str(results[0]).lower()
+        return "dmarc=pass" in top or ("dkim=pass" in top and "spf=pass" in top)
+
+    def _thread(uid: str) -> dict | None:
+        """What is needed to answer a message: who wrote, its subject and ids, and whether the sender was checked."""
+        if not re.fullmatch(r"\d{1,12}", str(uid)):
+            return None
+        box = connect()
+        try:
+            head = raw(box, str(uid).encode(), "(BODY.PEEK[HEADER])")
+        finally:
+            with _quiet():
+                box.logout()
+        if not head:
+            return None
+        msg = email.message_from_bytes(head, policy=email.policy.compat32)
+        name, addr = parseaddr(header(msg, "From"))
+        if not addr:
+            return None
+        reply_to = parseaddr(header(msg, "Reply-To"))[1]
+        return {"uid": str(uid), "from_addr": addr, "from_name": safe_text(name or addr, 60),
+                "subject": safe_text(header(msg, "Subject"), 200), "message_id": header(msg, "Message-ID").strip(),
+                "references": header(msg, "References").strip(), "authenticated": authenticated(msg),
+                "reply_to_differs": bool(reply_to) and reply_to.lower() != addr.lower()}
+
+    async def mail_thread(uid) -> dict | None:
+        try:
+            return await asyncio.to_thread(_thread, str(uid))
+        except (PermissionError, imaplib.IMAP4.error, OSError):
+            return None
+
+    ctx.services["mail_thread"] = mail_thread  # used by the outbox to answer a message
+
     async def run(fn, *a):
         try:
             return await asyncio.to_thread(fn, *a)
