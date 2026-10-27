@@ -383,7 +383,7 @@ Settings: `listen_seconds`.
 
 Builds and manages n8n automations for you: creates workflows (inactive until you approve), lists, activates, triggers webhooks, reads executions.
 
-On by default: no.
+On by default: yes.
 Settings: `base_url`.
 
 | Tool | What it does | Flags |

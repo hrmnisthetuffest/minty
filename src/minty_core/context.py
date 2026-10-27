@@ -274,6 +274,9 @@ def build_context(config_dir: Path) -> AppContext:
     from minty_core.termtools import hint as terminal_hint
 
     agent.turn_extras.append(lambda request: terminal_hint(request) if store.config.shell.enabled else "")
+    from minty_core.termtools import automation_hint
+
+    agent.turn_extras.append(lambda request: automation_hint(request, store.config.shell.enabled))
     from minty_core.profile import ProfileStore, prompt_section as profile_section
 
     profile = ProfileStore(config_dir / "profile" / "answers.json")

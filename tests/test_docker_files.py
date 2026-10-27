@@ -66,3 +66,16 @@ def test_the_docker_guide_says_what_works_and_what_does_not():
     for needed in ("docker compose up", "set-pin", "set-key", "127.0.0.1:7778", "docker-compose.voice.yml", "does not"):
         assert needed in guide, needed
     assert "Chrome" in guide and "microphone" in guide
+
+
+def test_the_n8n_file_runs_n8n_for_this_computer_only_with_nothing_phoning_home():
+    c = yaml.safe_load(text("docker-compose.n8n.yml"))
+    n8n = c["services"]["n8n"]
+    assert n8n["image"].startswith("docker.n8n.io/n8nio/n8n")  # the official image
+    assert n8n["ports"] == ["127.0.0.1:5678:5678"]  # never on your network
+    env = {str(k): str(v).lower() for k, v in n8n["environment"].items()}
+    for off in ("N8N_DIAGNOSTICS_ENABLED", "N8N_VERSION_NOTIFICATIONS_ENABLED", "N8N_PERSONALIZATION_ENABLED"):
+        assert env[off] == "false", off
+    assert any(v.startswith("n8n-data:") for v in n8n["volumes"]) and "n8n-data" in c["volumes"]  # workflows survive a rebuild
+    body = text("docker-compose.n8n.yml")
+    assert not re.search(r"(?i)api[_-]?key\s*[:=]\s*\S|password\s*[:=]\s*\S|secret\s*[:=]\s*\S|encryption_key\s*[:=]", body)

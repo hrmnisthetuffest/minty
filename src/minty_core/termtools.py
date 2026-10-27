@@ -40,6 +40,23 @@ def _installed() -> list[tuple[str, str, str]]:
     return _CACHE["found"]
 
 
+_AUTOMATE = re.compile(r"\b(automat\w*|schedul\w*|recurring|workflows?|n8n|cron|whenever|on a timer|"
+                       r"every (?:day|week|month|morning|evening|night|hour|weekday|monday|tuesday|wednesday|thursday|friday|"
+                       r"saturday|sunday))\b", re.I)
+
+
+def automation_hint(request: str, shell_on: bool) -> str:
+    """Advice for a request to make something run again by itself, or "" for any other request."""
+    if not _AUTOMATE.search(request or ""):
+        return ""
+    text = ("Automations: for something that should run again by itself, prefer the n8n tools (a workflow is created inactive and "
+            "only runs after the user approves activating it) or Minty's own reminders and timers.")
+    if shell_on:
+        text += (" A cron entry or systemd timer made through the terminal lasts until it is removed: show the user the exact file "
+                 "and commands first, and say how to undo it.")
+    return text
+
+
 def hint(request: str, which=None) -> str:
     """Text for this request, or "" when it does not look like something a command-line tool could do."""
     text = request or ""

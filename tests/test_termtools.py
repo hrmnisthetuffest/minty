@@ -51,3 +51,30 @@ async def test_the_hint_rides_on_the_request_only_while_the_terminal_is_on(tmp_p
     data["shell"]["enabled"] = False
     ctx.store.update(data)
     assert "ddgr --json" not in ctx.agent._outgoing(request)[0].content
+
+
+# ---- automations -----------------------------------------------------------------------------------------------------------
+
+def test_a_request_to_automate_something_gets_the_automation_advice():
+    text = termtools.automation_hint("make an automation that tells me the weather every morning", shell_on=True)
+    assert "n8n" in text and "inactive" in text and "reminders" in text
+    assert "cron" in text and "systemd" in text and "exact" in text  # a schedule that lasts: show the files and commands first
+
+
+def test_without_the_terminal_the_advice_leaves_out_cron_and_systemd():
+    text = termtools.automation_hint("set up a workflow that runs every day", shell_on=False)
+    assert "n8n" in text and "cron" not in text and "systemd" not in text
+
+
+def test_ordinary_requests_get_no_automation_advice():
+    for request in ("how are you", "list every country in europe", "what is the weather", "set a timer for five minutes", ""):
+        assert termtools.automation_hint(request, shell_on=True) == "", request
+
+
+async def test_the_advice_rides_on_an_automation_request_even_with_the_terminal_off(tmp_path):
+    ctx = build_context(tmp_path)
+    data = ctx.store.config.model_dump(mode="json")
+    data["shell"]["enabled"] = False
+    ctx.store.update(data)
+    system = ctx.agent._outgoing("make an n8n workflow that runs every day")[0].content
+    assert "Automations:" in system and "systemd" not in system

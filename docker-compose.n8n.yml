@@ -1,0 +1,25 @@
+# n8n for Minty's automations, on this computer only.
+#   Start:   docker compose -f docker-compose.n8n.yml up -d      then open http://127.0.0.1:5678
+#   First time: n8n asks you to create its own owner account (yours, not Minty's). Then in n8n: Settings > n8n API > create an
+#   API key, and give it to Minty:  minty set-key plugin.n8n.api_key   (the n8n plugin is on by default).
+#   Stop:    docker compose -f docker-compose.n8n.yml down          (your workflows stay in the n8n-data volume)
+# More in docs/automations.md. This file holds no keys or passwords; nothing is sent to n8n's servers.
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"   # this computer only, never your network
+    environment:
+      N8N_HOST: "127.0.0.1"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: "http"
+      N8N_SECURE_COOKIE: "false"                  # plain http, on this computer only
+      N8N_DIAGNOSTICS_ENABLED: "false"            # no usage reports
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"  # no calls home to look for updates
+      N8N_PERSONALIZATION_ENABLED: "false"
+    volumes:
+      - n8n-data:/home/node/.n8n
+
+volumes:
+  n8n-data: {}

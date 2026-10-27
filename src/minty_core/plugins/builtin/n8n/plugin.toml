@@ -1,6 +1,6 @@
 name = "n8n"
 description = "Builds and manages n8n automations for you: creates workflows (inactive until you approve), lists, activates, triggers webhooks, reads executions."
-default_enabled = false
+default_enabled = true
 
 [settings.base_url]
 type = "string"

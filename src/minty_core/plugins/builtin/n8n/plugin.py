@@ -110,7 +110,8 @@ def register(ctx):
         except httpx.TimeoutException:
             raise N8nError("n8n did not answer in time") from None
         except httpx.HTTPError:
-            raise N8nError(f"could not reach n8n at {parts.netloc}. Is it running?") from None
+            raise N8nError(f"could not reach n8n at {parts.netloc}. Is it running? (Start it with: docker compose -f "
+                           "docker-compose.n8n.yml up -d; see docs/automations.md)") from None
         if resp.status_code in (401, 403):
             raise N8nError("n8n rejected the API key")
         if resp.status_code == 404:

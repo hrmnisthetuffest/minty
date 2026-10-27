@@ -108,3 +108,24 @@ async def test_webhook_path_is_validated_and_sends_no_api_key(tmp_path, monkeypa
 async def test_bad_base_url_disables_the_plugin_not_the_core(tmp_path, monkeypatch):
     host, _ = host_for(tmp_path, monkeypatch, lambda r: httpx.Response(200), base_url="ftp://x")
     assert host.get_tool("n8n_list_workflows") is None
+
+
+async def test_n8n_is_on_by_default_and_without_a_key_says_how_to_set_one_up(tmp_path):
+    from tests.plugin_helpers import make_host
+
+    out = await make_host(tmp_path).call("n8n_list_workflows", {})  # no plugin entry: the default applies
+    assert out.startswith("Error: n8n API key missing") and "minty set-key plugin.n8n.api_key" in out
+
+
+async def test_when_n8n_is_not_running_the_message_says_how_to_start_it(tmp_path, monkeypatch):
+    import httpx
+
+    from tests.plugin_helpers import make_host
+
+    def refuse(request):
+        raise httpx.ConnectError("nobody home")
+
+    host = make_host(tmp_path, secrets={"plugin.n8n.api_key": "k"})
+    monkeypatch.setattr("httpx.AsyncClient.request", lambda self, *a, **k: (_ for _ in ()).throw(httpx.ConnectError("x")))
+    out = await host.call("n8n_list_workflows", {})
+    assert out.startswith("Error: could not reach n8n at 127.0.0.1:5678") and "docker compose -f docker-compose.n8n.yml up -d" in out

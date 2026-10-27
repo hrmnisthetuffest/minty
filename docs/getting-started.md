@@ -159,7 +159,7 @@ Also **off** until you turn them on, with a judge-by-ear rule like the ones abov
 - **Carry on after a quick command** (`voice.resume_after_reflex`): say "Minty, volume down", "mute" or "pause" over an answer and the command is done, then the rest of the answer is said again from the sentence that was cut off. Only quick, reversible commands, within 45 seconds.
 - **Summarise older conversation** (`turn.fold_history`): turns that fall out of the short window are written up in a few sentences by a model, in the background, every few turns (`turn.fold_every_turns`), instead of being forgotten. Only what was said and answered is sent, with keys hidden; a private turn is summarised only through the private route; the summary stays in memory and starting fresh forgets it.
 
-On by default and switchable off: **The terminal** (`shell.enabled`, see [privacy and safety](privacy-and-safety.md#the-terminal): a few read-only commands run at once, everything else is asked first), **Understand a command with a spelling slip** (`instant.fuzzy`), **Correct a claim that did not happen** (`turn.check_claims`) and **Run several lookups at once** (`turn.parallel_reads`).
+On by default: **n8n automations** need your own n8n (see [automations](automations.md)). On by default and switchable off: **The terminal** (`shell.enabled`, see [privacy and safety](privacy-and-safety.md#the-terminal): a few read-only commands run at once, everything else is asked first), **Understand a command with a spelling slip** (`instant.fuzzy`), **Correct a claim that did not happen** (`turn.check_claims`) and **Run several lookups at once** (`turn.parallel_reads`).
 
 ### Faster replies
 
