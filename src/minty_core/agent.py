@@ -8,6 +8,7 @@ from dataclasses import replace
 from typing import AsyncIterator, Awaitable, Callable
 
 from minty_core.config import ConfigStore
+from minty_core.plugins.host import PARALLEL_SAFE_TOOLS
 from minty_core.agentloop import StuckDetector, fingerprint, trim_old_observations
 from minty_core.claimcheck import correction, unbacked_claims
 from minty_core.toolargs import check_args
@@ -408,16 +409,7 @@ class Agent:
                 self._receipt(tool, call, "blocked", detail=blocked)
                 return f"Blocked by a safety check: {blocked}.", False
         if tool is not None:
-            if self.guard is None:
-                self.guard = Guard(self._store, tracer=self.tracer)
-            known = set().union(*(destinations_in(m.content) for m in self.history if m.role == "user"))
-            prompt, extra = _confirmation_prompt(tool, call), 0
-            if self.provenance is not None:
-                mine = " ".join(m.content for m in self.history if m.role == "user")
-                note = self.provenance.note_for(call.arguments, mine, call.name)
-                if note:
-                    prompt = f"{prompt} {note}."
-                    extra = self.provenance.extra_risk(call.arguments, mine, call.name)
+            known, prompt, extra = self._gate_inputs(tool, call)
             if self.safety is not None:
                 advice = await self.safety.advise(call.name, call.arguments)
                 if advice:
@@ -437,9 +429,16 @@ class Agent:
             self.safety.executing(call.name, call.arguments, tool)
         self._tool_state(call.name)
         try:
-            result = shape_result(await self._host.call(call.name, call.arguments))
+            raw = await self._host.call(call.name, call.arguments)
         finally:
             self._tool_state(None)
+        return self._finish_call(tool, call, raw, approval_id, standing_note)
+
+    def _finish_call(self, tool, call: ToolCall, raw, approval_id: int | None = None,
+                     standing_note: str = "") -> tuple[str, bool]:
+        """Everything that happens once a tool has answered: the result is cut to size, counted, remembered as read, and a
+        receipt is written. Shared by one call at a time and by a batch of lookups (which run this in the order asked)."""
+        result = shape_result(raw)
         if self.toolkits is not None:
             self.toolkits.used(call.name)
         self.breaker.record(call.name, result.startswith("Error"))
@@ -454,6 +453,57 @@ class Agent:
         if tool is not None and tool.local_only and not result.startswith("Error"):
             return LocalResult(result), True
         return result, bool(tool is not None and tool.sensitive)
+
+    def _gate_inputs(self, tool, call: ToolCall) -> tuple[set, str, int]:
+        """What the safety gate is shown for this call: destinations the user mentioned, the question, any extra risk."""
+        if self.guard is None:
+            self.guard = Guard(self._store, tracer=self.tracer)
+        known = set().union(*(destinations_in(m.content) for m in self.history if m.role == "user"))
+        prompt, extra = _confirmation_prompt(tool, call), 0
+        if self.provenance is not None:
+            mine = " ".join(m.content for m in self.history if m.role == "user")
+            note = self.provenance.note_for(call.arguments, mine, call.name)
+            if note:
+                prompt = f"{prompt} {note}."
+                extra = self.provenance.extra_risk(call.arguments, mine, call.name)
+        return known, prompt, extra
+
+    def _gate_for_batch(self, call: ToolCall):
+        """(tool, assessment) when this call may run alongside others: an audited lookup that changes nothing and passes every check
+        without asking anyone. Anything else (a change, a question, a block, a malformed call) goes the usual way, one at a
+        time, so approvals are never asked together and nothing a change depends on is still running."""
+        if call.name not in PARALLEL_SAFE_TOOLS or not self._store.config.turn.parallel_reads:
+            return None
+        tool = self._host.get_tool(call.name)
+        if tool is None:
+            return None
+        args, problem = check_args(tool, call.arguments)
+        if problem or self._changes_something(tool, ToolCall(call.id, call.name, args)):
+            return None
+        call.arguments = args
+        if self.safety is not None and self.safety.precheck(call.name, call.arguments, tool):
+            return None
+        known, prompt, extra = self._gate_inputs(tool, call)
+        assessed = self.guard.assess(tool, call.name, call.arguments, prompt, extra_risk=extra, known=known)
+        if assessed.decision != "allow" or assessed.risk != 0:
+            return None
+        return tool, assessed
+
+    async def _run_reads(self, batch: list[tuple]) -> list[tuple[str, bool]]:
+        """Lookups that passed the gate, run at the same time; answered and noted in the order they were asked."""
+        for (tool, assessed), call in batch:
+            self.guard.settle(assessed)  # recorded exactly as it is for a single call
+            if self.safety is not None:
+                self.safety.executing(call.name, call.arguments, tool)
+        self._tool_state(batch[0][1].name)  # once around the whole batch, not flickering as each one ends
+        try:
+            raws = await asyncio.gather(*(self._host.call(c.name, c.arguments) for _, c in batch), return_exceptions=True)
+        finally:
+            self._tool_state(None)
+        for raw in raws:
+            if isinstance(raw, BaseException):  # as when they ran one at a time: the turn ends and rolls back
+                raise raw
+        return [self._finish_call(gate[0], call, raw) for (gate, call), raw in zip(batch, raws)]
 
     @staticmethod
     def _what(call: ToolCall) -> str:
@@ -729,30 +779,41 @@ class Agent:
                         return
                     local_texts: list[str] = []
                     stopped = ""
-                    for call in calls:
+                    i = 0
+                    while i < len(calls):
                         if stopped:  # every call the model made gets an answer, so the history stays well formed
                             self.history.append(Message("tool", "Not run: the request was stopped to break a loop.",
-                                                        tool_call_id=call.id, name=call.name, private=turn_private))
+                                                        tool_call_id=calls[i].id, name=calls[i].name, private=turn_private))
+                            i += 1
                             continue
-                        result, private = await self._run_call(call)
-                        sensitive = sensitive or private
-                        turn_private = turn_private or private
-                        if isinstance(result, LocalResult):  # for the user only: shown, never kept or sent on
-                            local_texts.append(str(result))
-                            result = LOCAL_STUB
-                        why = detector.observe(
-                            f"{call.name}:{json.dumps(call.arguments, sort_keys=True, default=str)}",
-                            fingerprint(str(result)), failed=str(result).startswith("Error"))
-                        if why:
-                            trips += 1
-                            if trips == 1:
-                                result = (f"{result}\n[Do not repeat this: {why}. Try something different, "
-                                          "or tell the user what is blocking you.]")
-                            else:
-                                stopped = why
-                        self.history.append(
-                            Message("tool", result, tool_call_id=call.id, name=call.name, private=turn_private)
-                        )
+                        batch = []  # consecutive lookups that may run together (checked against the state as of now)
+                        while i + len(batch) < len(calls) and (gate := self._gate_for_batch(calls[i + len(batch)])) is not None:
+                            batch.append((gate, calls[i + len(batch)]))
+                        if len(batch) >= 2:  # one lookup on its own takes the usual path, exactly as before
+                            outcomes = await self._run_reads(batch)
+                            group = [c for _, c in batch]
+                        else:
+                            group, outcomes = [calls[i]], [await self._run_call(calls[i])]
+                        i += len(group)
+                        for call, (result, private) in zip(group, outcomes):
+                            sensitive = sensitive or private
+                            turn_private = turn_private or private
+                            if isinstance(result, LocalResult):  # for the user only: shown, never kept or sent on
+                                local_texts.append(str(result))
+                                result = LOCAL_STUB
+                            why = detector.observe(
+                                f"{call.name}:{json.dumps(call.arguments, sort_keys=True, default=str)}",
+                                fingerprint(str(result)), failed=str(result).startswith("Error"))
+                            if why:
+                                trips += 1
+                                if trips == 1:
+                                    result = (f"{result}\n[Do not repeat this: {why}. Try something different, "
+                                              "or tell the user what is blocking you.]")
+                                else:
+                                    stopped = why
+                            self.history.append(
+                                Message("tool", result, tool_call_id=call.id, name=call.name, private=turn_private)
+                            )
                     if stopped:
                         note = f"I'm going in circles on this, so I stopped: {stopped}. Tell me how you'd like to go on."
                         self.history.append(Message("assistant", note, private=turn_private))

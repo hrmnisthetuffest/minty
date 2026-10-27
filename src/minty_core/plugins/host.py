@@ -51,6 +51,13 @@ IDEMPOTENT_TOOLS = frozenset({"apis_send", "files_download", "files_upload", "in
                               "n8n_trigger_webhook"})
 
 
+# Lookups that need no confirmation and whose answers do not depend on the order they run in (no page to move, nothing
+# to change): when the model asks for several of them in one round they run at the same time. One list, so it can be
+# audited in one place. A "read" that moves state (a browser scroll or click) must never be added.
+PARALLEL_SAFE_TOOLS = frozenset({"weather_get_weather", "web_search_search", "clock_get_time", "memory_recall",
+                                 "files_list", "files_read"})
+
+
 def _noop_notify(text: str) -> None:
     return None
 
