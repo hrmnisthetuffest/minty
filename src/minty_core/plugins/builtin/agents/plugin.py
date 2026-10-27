@@ -3,7 +3,8 @@ import logging
 from pathlib import Path
 
 from minty_core.plugins.builtin.agents.adapters import ClaudeCodeAdapter, HermesAdapter, OpenClawAdapter
-from minty_core.plugins.builtin.agents.jobs import JobManager
+from minty_core.plugins.builtin.agents.jobs import MODES, JobManager
+from minty_core.plugins.builtin.agents.verify import parse_check
 from minty_core.plugins.host import Tool
 from minty_core.policy import R1
 
@@ -17,8 +18,10 @@ def build_adapters(settings: dict) -> dict:
     if mode not in PERMISSION_MODES:
         log.warning("Ignoring unsafe claude_permission_mode %r; using acceptEdits", mode)
         mode = "acceptEdits"
+    budget = settings.get("claude_max_budget_usd")
     adapters = [
-        ClaudeCodeAdapter(permission_mode=mode),
+        ClaudeCodeAdapter(permission_mode=mode, max_budget_usd=float(budget) if isinstance(budget, (int, float))
+                          and not isinstance(budget, bool) else None),
         HermesAdapter(),
         OpenClawAdapter(agent_id=str(settings.get("openclaw_agent") or "main")),
     ]
@@ -27,6 +30,17 @@ def build_adapters(settings: dict) -> dict:
 
 def settings_flag(settings, key) -> bool:
     return bool((settings or {}).get(key) is True)
+
+
+def configured_check(settings: dict) -> list[str] | None:
+    """The tests command the user set (split without a shell), or None: then each project's own tests are found."""
+    text = str((settings or {}).get("check_command") or "").strip()
+    if not text:
+        return None
+    argv = parse_check(text)
+    if argv is None:
+        log.warning("Ignoring check_command %r: it must be one plain command, with no pipes, ';', '&&' or '$'", text)
+    return argv
 
 
 def register(ctx):
@@ -41,7 +55,13 @@ def register(ctx):
         sessions_path=ctx.config_dir / "agent_sessions.json",
         max_concurrent=int(settings.get("max_concurrent") or 2),
         max_runtime_s=float(settings.get("max_runtime_s") or 1800),
+        check=configured_check(settings),
+        max_rounds=int(settings.get("max_rounds") or 2),
+        verify_work=settings.get("verify") is not False,
+        store_path=ctx.config_dir / "agent_jobs.json",
     )
+    if notice := manager.interrupted_notice():  # a restart cut a coding job short: say so, once, instead of staying silent
+        ctx.notify(notice)
 
     mirrors = ctx.state.setdefault("mirrors", {})  # coding job id -> shared runner job id
 
@@ -68,9 +88,12 @@ def register(ctx):
     manager_runtime = float(settings.get("max_runtime_s") or 1800)
 
     async def start_task(args):
-        job = await manager.start(args["agent"], args["project"], args["prompt"])
+        job = await manager.start(args["agent"], args["project"], args["prompt"], mode=args.get("mode") or "work")
         mirror(job, args["prompt"])
-        return f"Started job {job.id}. I'll tell you when {job.agent} finishes."
+        if job.mode == "ask":
+            return f"Started job {job.id}: {job.agent} will look and answer, and change nothing."
+        return (f"Started job {job.id}. I'll tell you when {job.agent} finishes, and whether the files and tests show "
+                "it worked.")
 
     async def start_project(args):
         job = await manager.start(args["agent"], args["name"], args["prompt"], create=True)
@@ -95,12 +118,18 @@ def register(ctx):
 
     def describe_start(args, *, target, kind=""):
         who = str(args.get("agent", "")).replace("_", " ")
+        if args.get("mode") == "ask":
+            return f"Should I ask {who} about {args.get(target)} (it will only read): {str(args.get('prompt', ''))[:80]}?"
         return f"Should I have {who} work on {kind}{args.get(target)}: {str(args.get('prompt', ''))[:80]}?"
 
     agent = ("string", True)
     return [
-        Tool("start_task", "Run a coding agent on an existing project. agent is claude_code, hermes or openclaw.",
-             schema(agent=agent, project=("string", True), prompt=("string", True)), start_task, risky=not auto_start, risk=R1,
+        Tool("start_task", "Run a coding agent on a project. agent: claude_code, hermes or openclaw. mode ask = only read "
+                           "and answer (claude_code); work (default) = change files, then I check the files and tests.",
+             {"type": "object", "properties": {"agent": {"type": "string"}, "project": {"type": "string"},
+                                               "prompt": {"type": "string"},
+                                               "mode": {"type": "string", "enum": list(MODES)}},
+              "required": ["agent", "project", "prompt"]}, start_task, risky=not auto_start, risk=R1,
              describe=lambda a: describe_start(a, target="project")),
         Tool("start_project", "Create a new project folder and start a coding agent on it.",
              schema(agent=agent, name=("string", True), prompt=("string", True)), start_project, risky=not auto_start, risk=R1,

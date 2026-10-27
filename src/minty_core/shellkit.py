@@ -104,6 +104,11 @@ def _ddgr(args: list[str]) -> list[str] | None:
     return ["ddgr", mode, *options, *words]
 
 
+def has_metachars(command: str) -> bool:
+    """True when a command line contains anything a shell would treat specially (so it cannot be split safely)."""
+    return bool(_METACHARS & set(command))
+
+
 def safe_argv(command: str) -> list[str] | None:
     """The exact argument list for a command that may run without asking, or None (then it must be approved)."""
     if not isinstance(command, str) or len(command) > MAX_COMMAND_CHARS or _METACHARS & set(command):

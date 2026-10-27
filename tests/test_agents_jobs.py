@@ -29,6 +29,7 @@ def make(tmp_path, notify=None, **kw):
     root.mkdir()
     heard = [] if notify is None else notify
     adapter = ScriptAdapter()
+    kw.setdefault("verify_work", False)  # these tests are about processes; test_agents_verified_jobs.py is about evidence
     mgr = JobManager(root, {"fake": adapter}, heard.append, state={}, log_dir=tmp_path / "logs",
                      sessions_path=tmp_path / "sessions.json", **kw)
     return mgr, heard, adapter, root
@@ -45,7 +46,7 @@ async def test_job_runs_in_project_dir_notifies_and_logs(tmp_path):
     assert job.status == "running"
     await settle(mgr, job)
     assert job.status == "done" and job.summary == "built in notes"
-    assert heard == ["fake finished notes: built in notes"]
+    assert heard == ["fake finished notes: built in notes (not checked)"]
     assert (tmp_path / "logs" / f"{job.id}.log").read_text().strip() == "built in notes"
     assert "done" in mgr.status(job.id)
 

@@ -120,3 +120,26 @@ def test_claude_tolerates_a_warning_line_before_json():
     assert p.summary == "Built it." and p.session_id == "s-9" and p.failed is False
     out = '[warn] x\n' + json.dumps({"result": "oops", "is_error": True}) + '\ntrailing log'
     assert ClaudeCodeAdapter().parse(out).failed is True
+
+
+def test_claude_is_told_never_to_push_or_rewrite_history(tmp_path):
+    from minty_core.plugins.builtin.agents.adapters import DENIED_TOOLS
+    inv = ClaudeCodeAdapter().build(tmp_path, "do it", None)
+    denied = inv.argv[inv.argv.index("--disallowedTools") + 1:inv.argv.index("--allowedTools")]
+    assert denied == DENIED_TOOLS and "Bash(git push:*)" in denied and "Bash(git reset:*)" in denied
+    assert "Bash(git push:*)" not in inv.argv[inv.argv.index("--allowedTools"):]
+
+
+def test_claude_asked_a_question_can_only_read(tmp_path):
+    inv = ClaudeCodeAdapter().build(tmp_path, "why is it slow?", None, readonly=True)
+    assert inv.argv[inv.argv.index("--permission-mode") + 1] == "plan"
+    assert inv.argv[inv.argv.index("--allowedTools") + 1:] == ["Read", "Glob", "Grep"]
+    assert ClaudeCodeAdapter.readonly_capable is True
+    assert not getattr(HermesAdapter, "readonly_capable", False) and not getattr(OpenClawAdapter, "readonly_capable", False)
+
+
+def test_claude_spending_can_be_capped(tmp_path):
+    inv = ClaudeCodeAdapter(max_budget_usd=2.5).build(tmp_path, "x", None)
+    assert inv.argv[inv.argv.index("--max-budget-usd") + 1] == "2.5"
+    for none in (None, 0, -1):
+        assert "--max-budget-usd" not in ClaudeCodeAdapter(max_budget_usd=none).build(tmp_path, "x", None).argv

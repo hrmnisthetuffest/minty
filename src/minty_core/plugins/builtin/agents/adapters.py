@@ -9,6 +9,11 @@ log = logging.getLogger(__name__)
 _AGENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 DEFAULT_TOOLS = ["Read", "Edit", "Write", "Glob", "Grep", "Bash(git:*)", "Bash(python:*)", "Bash(python3:*)",
                  "Bash(pip:*)", "Bash(pytest:*)", "Bash(npm:*)", "Bash(node:*)", "Bash(ls:*)", "Bash(mkdir:*)"]
+# a deny rule beats an allow rule: the job brief says "never push or rewrite history"; these make the tool say it too.
+# (Guard rails for an honest agent, not a sandbox: `python` can still do anything a script can.)
+DENIED_TOOLS = ["Bash(git push:*)", "Bash(git reset:*)", "Bash(git clean:*)", "Bash(git rebase:*)",
+                "Bash(git remote:*)", "Bash(git config:*)", "Bash(git filter-branch:*)"]
+READ_ONLY_TOOLS = ["Read", "Glob", "Grep"]
 
 
 @dataclass
@@ -27,6 +32,7 @@ class Parsed:
 class Adapter(Protocol):
     name: str
     binary: str
+    readonly_capable: bool  # can be told to look and not touch (build(..., readonly=True)); absent means no
 
     def build(self, project: Path, prompt: str, session_id: str | None) -> Invocation: ...
     def parse(self, stdout: str) -> Parsed: ...
@@ -64,16 +70,22 @@ def _load_json(text: str) -> dict | None:
 class ClaudeCodeAdapter:
     name = "claude_code"
     binary = "claude"
+    readonly_capable = True
 
-    def __init__(self, permission_mode: str = "acceptEdits", allowed_tools: list[str] | None = None):
+    def __init__(self, permission_mode: str = "acceptEdits", allowed_tools: list[str] | None = None,
+                 max_budget_usd: float | None = None):
         self._mode = permission_mode
         self._tools = list(DEFAULT_TOOLS if allowed_tools is None else allowed_tools)
+        self._budget = max_budget_usd if max_budget_usd and max_budget_usd > 0 else None
 
-    def build(self, project: Path, prompt: str, session_id: str | None) -> Invocation:
+    def build(self, project: Path, prompt: str, session_id: str | None, readonly: bool = False) -> Invocation:
         argv = ["claude", "-p", prompt, "--output-format", "json"]
         if session_id:
             argv += ["--resume", session_id]
-        argv += ["--permission-mode", self._mode, "--allowedTools", *self._tools]
+        if self._budget:
+            argv += ["--max-budget-usd", f"{self._budget:g}"]
+        mode, tools = ("plan", READ_ONLY_TOOLS) if readonly else (self._mode, self._tools)
+        argv += ["--permission-mode", mode, "--disallowedTools", *DENIED_TOOLS, "--allowedTools", *tools]
         return Invocation(argv, project)
 
     def parse(self, stdout: str) -> Parsed:

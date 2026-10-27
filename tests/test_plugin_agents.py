@@ -86,10 +86,10 @@ async def test_coding_jobs_appear_in_the_shared_job_list_and_cancel_through_it(t
     from minty_core.jobs import JobRunner
     from minty_core.plugins.builtin.agents.jobs import JobManager
 
-    fake = NS(id=5, agent="claude_code", project="alpha", status="running", summary="")
+    fake = NS(id=5, agent="claude_code", project="alpha", status="running", summary="", mode="work")
     stopped = []
 
-    async def start(self, agent, project, prompt, *, create=False):
+    async def start(self, agent, project, prompt, *, create=False, mode="work"):
         return fake
 
     async def stop(self, job_id):
@@ -111,3 +111,30 @@ async def test_coding_jobs_appear_in_the_shared_job_list_and_cancel_through_it(t
     assert h._state["agents"]["mirrors"] == {5: shown.id}
     await runner.cancel(shown.id)
     assert stopped == [5] and shown.status == "cancelled"
+
+
+def test_start_task_can_be_a_question_or_a_whole_job(tmp_path):
+    tool = host(tmp_path).get_tool("agents_start_task")
+    mode = tool.parameters["properties"]["mode"]
+    assert mode["enum"] == ["work", "ask"] and "mode" not in tool.parameters["required"]
+    assert "ask" in tool.describe({"agent": "claude_code", "project": "p", "prompt": "why?", "mode": "ask"}).lower()
+    assert "work on" in tool.describe({"agent": "claude_code", "project": "p", "prompt": "fix it"})
+
+
+def test_settings_reach_the_manager_and_the_adapter(tmp_path):
+    from minty_core.plugins.builtin.agents.plugin import build_adapters
+    argv = build_adapters({"claude_max_budget_usd": 3})["claude_code"].build(Path("."), "x", None).argv
+    assert argv[argv.index("--max-budget-usd") + 1] == "3"
+
+
+def test_a_check_command_with_shell_syntax_is_ignored(tmp_path, caplog):
+    from minty_core.plugins.builtin.agents.plugin import configured_check
+    assert configured_check({"check_command": "pytest -q"}) == ["pytest", "-q"]
+    assert configured_check({}) is None
+    assert configured_check({"check_command": "pytest; rm -rf ~"}) is None
+    assert "check_command" in caplog.text
+
+
+async def test_status_of_a_fresh_install(tmp_path):
+    h = host(tmp_path, check_command="pytest -q", max_rounds=3)
+    assert await h.call("agents_task_status", {}) == "No jobs yet."

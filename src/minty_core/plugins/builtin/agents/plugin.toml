@@ -25,3 +25,19 @@ label = "OpenClaw agent id (default main)"
 [settings.auto_start]
 type = "boolean"
 label = "Start jobs without asking first (default off). Jobs still run only in the project root, with the runtime cap"
+
+[settings.check_command]
+type = "string"
+label = "Tests to run after a coding job, e.g. pytest -q (one plain command). Empty: each project's own tests are found"
+
+[settings.max_rounds]
+type = "number"
+label = "Rounds per job: after failing tests the agent is sent back to fix them (default 2)"
+
+[settings.claude_max_budget_usd]
+type = "number"
+label = "Spending cap in dollars for one Claude Code run (empty: none)"
+
+[settings.verify]
+type = "boolean"
+label = "Check the files and tests after every job (default on). Off: trust the agent's own report"
