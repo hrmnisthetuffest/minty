@@ -17,10 +17,10 @@ _VERBS = {
 }
 # words in a tool's own name that show it can do that kind of thing
 _BACKED_BY = {
-    "sent": ("send", "mail", "message", "post", "reply", "forward", "telegram", "text", "sms", "email", "webhook", "apis",
+    "sent": ("shell", "send", "mail", "message", "post", "reply", "forward", "telegram", "text", "sms", "email", "webhook", "apis",
              "notify", "slack", "chat"),
-    "deleted": ("delete", "remove", "erase", "clear", "trash", "wipe", "forget", "purge", "cancel", "drop"),
-    "installed": ("install", "download", "upload", "setup"),
+    "deleted": ("shell", "delete", "remove", "erase", "clear", "trash", "wipe", "forget", "purge", "cancel", "drop"),
+    "installed": ("shell", "install", "download", "upload", "setup"),
 }
 _ME = r"\bI(?:'ve| have)?\s+(?:(?:just|now|also|successfully|have)\s+)*"
 _ACTIVE = {k: re.compile(_ME + f"(?:{v})\\b", re.I) for k, v in _VERBS.items()}

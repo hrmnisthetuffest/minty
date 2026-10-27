@@ -48,6 +48,10 @@ export const SECTIONS = [
   {
     id: "speed", title: "Speed", blurb: "Faster answers. Nothing here changes how Minty looks or what it can do.",
     rows: [
+      ["shell", "enabled", "Let Minty use the terminal", "bool", "Off by default. A few read-only commands (ls, pwd, git status) run at once; every other command is asked first with the exact command read out. Never as root, never for background helpers"],
+      ["shell", "timeout_s", "Longest a command may run (seconds)", "number:5", "A command still running after this is stopped"],
+      ["shell", "max_output_chars", "Most output kept from a command", "number:500", "A longer output keeps its start and its end"],
+      ["shell", "workdir", "Folder commands start in", "text", "Empty means the workspace folder (~/Minty-Workspace)"],
       ["instant", "enabled", "Answer simple questions at once", "bool", "Time, date, maths, unit conversion and more: no model, no waiting. The list is in docs/instant-answers.md"],
       ["instant", "actions", "Do simple actions at once", "bool", "Timers, reminders, volume, pause and skip: one tool call, no model"],
       ["instant", "fuzzy", "Understand a command with a spelling slip", "bool", "\"Turn the volumn down\" or \"set a time for 5 minutes\" still work. Only one-letter slips in a few command words, and never locking the screen"],

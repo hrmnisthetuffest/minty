@@ -498,6 +498,16 @@ On by default: yes.
 | `selfcheck_report` | The weekly self-report from the traces (action report), failure proposals (proposals, approve id, reject id), the daily tip (tip) or today's summary card (card; send true to put it on the phone). | risk varies |
 | `selfcheck_timeline` | What happened lately: jobs and actions, newest first. | sensitive |
 
+## shell
+
+Run a command in the terminal. Off until switched on; a few read-only commands run at once, everything else is asked first with the exact command read out.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `shell_run` | Run one command in the terminal (bash), in the workspace folder; returns what it printed. pwd, ls, whoami, date, uname, uptime, df, free, hostname, which and git status/log/diff/branch run at once; anything else is always asked first. Never root. | sensitive, risk varies |
+
 ## smart_home
 
 Control Home Assistant devices (lights, switches, scenes, locks).

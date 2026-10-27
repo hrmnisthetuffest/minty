@@ -29,6 +29,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "home": (("smart_home",), "lights, locks, devices",
              "light lights lamp fan switch brightness dim scene lock unlock door garage blinds cover home "
              "device devices sensor thermostat temperature bedroom kitchen"),
+    "terminal": (("shell",), "run a command in the terminal (always asked first, except a few read-only ones)",
+                 "terminal shell command commands run execute bash cli console script ls pwd git status log diff "
+                 "directory uptime disk whoami hostname uname"),
     "files": (("files",), "files in the workspace folder",
               "file files folder directory download upload save write read delete remove move rename document "
               "workspace pdf text notes.txt"),

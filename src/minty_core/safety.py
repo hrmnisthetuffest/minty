@@ -40,6 +40,15 @@ class SafetyKit:
         if cfg.privacy_mode and (name in NETWORK_TOOLS or name.startswith(tuple(p + "_" for p in NETWORK_PLUGINS))
                                  or getattr(tool, "egress", None) is not None):
             return "privacy mode is on, so nothing is sent to the internet until you turn it off"
+        blocker = getattr(tool, "blocked_when", None)
+        if blocker is not None:  # the tool's own refusal (switched off, a command it will not run), before anyone is asked
+            try:
+                own = blocker(args or {})
+            except Exception:  # noqa: BLE001 — a check that cannot be made is a refusal
+                log.warning("blocked_when of %s failed; refusing", name, exc_info=True)
+                own = "its own safety check could not be made"
+            if own:
+                return own
         if cfg.block_secret_egress:
             reason = self._secrets_in(name, args)
             if reason:

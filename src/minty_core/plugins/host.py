@@ -43,6 +43,9 @@ class Tool:
     # a side effect (send, download, install): the same call inside safety.idempotency_window_s runs once and the
     # repeat is answered with the first result (idempotency.py)
     idempotent: bool = False
+    # a reason this call must not run right now, or None; checked by the safety layer before anyone is asked (the terminal is
+    # off, the command is refused)
+    blocked_when: Callable[[dict], str | None] | None = None
 
 
 # Tools whose repeat must not repeat the side effect (send, upload, download, install, fire a webhook). One list,
@@ -267,9 +270,11 @@ class PluginHost:
 class FilteredHost:
     """Read-only view of a plugin host for subagents: hides risky tools and tools of excluded plugins."""
 
+    NEVER = ("shell_",)  # whatever else is allowed, a background helper never gets the terminal
+
     def __init__(self, host, *, exclude_plugins=(), allow_risky: bool = False):
         self._host = host
-        self._exclude = tuple(f"{p}_" for p in exclude_plugins)
+        self._exclude = tuple(f"{p}_" for p in exclude_plugins) + self.NEVER
         self._allow_risky = allow_risky
 
     def _allowed(self, tool: Tool | None) -> bool:

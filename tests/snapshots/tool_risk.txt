@@ -186,6 +186,7 @@ school_notices                     0 read     sensitive
 school_set_portal                  2 visible
 selfcheck_report                   0 read     +args
 selfcheck_timeline                 0 read     sensitive
+shell_run                          3 critical +args sensitive
 smart_home_control_secure          3 critical
 smart_home_get_state               0 read
 smart_home_list_devices            0 read

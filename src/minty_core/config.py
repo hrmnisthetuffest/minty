@@ -660,6 +660,14 @@ class McpConfig(BaseModel):
     timeout_s: int = Field(30, ge=5, le=120)
 
 
+class ShellConfig(BaseModel):
+    """The terminal (shellkit.py, plugin `shell`). Off until you switch it on: a command can do anything you could do yourself."""
+    enabled: bool = False
+    timeout_s: int = Field(30, ge=1, le=300)  # the longest a command may run; one asked for less is stopped sooner
+    max_output_chars: int = Field(8000, ge=500, le=50000)  # a longer output keeps its start and its end
+    workdir: str = ""  # where commands start; empty means the workspace folder (~/Minty-Workspace)
+
+
 class IntegrationsConfig(BaseModel):
     """Home, calendar and external data (WP-20). Off until switched on; each part has its own switch."""
     enabled: bool = False
@@ -859,6 +867,7 @@ class Config(BaseModel):
     dev: DevConfig = Field(default_factory=DevConfig)
     create: CreateConfig = Field(default_factory=CreateConfig)
     mcp: McpConfig = Field(default_factory=McpConfig)
+    shell: ShellConfig = Field(default_factory=ShellConfig)
     selfcheck: SelfcheckConfig = Field(default_factory=SelfcheckConfig)
     integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
     ops: OpsConfig = Field(default_factory=OpsConfig)

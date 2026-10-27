@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-UNTRUSTED_PREFIXES = ("browser_", "web_search_", "mail_", "research_", "apis_", "files_read", "n8n_", "school_",
+UNTRUSTED_PREFIXES = ("shell_", "browser_", "web_search_", "mail_", "research_", "apis_", "files_read", "n8n_", "school_",
                       "inbox_", "telegram_", "mcp_", "spotify_search", "history_", "web_open", "web_later", "web_captions",
                       "system_notifications", "dev_repo", "dev_review",
                       "create_news", "create_papers", "create_evidence", "create_media", "integrations_calendar",
