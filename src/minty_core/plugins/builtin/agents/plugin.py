@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from dataclasses import asdict
 from pathlib import Path
 
 from minty_core.plugins.builtin.agents.adapters import ClaudeCodeAdapter, HermesAdapter, OpenClawAdapter
@@ -62,6 +63,8 @@ def register(ctx):
     )
     if notice := manager.interrupted_notice():  # a restart cut a coding job short: say so, once, instead of staying silent
         ctx.notify(notice)
+
+    ctx.services["coding_jobs"] = lambda: [asdict(j) for j in list(manager._jobs.values())]  # the record, for missions_review
 
     mirrors = ctx.state.setdefault("mirrors", {})  # coding job id -> shared runner job id
 

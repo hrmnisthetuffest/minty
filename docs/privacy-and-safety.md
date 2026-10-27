@@ -70,3 +70,13 @@ traces. If you ever paste one somewhere public, rotate it at the provider. Never
 
 Minty can be wrong. For health, money, law or safety, check with a person who knows. If you or someone you know is in danger,
 contact local emergency services or a crisis line in your country.
+
+
+## Handing work over
+
+Missions, coding-agent jobs and the outbox are described in [work.md](work.md). The safety points in short: a mission runs under the
+same rules, receipts and secret checks as a conversation, with its own record of what it read, and never gets the terminal; every
+step that needs your yes waits for it and no answer is a no; coding agents run in a project folder you choose, are told not to push
+or rewrite history, and are judged by the files and tests; e-mail is sent only under rules in settings that no tool can change, a
+reply goes only to the person who wrote, every send is recorded, and what may not have been sent is reported as unknown rather
+than sent.

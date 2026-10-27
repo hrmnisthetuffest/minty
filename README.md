@@ -76,6 +76,9 @@ No installer? Everything it does is `python -m venv .venv && .venv/bin/pip insta
   exact command read out.** See [privacy and safety](docs/privacy-and-safety.md#the-terminal).
 - **Sets up automations.** Reminders, timers and routines of its own, and n8n workflows built for you (created inactive; nothing runs until
   you approve activating it). See [docs/automations.md](docs/automations.md).
+- **Takes goals, not just commands.** Hand it an outcome and it works in the background, checks each step against what its tools
+  really returned, and reports done, failed or blocked on a question; coding agents are checked by the files and tests, e-mail goes
+  out only under rules you write, and it tells you what needs you. See [docs/work.md](docs/work.md).
 - **Does things.** More than forty built-in tool groups: a browser agent, files, notes and memory, reminders and timers, Spotify,
   weather, web research with sources, smart-home and n8n hooks, MCP servers, and coding agents (Claude Code, Hermes, OpenClaw) it can
   start and watch for you. See [docs/plugins.md](docs/plugins.md).

@@ -187,3 +187,15 @@ async def test_without_the_app_services_it_says_so_instead_of_pretending(tmp_pat
 async def test_the_tools_are_ask_first_where_they_start_work(tmp_path):
     host, _ = build(tmp_path, ScriptedRouter([say("x")]), World())
     assert host.get_tool("missions_start").risk == 1 and host.get_tool("missions_report").risk == 0
+
+
+async def test_the_review_reads_the_record_and_proposes_without_changing_anything(tmp_path):
+    router = ScriptedRouter([tool("notes_find", q="a"), say("done")])
+    host, runner = build(tmp_path, router, World())
+    host._services["coding_jobs"] = lambda: [
+        {"id": i, "project": "web", "agent": "claude_code", "status": "done", "verdict": "unchecked", "rounds": 1}
+        for i in range(3)]
+    out = await host.call("missions_review", {})
+    assert "web" in out and "check_command" in out and "Nothing was changed" in out
+    assert host.get_tool("missions_review").risk == 0
+    assert "Not enough" in await build(tmp_path / "fresh", router, World())[0].call("missions_review", {})

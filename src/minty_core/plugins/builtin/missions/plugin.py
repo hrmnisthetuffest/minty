@@ -4,6 +4,7 @@ import math
 from minty_core.agentloop import Budget
 from minty_core.jobs import RESUME_FROM, JobOutcome
 from minty_core.missions import Ledger, run_mission
+from minty_core.worklessons import delegation_lessons, mission_lessons, render, tool_lessons
 from minty_core.plugins.host import Tool
 from minty_core.policy import R1
 
@@ -143,6 +144,13 @@ def register(ctx):
             lines.append(f"Result: {job.result[:600]}")
         return "\n".join(lines)
 
+    async def review(args):
+        jobs = runner()
+        missions = [{"id": j.id, "status": j.status, "result": j.result, "checkpoint": j.checkpoint}
+                    for j in (jobs.select(kinds={"mission"}) if jobs is not None else [])]
+        coding = ctx.services.get("coding_jobs")
+        return render(mission_lessons(missions) + tool_lessons(missions) + delegation_lessons(coding() if coding else []))
+
     s = {"type": "string"}
     jid = {"type": "integer"}
     return [
@@ -154,6 +162,8 @@ def register(ctx):
              {"type": "object", "properties": {"id": jid, "answer": s}, "required": ["id", "answer"]}, answer, risk=R1),
         Tool("resume", "Carry on with a mission that stopped, was interrupted or failed, from its saved plan.",
              {"type": "object", "properties": {"id": jid}, "required": ["id"]}, resume, risk=R1),
+        Tool("review", "How missions and coding jobs have gone: tools that keep failing, projects whose tests fail, goals that "
+                       "ran out of steps. Evidence and proposals only; nothing is changed.", {"type": "object", "properties": {}}, review),
         Tool("report", "Proof of what a mission did: its plan, each action and result, and whether it was checked. "
                        "No id: the latest.", {"type": "object", "properties": {"id": jid}}, report),
     ]

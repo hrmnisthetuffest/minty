@@ -147,6 +147,7 @@ memory_resolve                     1 change
 missions_answer                    1 change
 missions_report                    0 read
 missions_resume                    1 change
+missions_review                    0 read
 missions_start                     1 change
 music_id_identify                  0 read
 n8n_activate_workflow              2 visible

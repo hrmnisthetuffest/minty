@@ -392,6 +392,7 @@ Settings: `max_concurrent`, `max_runtime_s`, `max_steps`.
 | `missions_start` | Hand over a multi-step goal to work on in the background (research, compare, organise, delegate, check). Give the outcome wanted, not the steps. It checks its own steps against what really happened. | risk varies |
 | `missions_answer` | Give a blocked mission the answer to its question; it carries on. | risk varies |
 | `missions_resume` | Carry on with a mission that stopped, was interrupted or failed, from its saved plan. | risk varies |
+| `missions_review` | How missions and coding jobs have gone: tools that keep failing, projects whose tests fail, goals that ran out of steps. Evidence and proposals only; nothing is changed. |  |
 | `missions_report` | Proof of what a mission did: its plan, each action and result, and whether it was checked. No id: the latest. |  |
 
 ## music_id
