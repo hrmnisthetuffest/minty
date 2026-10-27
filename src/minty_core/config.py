@@ -751,6 +751,9 @@ class TurnConfig(BaseModel):
     latency_alarm_turns: int = Field(3, ge=1, le=20)
     # Speed-ups that are off until you switch them on (docs/getting-started.md, "Faster replies"):
     parallel_reads: bool = True  # several lookups asked for in one round (weather, search, time, ...) run at the same time
+    fold_history: bool = False  # turns that fall out of the window become a short model-written summary (foldkit.py); judge by ear
+    fold_every_turns: int = Field(3, ge=1, le=20)  # fold once this many turns have fallen out
+    fold_max_chars: int = Field(1200, ge=200, le=6000)  # the summary never grows past this
     check_claims: bool = True  # "I sent it" with no send behind it is corrected out loud, straight after (claimcheck.py)
     stable_prefix: bool = False  # the notes you change go after everything that stays the same, so providers can reuse the start of the prompt
     lean_prompt: bool = False  # the short wording of the fixed rules, whether or not it passed its comparison; judge by ear

@@ -9,7 +9,9 @@ from typing import AsyncIterator, Awaitable, Callable
 
 from minty_core.config import ConfigStore
 from minty_core.plugins.host import PARALLEL_SAFE_TOOLS
+from minty_core import foldkit
 from minty_core.agentloop import StuckDetector, fingerprint, trim_old_observations
+from minty_core.tasks import spawn
 from minty_core.claimcheck import correction, unbacked_claims
 from minty_core.toolargs import check_args
 from minty_core.toolbreaker import ToolBreaker
@@ -21,6 +23,7 @@ from minty_core.personality import PersonalityStore, compile_prompt
 from minty_core.prompts import section as prompt_section
 from minty_core.policy import Guard, destinations_in
 from minty_core.residency import LOCAL_STUB, LocalResult
+from minty_core.secretscan import SecretScanner
 from minty_core.text import SentenceSplitter
 from minty_core.toolkits import CORE_TOOLS, NEED_TOOLKIT, ToolkitRouter
 from minty_core.trace import annotate_turn, current_turn_id, transcript_hash
@@ -202,6 +205,9 @@ class Agent:
         self.safety = None  # safety.SafetyKit: checks that run before the gate and can only block
         self.provenance = None  # provenance.Provenance: what untrusted content this request read
         self.receipts = None  # receipts.ReceiptStore: every change, with why
+        self._fold_summary = ""  # the older conversation, summarised (foldkit.py); in memory only
+        self._fold_pending: list[list[Message]] = []  # turns that fell out of the window and are not summarised yet
+        self._fold_task: asyncio.Task | None = None
         self.last_fast: tuple[str, dict] | None = None  # the quick command the newest request ran without a model, if any
         self._changed: list[str] = []  # what this turn has already changed (a send, a delete), for an interrupted answer
         self.on_reset: list[Callable[[], None]] = []  # called when the conversation is started over
@@ -275,6 +281,8 @@ class Agent:
         else:
             note, history = collapse_history(history, turn.keep_full_turns)
         broken = self.breaker.note()
+        folded = self._fold_note() if turn.fold_history else ""
+        note = "\n\n".join(x for x in (folded, note) if x)
         return [Message("system", self._system_prompt(request) + ("\n\n" + note if note else "")
                         + ("\n\n" + broken if broken else "")), *history]
 
@@ -320,6 +328,7 @@ class Agent:
         """Start fresh now. The conversation is already in the archive; it moves to 'earlier today'."""
         count = len(self.history)
         self.history.clear()
+        self._fold_summary, self._fold_pending = "", []
         for hook in self.on_reset:
             try:
                 hook()
@@ -343,9 +352,12 @@ class Agent:
             return t[0].role != "user" or t[0].ts < (chat_cutoff if _chat_turn(t) else voice_cutoff)
 
         self._keep_turns(lambda turns: [t for t in turns if not expired(t)])
+        if not self.history:  # the conversation is over: nothing summarised belongs to a new one
+            self._fold_summary, self._fold_pending = "", []
 
-    def _keep_turns(self, choose) -> None:
-        """Rewrite the history turn by turn (a turn is a user message and what followed it)."""
+    def _keep_turns(self, choose, fold: bool = False) -> None:
+        """Rewrite the history turn by turn (a turn is a user message and what followed it). With `fold`, the turns this drops
+        are handed to the summariser when that is switched on."""
         turns: list[list[Message]] = []
         for m in self.history:
             if m.role == "user" or not turns:
@@ -353,7 +365,54 @@ class Agent:
             turns[-1].append(m)
         kept = choose(turns)
         if len(kept) != len(turns):
+            keep_ids = {id(t) for t in kept}
             self.history[:] = [m for t in kept for m in t]
+            if fold and self._store.config.turn.fold_history:
+                self._schedule_fold([t for t in turns if id(t) not in keep_ids and t and t[0].role == "user"])
+
+    def _schedule_fold(self, dropped: list[list[Message]]) -> None:
+        """Turns left the window: summarise them in the background once enough have, never holding up an answer."""
+        if not dropped:
+            return
+        self._fold_pending += dropped
+        if len(self._fold_pending) >= self._store.config.turn.fold_every_turns and (
+                self._fold_task is None or self._fold_task.done()):
+            self._fold_task = spawn(self._run_fold(), "fold history")
+
+    async def _run_fold(self) -> None:
+        cfg = self._store.config
+        while len(self._fold_pending) >= cfg.turn.fold_every_turns:
+            batch, self._fold_pending = self._fold_pending, []
+            scanner = getattr(self.safety, "scanner", None) or SecretScanner()  # masking never switches itself off
+            redact = scanner.redact
+            sensitive = foldkit.private_in(batch) or self.force_private or cfg.safety.privacy_mode
+            messages = foldkit.request(self._fold_summary, foldkit.chat_lines(batch, redact), cfg.turn.fold_max_chars)
+            try:
+                text = []
+                stream = self._stream(messages, [], sensitive, prefer=None, raise_request_errors=False)
+                async with contextlib.aclosing(stream) as events:
+                    async for event in events:
+                        if isinstance(event, TextDelta):
+                            text.append(event.text)
+                summary = foldkit.tidy("".join(text), cfg.turn.fold_max_chars)
+                if summary:
+                    self._fold_summary = summary
+            except Exception:  # noqa: BLE001 — a summary that fails costs only the summary; the conversation goes on
+                log.warning("could not summarise the older conversation", exc_info=True)
+
+    async def wait_for_fold(self) -> None:
+        while self._fold_task is not None and not self._fold_task.done():
+            await asyncio.shield(self._fold_task)
+
+    def _fold_note(self) -> str:
+        """The older conversation as notes: the summary, then one line for each turn not summarised yet."""
+        parts = []
+        if self._fold_summary:
+            parts.append(f"{foldkit.NOTE_HEAD}\n{self._fold_summary}")
+        if self._fold_pending:
+            parts.append("Just before that, one line per turn:\n" + "\n".join(
+                _turn_line(t, 0, len(t)) for t in self._fold_pending[-8:]))
+        return "\n\n".join(parts)
 
     def _mark_chat(self) -> None:
         if self._chat_turn:
@@ -375,7 +434,7 @@ class Agent:
             keep = {id(t) for t in chat + voice}
             return [t for t in turns if id(t) in keep]
 
-        self._keep_turns(newest)
+        self._keep_turns(newest, fold=True)
 
     def _log(self, role: str, text: str, private: bool = False) -> None:
         if self.archive is not None:
