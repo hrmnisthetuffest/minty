@@ -463,6 +463,7 @@ class InstantConfig(BaseModel):
     """Questions the computer can answer by itself (docs/instant-answers.md): no model call, so they come back at once."""
     enabled: bool = True
     actions: bool = True  # set a timer, volume, pause the music: one tool call, no model
+    fuzzy: bool = True  # a command with a spelling slip ("turn the volumn down") is still understood, without a model
     skip: list[str] = []  # categories to leave to the model, for example ["fun and games"]
 
 

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from minty_core.fastpath import FastAction
 from minty_core.instant.clock import spoken_time
+from minty_core.instant.fuzzy import repair, vocabulary_of
 from minty_core.instant.text import clean, parse_duration, say_duration, words_to_digits
 
 MAX_TIMER_S = 2 * 86400
@@ -115,7 +116,22 @@ def _reminder(d: str, now: datetime) -> FastAction | None:
                       f"Okay, I'll remind you at {spoken_time(when)}.")
 
 
-def match(text: str, wake_words=(), now: datetime | None = None) -> FastAction | None:
+def match(text: str, wake_words=(), now: datetime | None = None, *, fuzzy: bool = True) -> FastAction | None:
+    """The command, or None. With `fuzzy`, a request that is only a spelling slip away from one is understood as that command."""
+    hit = _match(text, wake_words, now)
+    if hit is not None or not fuzzy:
+        return hit
+    cmd = clean(text, wake_words)
+    fixed = repair(words_to_digits(cmd), _FUZZY_WORDS) if cmd else None  # number words first: "four" must not become "hour"
+    if fixed is None:
+        return None
+    hit = _match(fixed, (), now)
+    if hit is None or hit.tool == "timers_list_timers":  # that question's wording collides with "what is the time": never guess it
+        return None
+    return replace(hit, heard_as=fixed)
+
+
+def _match(text: str, wake_words=(), now: datetime | None = None) -> FastAction | None:
     cmd = clean(text, wake_words)
     if not cmd or len(cmd.split()) > 24:
         return None
@@ -162,6 +178,11 @@ def match(text: str, wake_words=(), now: datetime | None = None) -> FastAction |
         return FastAction("spotify_previous", {}, "Going back.")
     return None
 
+
+# The words a spelling repair may produce. Taken from these patterns only: locking the screen, brightness and reminders (which
+# carry free text) are left out, so a slip can never become one of them.
+_FUZZY_WORDS = vocabulary_of([*_SET_TIMER, _TIMERS_LEFT, _VOLUME_UP, _VOLUME_DOWN, _VOLUME_SET, _MUTE, _UNMUTE, _PAUSE, _RESUME, _NEXT,
+                              _PREVIOUS], extra=("minutes", "minute", "seconds", "second", "hours", "hour"))
 
 ACTIONS = (
     ActionRule("set a timer", CATEGORY, ("set a timer for 5 minutes", "timer for 90 seconds", "start a 10 minute timer",

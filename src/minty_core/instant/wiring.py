@@ -55,7 +55,7 @@ def with_actions(page_match: Callable[[str], object], store) -> Callable[[str], 
         if hit is None:
             cfg = store.config.instant
             if cfg.enabled and cfg.actions:
-                hit = actions.match(text, tuple(store.config.audio.wake_phrases))
+                hit = actions.match(text, tuple(store.config.audio.wake_phrases), fuzzy=cfg.fuzzy)
         return hit
 
     return match

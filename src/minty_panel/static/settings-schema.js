@@ -50,6 +50,7 @@ export const SECTIONS = [
     rows: [
       ["instant", "enabled", "Answer simple questions at once", "bool", "Time, date, maths, unit conversion and more: no model, no waiting. The list is in docs/instant-answers.md"],
       ["instant", "actions", "Do simple actions at once", "bool", "Timers, reminders, volume, pause and skip: one tool call, no model"],
+      ["instant", "fuzzy", "Understand a command with a spelling slip", "bool", "\"Turn the volumn down\" or \"set a time for 5 minutes\" still work. Only one-letter slips in a few command words, and never locking the screen"],
       ["audio", "speculative_stt", "Recognise your words during the pause", "bool", "The words so far are ready when the pause ends"],
       ["audio", "spec_after_ms", "Start recognising after this much silence (ms)", "number:50", "160 to 2000"],
       ["audio", "early_finish_ms", "End a plainly finished sentence after this much silence (ms)", "number:50", "0 = never; try 600 and judge by ear"],

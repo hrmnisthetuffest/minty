@@ -28,6 +28,7 @@ class FastAction:
     tool: str
     args: dict = field(default_factory=dict)
     say: str | Callable[[str], str] = ""  # what to say once it ran; a function gets the tool's result and returns the words
+    heard_as: str = ""  # set when a spelling slip was put right (instant/fuzzy.py): the sentence it was understood as
 
 
 def _norm(text: str) -> str:
