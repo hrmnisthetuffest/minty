@@ -500,7 +500,7 @@ On by default: yes.
 
 ## shell
 
-Run a command in the terminal. Off until switched on; a few read-only commands run at once, everything else is asked first with the exact command read out.
+Run a command in the terminal. A few read-only commands (and a web search) run at once; everything else is asked first, with the exact command read out.
 
 On by default: yes.
 

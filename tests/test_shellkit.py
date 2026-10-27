@@ -127,3 +127,55 @@ async def test_endless_output_is_stopped_instead_of_filling_memory(tmp_path):
 async def test_a_program_that_is_not_installed_is_a_result(tmp_path):
     r = await run(["definitely-not-a-program-xyz"], cwd=tmp_path)
     assert r.missing and r.code == 127
+
+
+# ---- web search from the terminal (ddgr) ---------------------------------------------------------------------------------
+
+from minty_core.shellkit import needs_display, uses_network  # noqa: E402
+
+
+@pytest.mark.parametrize("command,kind", [
+    ("ddgr --json arch linux", "read"), ("ddgr --json -n 5 'arch linux wiki'", "read"), ("ddgr --json -w wiki.archlinux.org pacman", "read"),
+    ("ddgr --json -t w python 3.14", "read"), ("ddgr --json -r us-en weather", "read"), ("ddgr --json --num 3 --site example.com x", "read"),
+    ("ddgr -j arch wiki", "open"), ("ddgr --ducky 'arch wiki'", "open"), ("ddgr -j -n 3 -w github.com minty", "open"),
+])
+def test_a_web_search_from_the_terminal_runs_without_asking_and_opening_the_top_result_is_a_reversible_change(command, kind):
+    argv = safe_argv(command)
+    assert argv is not None and argv[0] == "ddgr"
+    assert classify_command(command) == (0 if kind == "read" else 1)
+    assert uses_network(command) is True
+    assert needs_display(command) is (kind == "open")
+
+
+@pytest.mark.parametrize("command", [
+    "ddgr hello", "ddgr", "ddgr --json", "ddgr -j", "ddgr --json -j hello", "ddgr --json --unsafe hello", "ddgr --json -x hello",
+    "ddgr --json -p http://evil.example hello", "ddgr --json --proxy x hello", "ddgr --json -d hello", "ddgr --json --noua hello",
+    "ddgr --json -n 99 hello", "ddgr --json -n 0 hello", "ddgr --json -n x hello", "ddgr --json -n", "ddgr --json -w", "ddgr --json -w 'a b' x",
+    "ddgr --json -- -rf", "ddgr --json hello; rm -rf ~", "ddgr --json hello | sh", "ddgr --json $(whoami)", "ddgr --json `id`",
+    "ddgr --json " + "x" * 400, "ddgr --json --colorize=always hello",
+])
+def test_anything_else_from_ddgr_is_asked_first(command):
+    assert safe_argv(command) is None and classify_command(command) == 3
+
+
+def test_a_query_word_can_never_be_read_as_an_option():
+    assert safe_argv("ddgr --json -- hello") is None and safe_argv("ddgr --json --version") is None
+    argv = safe_argv("ddgr --json 'rm -rf /'")
+    assert argv == ["ddgr", "--json", "rm -rf /"]  # one argument, never split into options, and no shell is involved
+
+
+def test_other_commands_do_not_use_the_network_or_need_a_screen():
+    assert uses_network("ls") is False and uses_network("git status") is False and needs_display("git status") is False
+    assert uses_network("curl example.com") is False  # not on the list at all: the question is the protection
+
+
+async def test_a_command_that_needs_the_screen_gets_the_display_variables_and_still_no_keys(tmp_path, monkeypatch):
+    monkeypatch.setenv("DISPLAY", ":7")
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-9")
+    monkeypatch.setenv("BROWSER", "firefox")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_do_not_leak")
+    with_screen = (await run("env", cwd=tmp_path, display=True)).text
+    assert "DISPLAY=:7" in with_screen and "WAYLAND_DISPLAY=wayland-9" in with_screen and "BROWSER=firefox" in with_screen
+    assert "gsk_do_not_leak" not in with_screen
+    without = (await run("env", cwd=tmp_path)).text
+    assert "DISPLAY=" not in without and "BROWSER=" not in without

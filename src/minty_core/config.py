@@ -662,8 +662,9 @@ class McpConfig(BaseModel):
 
 
 class ShellConfig(BaseModel):
-    """The terminal (shellkit.py, plugin `shell`). Off until you switch it on: a command can do anything you could do yourself."""
-    enabled: bool = False
+    """The terminal (shellkit.py, plugin `shell`). On by default, but a command can do anything you could do yourself, so only a few
+    read-only commands run unasked and every other one is asked each time, with the exact command read out."""
+    enabled: bool = True  # on by default: only a few read-only commands run unasked; every other command is asked each time
     timeout_s: int = Field(30, ge=1, le=300)  # the longest a command may run; one asked for less is stopped sooner
     max_output_chars: int = Field(8000, ge=500, le=50000)  # a longer output keeps its start and its end
     workdir: str = ""  # where commands start; empty means the workspace folder (~/Minty-Workspace)

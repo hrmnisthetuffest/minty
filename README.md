@@ -71,6 +71,9 @@ No installer? Everything it does is `python -m venv .venv && .venv/bin/pip insta
 - **Takes notes.** Say "Minty, note for me" and it writes down everything you say, without the wake word, until you say "Minty, stop noting";
   the latest notes are listed on the on-screen HUD.
 - **Reaches you anywhere.** A local web panel, a terminal display, and Telegram (text, voice notes, files, photos) through a bot you own.
+- **Uses your command line.** With the terminal on (the default), Minty can run commands and prefers a command-line tool when one fits
+  (a web search with `ddgr`, GitHub with `gh`, git). A few read-only commands run at once; **every other command is asked first, with the
+  exact command read out.** See [privacy and safety](docs/privacy-and-safety.md#the-terminal).
 - **Does things.** More than forty built-in tool groups: a browser agent, files, notes and memory, reminders and timers, Spotify,
   weather, web research with sources, smart-home and n8n hooks, MCP servers, and coding agents (Claude Code, Hermes, OpenClaw) it can
   start and watch for you. See [docs/plugins.md](docs/plugins.md).

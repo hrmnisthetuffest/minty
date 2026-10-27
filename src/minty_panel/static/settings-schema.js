@@ -48,7 +48,7 @@ export const SECTIONS = [
   {
     id: "speed", title: "Speed", blurb: "Faster answers. Nothing here changes how Minty looks or what it can do.",
     rows: [
-      ["shell", "enabled", "Let Minty use the terminal", "bool", "Off by default. A few read-only commands (ls, pwd, git status) run at once; every other command is asked first with the exact command read out. Never as root, never for background helpers"],
+      ["shell", "enabled", "Let Minty use the terminal", "bool", "On by default. A few read-only commands (ls, pwd, git status, a web search) run at once; every other command is asked first with the exact command read out. Never as root, never for background helpers"],
       ["shell", "timeout_s", "Longest a command may run (seconds)", "number:5", "A command still running after this is stopped"],
       ["shell", "max_output_chars", "Most output kept from a command", "number:500", "A longer output keeps its start and its end"],
       ["shell", "workdir", "Folder commands start in", "text", "Empty means the workspace folder (~/Minty-Workspace)"],

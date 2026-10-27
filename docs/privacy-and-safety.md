@@ -36,12 +36,20 @@ or blocks them. Memory refuses to store passwords, PINs, one-time codes and keys
 
 ## The terminal
 
-Minty can run a command, but only once you switch it on (`shell.enabled`, Settings: "Let Minty use the terminal"). It is the
-most powerful thing Minty can do, so it has its own rules:
+Minty can run a command. The terminal is **on by default** (switch it off in Settings: "Let Minty use the terminal", or
+`shell.enabled = false`). It is the most powerful thing Minty can do, so it has its own rules:
 
 - A few read-only commands run at once, without asking: `pwd`, `ls`, `whoami`, `date`, `uname`, `uptime`, `df`, `free`, `hostname`,
   `which`, and `git status`, `git log`, `git diff`, `git branch`. Each is checked word by word and run without a shell; one special
   character (`; & | < > $` or a back-tick) is enough to send a command to the question instead.
+- **Web search from the terminal** uses `ddgr` when it is installed: `ddgr --json -n 5 words` prints results and runs unasked, like
+  Minty's other web search; `ddgr -j words` opens the top result in your browser, which counts as a reversible change (asked in
+  the careful safety level only). Other `ddgr` options (a proxy, unsafe search ...) are asked about. Opening any other address
+  (`xdg-open URL`) is asked about, because the address usually came from a web page and not from you. Both searches contact
+  DuckDuckGo, so privacy mode refuses them.
+- **Instagram (`instagram-cli`) and other tools that use your login or your messages are always asked about**, with the command
+  read out. Minty never types a password for you: you log in yourself (`instagram-cli auth login`). It is an unofficial client, and
+  Instagram can lock an account that uses one, so think before you point it at an account you care about.
 - **Every other command is asked about every time, with the exact command read out, whatever safety level you picked.** This is
   the real protection. Minty also refuses `sudo`, `su` and the like before it even asks, but that is only a convenience: a command
   can always be written another way, which is why nothing runs unapproved.

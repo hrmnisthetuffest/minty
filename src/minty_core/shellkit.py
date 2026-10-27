@@ -32,6 +32,13 @@ _BRANCH_FLAGS = frozenset({"-a", "-r", "-v", "-vv", "--list", "--all", "--remote
 _GIT_HEAD = ["git", "--no-pager", "-c", "core.fsmonitor=false"]  # a repository's own settings must not be able to run code
 _PRIVILEGE = re.compile(r"(?:^|[\s;&|(`$])(?:sudo|su|doas|pkexec|run0)(?=$|[\s;&|)`])")
 _PASS_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "USER", "LOGNAME", "TZ")
+# only for a command that opens something on the screen (the browser): where the screen is, never a key or a token
+_SCREEN_ENV = ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "XDG_CURRENT_DESKTOP",
+               "XDG_SESSION_TYPE", "BROWSER")
+_DDGR_MODES = {"--json": "read", "-j": "open", "--ducky": "open"}
+_DDGR_VALUED = {"-w": r"[A-Za-z0-9.-]{1,80}", "--site": r"[A-Za-z0-9.-]{1,80}", "-t": r"[dwmy]", "--time": r"[dwmy]",
+                "-r": r"[a-z]{2}-[a-z]{2}", "--reg": r"[a-z]{2}-[a-z]{2}"}
+MAX_QUERY_CHARS = 300
 
 
 def _args_ok(program: str, args: list[str]) -> bool:
@@ -67,6 +74,36 @@ def _git(args: list[str]) -> list[str] | None:
     return None
 
 
+def _ddgr(args: list[str]) -> list[str] | None:
+    """A web search from the terminal: exactly one of --json (print the results) or -j (open the top one in the browser), a few
+    harmless options, and the words to search for as plain arguments. Anything else (no mode, a proxy, unsafe search ...) is asked."""
+    mode, options, words, i = None, [], [], 0
+    while i < len(args):
+        a = args[i]
+        if a in _DDGR_MODES:
+            if mode is not None:
+                return None
+            mode, i = a, i + 1
+        elif a in ("-n", "--num"):
+            if i + 1 >= len(args) or not re.fullmatch(r"\d{1,2}", args[i + 1]) or not 1 <= int(args[i + 1]) <= 25:
+                return None
+            options += [a, args[i + 1]]
+            i += 2
+        elif a in _DDGR_VALUED:
+            if i + 1 >= len(args) or not re.fullmatch(_DDGR_VALUED[a], args[i + 1]):
+                return None
+            options += [a, args[i + 1]]
+            i += 2
+        elif a.startswith("-"):
+            return None  # a query word can never be read as an option
+        else:
+            words.append(a)
+            i += 1
+    if mode is None or not words or sum(map(len, words)) > MAX_QUERY_CHARS:
+        return None
+    return ["ddgr", mode, *options, *words]
+
+
 def safe_argv(command: str) -> list[str] | None:
     """The exact argument list for a command that may run without asking, or None (then it must be approved)."""
     if not isinstance(command, str) or len(command) > MAX_COMMAND_CHARS or _METACHARS & set(command):
@@ -80,14 +117,32 @@ def safe_argv(command: str) -> list[str] | None:
     program, args = words[0], words[1:]
     if program == "git":
         return _git(args)
+    if program == "ddgr":
+        return _ddgr(args)
     if program in ("pwd", "ls", "whoami", "date", "uname", "uptime", "df", "free", "hostname", "which") and _args_ok(program, args):
         return [program, *args]
     return None
 
 
 def classify_command(command: str) -> int:
-    """Risk class: 0 for the few read-only commands above, 3 for everything else (always asked, whatever the settings)."""
-    return 0 if safe_argv(command) is not None else 3
+    """Risk class: 0 for the few read-only commands above, 1 for opening a search result in the browser (a reversible change,
+    asked in the careful mode), 3 for everything else (always asked, whatever the settings)."""
+    argv = safe_argv(command)
+    if argv is None:
+        return 3
+    return 1 if needs_display(command) else 0
+
+
+def uses_network(command: str) -> bool:
+    """A command on the list that sends something over the internet (a search): privacy mode refuses it."""
+    argv = safe_argv(command)
+    return bool(argv) and argv[0] == "ddgr"
+
+
+def needs_display(command: str) -> bool:
+    """A command on the list that opens something on the screen (the top search result in the browser)."""
+    argv = safe_argv(command)
+    return bool(argv) and argv[0] == "ddgr" and argv[1] in ("-j", "--ducky")
 
 
 def blocked_reason(command: str) -> str | None:
@@ -103,9 +158,10 @@ def blocked_reason(command: str) -> str | None:
     return None
 
 
-def sandbox_env() -> dict[str, str]:
-    """A plain environment: no API keys or tokens from the parent, a terminal that is not a terminal."""
-    env = {k: os.environ[k] for k in _PASS_ENV if k in os.environ}
+def sandbox_env(display: bool = False) -> dict[str, str]:
+    """A plain environment: no API keys or tokens from the parent, a terminal that is not a terminal. With `display`, also where
+    the screen and the browser are, so a command can open a page."""
+    env = {k: os.environ[k] for k in _PASS_ENV + (_SCREEN_ENV if display else ()) if k in os.environ}
     env.setdefault("PATH", "/usr/local/bin:/usr/bin:/bin")
     env.update(TERM="dumb", PAGER="cat", GIT_TERMINAL_PROMPT="0", NO_COLOR="1")
     return env
@@ -168,9 +224,9 @@ async def _discard(stream) -> None:
 
 
 async def run(command, *, cwd=None, timeout_s: float = 30.0, max_chars: int = DEFAULT_MAX_CHARS,
-              hard_bytes: int = HARD_BYTES) -> Result:
+              hard_bytes: int = HARD_BYTES, display: bool = False) -> Result:
     """Run a command line (a string, through bash) or an exact argument list (a list, no shell)."""
-    env = sandbox_env()
+    env = sandbox_env(display)
     if isinstance(command, str):
         argv = [shutil.which("bash", path=env["PATH"]) or "/bin/sh", "-c", command]
     else:
