@@ -14,6 +14,7 @@ from minty_core.audio.endpointer import rms
 from minty_core.audio.gate import HALLUCINATIONS, judge
 from minty_core.audio.stable import StablePrefix
 from minty_core.audio.types import FRAME_S, Transcription
+from minty_core.instant.actions import is_reflex
 from minty_core.llm.types import DeadlineExceeded, LLMError
 from minty_core.policy import is_affirmative  # noqa: F401 (also imported from here)
 from minty_core.text import is_repeat
@@ -73,6 +74,7 @@ class VoicePipeline:
         self.voice = None  # voice.extras.VoiceExtras or None: corrections, dictation, pronunciations, controls
         self._last_request = ""
         self._unspoken: deque = deque()  # sentences of this answer not yet fully spoken, for "go on"
+        self._resume_tail: list[str] = []  # the rest of an answer this request cut off, said again after a quick command
         self._answer_sentences: list[str] = []
         self._silent_follow = False
         self.stopper = None  # a detector of stop phrases ("stop", "wait") used while speaking, with echo cancellation
@@ -604,9 +606,25 @@ class VoicePipeline:
             self._hard_stop, self._answered = False, False
             turn["outcome"] = "stopped"
             return False
+        if not barged:
+            await self._carry_on_after_reflex()
         self._answered = not barged
         turn["outcome"] = "barged" if barged else "answered"
         return barged
+
+    async def _carry_on_after_reflex(self) -> None:
+        """A quick command (volume, mute, pause) said over an answer has been done: say the rest of that answer."""
+        if self.voice is None or not self.store.config.voice.resume_after_reflex:
+            return
+        last = getattr(self.agent, "last_fast", None)
+        if not last or not is_reflex(*last):
+            return
+        tail, self._resume_tail = self._resume_tail, []
+        if tail:
+            text = " ".join(tail)
+            self._set_state("speaking")
+            self.bus.publish("transcript", role="assistant", text=text)
+            await self._speak_plain(text)
 
     def _publish_notes(self) -> None:
         notes = self.voice.notes
@@ -803,8 +821,9 @@ class VoicePipeline:
         self._barged.clear()
         self._unspoken.clear()
         self._answer_sentences = []
-        if self.voice is not None:
-            self.voice.clear_tail()
+        self._resume_tail = []
+        if self.voice is not None:  # a new request replaces the cut-off answer; its rest is kept aside only for a quick command
+            self._resume_tail = self.voice.take_recent_tail()
         queue: asyncio.Queue = asyncio.Queue(maxsize=2)
         self._queue = queue
         self._answer_started, self._wait_clips, self._still_said = False, [], False

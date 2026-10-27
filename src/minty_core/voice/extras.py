@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -58,6 +59,12 @@ class VoiceExtras:
     # ---- what the pipeline tells us -------------------------------------------------------------
     def interrupted(self, unspoken: list[str]) -> None:
         self._tail = [t for t in unspoken if t.strip()]
+        self._tail_at = time.monotonic()
+
+    def take_recent_tail(self, max_age_s: float = 45.0) -> list[str]:
+        """The rest of an answer that was cut off a moment ago, once; an older one is dropped, never brought back."""
+        tail, self._tail = self._tail, []
+        return tail if tail and time.monotonic() - getattr(self, "_tail_at", 0.0) <= max_age_s else []
 
     def clear_tail(self) -> None:
         self._tail = []

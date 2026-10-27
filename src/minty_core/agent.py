@@ -202,6 +202,7 @@ class Agent:
         self.safety = None  # safety.SafetyKit: checks that run before the gate and can only block
         self.provenance = None  # provenance.Provenance: what untrusted content this request read
         self.receipts = None  # receipts.ReceiptStore: every change, with why
+        self.last_fast: tuple[str, dict] | None = None  # the quick command the newest request ran without a model, if any
         self._changed: list[str] = []  # what this turn has already changed (a send, a delete), for an interrupted answer
         self.on_reset: list[Callable[[], None]] = []  # called when the conversation is started over
         # (text) -> a fixed reply or None: asked before any model call (the coach's safety gate); a reply ends the turn
@@ -563,6 +564,8 @@ class Agent:
         self.history.append(Message("assistant", "", tool_calls=[call]))
         self.history.append(Message("tool", result, tool_call_id=call.id, name=call.name, private=private))
         failed = result.startswith("Error")
+        if not failed:
+            self.last_fast = (action.tool, dict(action.args))
         if self.tracer is not None:
             self.tracer.event("fastpath", tool=action.tool, outcome="fallback" if failed else "ok")
         if failed:
@@ -701,6 +704,7 @@ class Agent:
                     return
             start = len(self.history)
             self._changed = []
+            self.last_fast = None
             self._chat_turn, self._turn_start = chat, start  # a Telegram chat turn is kept longer (_mark_chat)
             turn_private = False
             self.history.append(Message("user", user_text))

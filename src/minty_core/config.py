@@ -387,6 +387,7 @@ class VoiceConfig(BaseModel):
     corrections: bool = True  # "no, I said ..." asks the corrected request once
     vocabulary: bool = False  # the words you corrected are passed to the recogniser as hints
     playback_controls: bool = True  # "go on", "skip", "repeat that", "shorter"
+    resume_after_reflex: bool = False  # a quick command (volume, mute, pause) said over an answer is done, then the answer carries on; judge by ear
     dictation: bool = True  # "start dictation" ... "stop dictation": everything between is a note
     notes: bool = True  # "note for me": listen without the wake word and write every thing down until "Minty, stop noting"
     notes_hud_lines: int = Field(6, ge=1, le=15)  # how many of the latest notes the HUD lists while noting

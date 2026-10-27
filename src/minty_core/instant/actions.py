@@ -179,6 +179,18 @@ def _match(text: str, wake_words=(), now: datetime | None = None) -> FastAction 
     return None
 
 
+# Quick, reversible, local commands: said over an answer they are done and the answer carries on (voice.resume_after_reflex).
+# Locking the screen, brightness, timers and reminders are not among them.
+REFLEX_TOOLS = frozenset({"spotify_pause", "spotify_resume", "spotify_next", "spotify_previous"})
+REFLEX_SYSTEM = frozenset({"volume", "mute", "unmute"})
+
+
+def is_reflex(tool: str, args: dict | None) -> bool:
+    if tool in REFLEX_TOOLS:
+        return True
+    return tool == "system_control" and (args or {}).get("action") in REFLEX_SYSTEM
+
+
 # The words a spelling repair may produce. Taken from these patterns only: locking the screen, brightness and reminders (which
 # carry free text) are left out, so a slip can never become one of them.
 _FUZZY_WORDS = vocabulary_of([*_SET_TIMER, _TIMERS_LEFT, _VOLUME_UP, _VOLUME_DOWN, _VOLUME_SET, _MUTE, _UNMUTE, _PAUSE, _RESUME, _NEXT,
