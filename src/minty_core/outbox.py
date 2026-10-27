@@ -119,3 +119,17 @@ class OutboxStore:
         rows = self._db.execute(f"SELECT {_COLS} FROM outbox WHERE status!=? ORDER BY id DESC LIMIT ?",
                                 (DISCARDED, int(limit))).fetchall()
         return [self._item(r) for r in rows]
+
+    def track_record(self) -> dict[str, dict[str, int]]:
+        """For each single recipient: how many replies they said yes to and how many sends failed or are unknown."""
+        rows = self._db.execute(
+            "SELECT to_addr, status, how, reply, COUNT(*) FROM outbox WHERE to_addr NOT LIKE '%,%' GROUP BY to_addr, status, how, reply"
+        ).fetchall()
+        record: dict[str, dict[str, int]] = {}
+        for addr, status, how, reply, n in rows:
+            r = record.setdefault(addr.lower(), {"approved_replies": 0, "bad": 0})
+            if status == SENT and how == "approved" and reply:
+                r["approved_replies"] += n
+            elif status in (FAILED, UNKNOWN):
+                r["bad"] += n
+        return record

@@ -108,9 +108,9 @@ async def run_mission(router, goal: str, *, specs: list[ToolSpec], call_tool: Ca
                       ask_user: Callable[[str], None] | None = None, tracer=None, sensitive: Callable[[], bool] = lambda: False,
                       budget: Budget | None = None, resume: dict | None = None, question: str = "", answer: str = "",
                       prefer: str | None = None, planner_prefer: str | None = None,
-                      strong_prefer: str | None = None) -> MissionResult:
+                      strong_prefer: str | None = None, context: str = "") -> MissionResult:
     ledger = Ledger.from_data((resume or {}).get("ledger"), (resume or {}).get("step_mark"))
-    effective = goal
+    effective = goal + (f"\n\n{context}" if context else "")  # what is already known comes after the goal, as background to it
     if answer:
         effective += f"\n\nYou asked: {question or '(a question)'}\nThe user answered: {answer}"
     interrupted = ledger.step_entries() if resume else []

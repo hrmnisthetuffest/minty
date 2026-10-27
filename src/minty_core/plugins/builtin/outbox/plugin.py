@@ -19,6 +19,7 @@ NOT_SENT = (smtplib.SMTPAuthenticationError, smtplib.SMTPRecipientsRefused, smtp
             smtplib.SMTPConnectError, smtplib.SMTPNotSupportedError, ConnectionRefusedError, socket.gaierror,
             ssl.SSLError)
 DAY_S = 86400
+EARNED_AFTER = 5  # yeses to replies to one person, with nothing going wrong, before independence is offered
 DEFAULT_SIGNATURE = "(Sent automatically by Minty, my assistant.)"
 
 
@@ -233,6 +234,25 @@ def register(ctx):
         return out
 
     ctx.services["outbox_attention"] = attention
+
+    def lessons() -> list:
+        """Independence is earned: after enough yeses with nothing going wrong, offer (never grant) letting someone be answered
+        without asking. Only the user can add them to auto_reply_to."""
+        from minty_core.worklessons import Lesson
+
+        out = []
+        for addr, r in sorted(store.track_record().items()):
+            if r["approved_replies"] < EARNED_AFTER or r["bad"] or mailpolicy._matches(addr, policy.allow) \
+                    or mailpolicy._matches(addr, policy.never):
+                continue
+            out.append(Lesson(f"outbox:{addr}:autoreply",
+                              f"You said yes to {r['approved_replies']} replies to {addr} and none of them went wrong",
+                              f"To let me answer {addr} without asking, add it to the outbox setting auto_reply_to yourself. I "
+                              "would still ask for anything long, with links, with a sensitive word, or from a sender I cannot check.",
+                              "confirmed", r["approved_replies"]))
+        return out
+
+    ctx.services["outbox_lessons"] = lessons
 
     s, i = {"type": "string"}, {"type": "integer"}
     return [

@@ -232,3 +232,12 @@ async def test_a_resumed_mission_gives_its_gate_back_what_it_had_read(tmp_path):
     await host2.call("missions_resume", {"id": job.id})
     await runner2.wait(job.id)
     assert "mail_send" in seen  # what it did before the restart is known again to the gate
+
+
+async def test_the_review_includes_the_offers_to_trust_someone_more(tmp_path):
+    from minty_core.worklessons import Lesson
+    host, _ = build(tmp_path, ScriptedRouter([say("x")]), World())
+    host._services["outbox_lessons"] = lambda: [Lesson("outbox:mum@home.in:autoreply", "You said yes to 6 replies to mum@home.in",
+                                                      "add it to auto_reply_to yourself", "confirmed", 6)]
+    out = await host.call("missions_review", {})
+    assert "mum@home.in" in out and "auto_reply_to" in out and "Nothing was changed" in out

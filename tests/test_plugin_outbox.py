@@ -249,3 +249,37 @@ async def test_a_draft_left_waiting_for_a_day_is_offered_as_a_loop(tmp_path):
     db.close()
     loops = host._services["outbox_attention"]()
     assert [l.key for l in loops] == ["outbox:1:waiting"] and loops[0].urgency == "later"
+
+
+async def approve_replies(host, uid, n):
+    for _ in range(n):
+        await host.call("outbox_draft", {"reply_to": uid, "body": "Thanks, noted."})
+        ident = (await host.call("outbox_list", {})).splitlines()[0].split()[0].lstrip("#")
+        assert "Sent to" in await gated(host, int(ident))
+
+
+async def test_independence_is_offered_only_after_a_clean_record_and_never_taken(tmp_path):
+    async with FakeSMTP() as smtp:
+        host, _ = build(tmp_path, smtp.port)
+        await approve_replies(host, "8", 4)
+        assert host._services["outbox_lessons"]() == []  # four yeses are not yet a record
+        await approve_replies(host, "8", 1)
+        (lesson,) = host._services["outbox_lessons"]()
+        assert lesson.key == "outbox:stranger@x.com:autoreply" and lesson.confidence == "confirmed"
+        assert "5 replies" in lesson.finding and "auto_reply_to" in lesson.proposal and "yourself" in lesson.proposal
+        await host.call("outbox_draft", {"reply_to": "8", "body": "one more"})
+        assert host.get_tool("outbox_send").risk({"id": 6}) == 3  # offered, not granted: it still asks
+
+
+async def test_someone_already_on_the_list_or_with_a_failure_is_not_offered(tmp_path):
+    async with FakeSMTP() as smtp:
+        host, _ = build(tmp_path, smtp.port)
+        await approve_replies(host, "8", 5)
+        smtp.reject_auth = True
+        await host.call("outbox_draft", {"reply_to": "8", "body": "this one fails"})
+        await gated(host, 6)
+        assert host._services["outbox_lessons"]() == []  # a failed send in the record: no offer
+    async with FakeSMTP() as smtp2:
+        host2, _ = build(tmp_path / "two", smtp2.port, auto_reply_to="stranger@x.com")
+        await approve_replies(host2, "8", 5)
+        assert host2._services["outbox_lessons"]() == []  # already allowed

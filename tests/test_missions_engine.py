@@ -183,3 +183,12 @@ async def test_a_ledger_that_outgrows_its_limit_keeps_the_step_marker_pointing_a
     for i in range(6):
         ledger.add("u", {"i": i}, "x", ok=True)
     assert len(ledger.entries) == 40 and [e["tool"] for e in ledger.step_entries()] == ["u"] * 6
+
+
+async def test_what_is_known_about_the_user_reaches_the_worker_as_background_not_as_orders():
+    router = ScriptedRouter([say("Done.")])
+    await mission(router, Tools(), goal="email Sam about the trip",
+                  context="- Sam's address is sam@example.com (told by you, 2026-10-01)")
+    first = router.executor_inputs[0]
+    assert "sam@example.com" in first and "Task:" in first
+    assert first.index("Task:") < first.index("sam@example.com")  # the goal comes first; the facts are background to it

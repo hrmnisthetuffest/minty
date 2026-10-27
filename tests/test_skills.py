@@ -43,7 +43,8 @@ def test_spec_limits_are_enforced(tmp_path):
 def test_the_starter_skills_are_valid_and_match_their_requests():
     index = SkillIndex([BUILTIN_SKILLS_DIR])
     assert set(index.skills()) == {"shop-search", "youtube-find-and-play", "compare-products", "fill-form-from-profile",
-                                   "health-intake", "explain-three-levels", "verified-tutor", "mood-music"}
+                                   "health-intake", "explain-three-levels", "verified-tutor", "mood-music",
+                                   "handle-my-email", "delegate-coding-job", "hand-over-a-goal"}
     assert index.problems == []
     for request, name in [("find me the cheapest desk lamp", "shop-search"),
                           ("play the avengers trailer on youtube", "youtube-find-and-play"),
@@ -52,10 +53,25 @@ def test_the_starter_skills_are_valid_and_match_their_requests():
                           ("set up my health tracking for workouts and sleep", "health-intake"),
                           ("explain photosynthesis so I understand it simply", "explain-three-levels"),
                           ("help me solve this equation step by step", "verified-tutor"),
-                          ("play something calm to help me study", "mood-music")]:
+                          ("play something calm to help me study", "mood-music"),
+                          ("handle my emails that need attention today", "handle-my-email"),
+                          ("have claude code fix the failing tests in my project", "delegate-coding-job"),
+                          ("work on this in the background and tell me when it is done", "hand-over-a-goal")]:
         assert index.match(request).name == name
     for request in ("what time is it", "play some music", "turn off the light", "tell me a joke"):
         assert index.match(request) is None
+
+
+def test_the_workflow_skills_only_name_tools_that_exist_and_say_where_the_user_decides(tmp_path):
+    from tests.plugin_helpers import make_host
+    host = make_host(tmp_path, plugins={"outbox": {"enabled": True}, "mail": {"enabled": True}})
+    index = SkillIndex([BUILTIN_SKILLS_DIR])
+    for name in ("handle-my-email", "delegate-coding-job", "hand-over-a-goal"):
+        skill = index.skills()[name]
+        assert skill.allowed_tools and all(host.get_tool(t) is not None for t in skill.allowed_tools), (name, skill.allowed_tools)
+    email = index.skills()["handle-my-email"].body
+    assert "outbox_draft" in email and "never" in email.lower() and "decisions" in email.lower()
+    assert "tests" in index.skills()["delegate-coding-job"].body.lower()
 
 
 def test_user_skill_wins_and_new_skills_are_picked_up_without_a_restart(tmp_path, monkeypatch):

@@ -7,6 +7,23 @@ The rule behind all of it: **an outcome is what the evidence shows, not what the
 cannot pass for work, a coding job whose tests fail is reported as failing, and a message that may not have been sent is said to
 be unknown, not sent.
 
+## How much it may do on its own
+
+Everything Minty can do sits in one of five places, and the safety rules, not the model, decide which:
+
+| Stage | Examples | Who decides |
+| --- | --- | --- |
+| **Observe** | read mail, search, read files, look at the job list | free (class 0); what it reads is treated as untrusted |
+| **Prepare** | plan, draft a reply, write into the outbox, ask a coding agent a question (`mode: ask`) | free; nothing leaves the computer |
+| **Execute** | start a mission, start a coding job, a routine automatic reply | asked in careful mode, or only inside a rule you wrote |
+| **Commit** | send to a person outside your rules, delete, anything with money or keys | always asked, whatever the mode (class 3) |
+| **Escalate** | a mission that cannot go on, a send that may not have gone, an overdue follow-up | it stops and tells you (attention, blocked missions) |
+
+Independence is **earned and offered, never taken**. `missions_review` notices when you have said yes to five replies to one person
+with nothing going wrong and offers to answer them without asking; only you can add them to `auto_reply_to`. It also notices when
+a tool keeps failing, a project's tests keep failing the first time, or a goal keeps running out of steps, and proposes what to
+change. Nothing it proposes is applied by itself.
+
 ## Missions: "here is the goal"
 
 Say what you want, not the steps: "find my notes about the trip, compare the options and tell me which is best". Minty plans it,
@@ -22,7 +39,14 @@ works in the background with the tools your goal needs, and checks each step aga
 - Steps that need your yes (sending, deleting, anything the safety rules ask about) wait for it through the usual approvals (the
   panel, your voice, Telegram). If you do not answer, that is a no. A mission never gets the terminal, the installer or other
   helpers, and what it reads from web pages or e-mails is treated as untrusted exactly as in a conversation.
+- A mission is given the few things you have told Minty that bear on its goal (never inferred or private ones), each with where it
+  came from, so it uses "Sam's address" instead of asking you again. They are background, never orders.
 - Settings (Plugins, missions): missions at once, seconds and steps per mission.
+
+**Workflows it knows.** Three built-in skills turn common requests into the right sequence: *handle my email* (triage, answer the
+routine ones, bring back the decisions), *delegate a coding job* (choose the project and mode, write the request as an outcome
+with its test, report the verdict), and *hand over a goal* (start, report, answer, resume). You can add your own in
+`~/.config/minty/skills/`.
 
 ## Coding agents: "have Claude Code do it"
 

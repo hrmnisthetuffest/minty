@@ -56,11 +56,13 @@ def register(ctx):
             if resume and helper is not None and getattr(helper, "provenance", None) is not None:
                 reseed_provenance(helper.provenance, resume.get("ledger"))  # what it read before the restart is still untrusted
             is_private = ctx.services.get("is_private")
+            known = ctx.services.get("mission_context")
             result = await run_mission(
                 router, goal, specs=worker.specs, call_tool=worker.call, progress=job_ctx.progress, save=job_ctx.checkpoint,
                 tracer=ctx.services.get("tracer"), sensitive=(lambda: bool(is_private())) if is_private else (lambda: False),
                 budget=Budget(steps=max_steps, seconds=max(60.0, max_runtime - 30), tokens=TOKENS),
-                resume=resume, question=question, answer=answer)
+                resume=resume, question=question, answer=answer,
+                context=known(goal) if known is not None else "")
             job_ctx.checkpoint({"verified": result.verified, "plan": result.plan_json, "ledger": result.ledger,
                                 "step_mark": len(result.ledger)})
             if result.status == "done":
@@ -158,8 +160,9 @@ def register(ctx):
         jobs = runner()
         missions = [{"id": j.id, "status": j.status, "result": j.result, "checkpoint": j.checkpoint}
                     for j in (jobs.select(kinds={"mission"}) if jobs is not None else [])]
-        coding = ctx.services.get("coding_jobs")
-        return render(mission_lessons(missions) + tool_lessons(missions) + delegation_lessons(coding() if coding else []))
+        coding, earned = ctx.services.get("coding_jobs"), ctx.services.get("outbox_lessons")
+        return render(mission_lessons(missions) + tool_lessons(missions) + delegation_lessons(coding() if coding else [])
+                      + (earned() if earned else []))
 
     s = {"type": "string"}
     jid = {"type": "integer"}
