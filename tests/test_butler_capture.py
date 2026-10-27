@@ -193,8 +193,10 @@ async def test_the_plugin_sorts_a_dump_and_applies_only_the_picks(tmp_path):
     out = await h.call("butler_apply", {"numbers": [1, 2, 3]})
     assert "3 added" in out
     assert [i.name for i in h._services["butler"].butler().list("tasks")] == ["call the dentist"]
-    (note,) = h._services["vault"].kit().vault.list("inbox")
-    assert note.title.startswith("Maybe a robot") and note.confidence == "verified" and "brain-dump" in note.tags
+    notes = {n.title: n for n in h._services["vault"].kit().vault.list("inbox")}
+    note = next(n for title, n in notes.items() if title.startswith("Maybe a robot"))
+    assert note.confidence == "verified" and "brain-dump" in note.tags
+    assert "Brain dump" in notes and "dentist" in notes["Brain dump"].body  # the original ramble is kept whole, once
     assert h.get_tool("butler_apply").risk == 1 and h.get_tool("butler_sort").risk == 0
 
 
@@ -204,3 +206,54 @@ async def test_applying_without_a_recent_sort_asks_for_the_dump_again(tmp_path):
     data["butler"]["enabled"] = True
     h._store.update(data)
     assert "send the brain dump again" in await h.call("butler_apply", {"numbers": [1]})
+
+
+# ---- a real ramble: commitments, ideas, questions, follow-ups, project work, and what is already on the list ----
+RAMBLE = ("ok so I need to finish the maths worksheet by friday. maybe I should learn rust someday. remind me to email sir "
+          "about the science project, and I'm waiting on mum to sign the trip form. also the minty reel needs a better "
+          "ending, and the github readme should mention docker. I think the carousel could use a darker slide. need to "
+          "renew the library card. should I post on reddit or hacker news first?")
+
+
+def kinds(text):
+    return [(c.kind, c.text, c.who, c.when) for c in sort(text)]
+
+
+def test_a_real_ramble_is_split_where_the_thoughts_change_and_typed_by_how_firmly_they_are_meant():
+    got = {text: (kind, who, when) for kind, text, who, when in kinds(RAMBLE)}
+    assert got["finish the maths worksheet"] == ("todo", "", "by friday")  # "ok so" is not part of it
+    assert got["email sir about the science project"][0] == "todo"  # a commitment, separate from the next clause
+    assert got["sign the trip form"] == ("waiting", "Mum", "")
+    assert got["the minty reel needs a better ending"][0] == "todo"  # project work, not a loose note
+    assert got["the github readme should mention docker"][0] == "todo"
+    assert got["renew the library card"][0] == "todo"
+    ideas = [t for k, t, *_ in kinds(RAMBLE) if k == "idea"]
+    assert any("learn rust" in t for t in ideas) and any("carousel" in t for t in ideas)  # maybe / could: not instructions
+    question = [t for k, t, *_ in kinds(RAMBLE) if k == "question"]
+    assert question == ["should I post on reddit or hacker news first"]
+
+
+def test_a_firm_commitment_and_a_passing_thought_are_never_the_same_kind():
+    assert kinds("I could learn the guitar")[0][0] == "idea"
+    assert kinds("I will send the form tomorrow")[0] == ("todo", "send the form", "", "tomorrow")
+    assert kinds("I promised to call gran on sunday")[0] == ("todo", "call gran", "", "on sunday")
+    assert kinds("it might rain later")[0][0] == "note"  # an observation: neither an idea nor a task
+
+
+def test_applying_skips_what_is_already_on_the_list_and_what_repeats_inside_the_dump(butler):
+    butler.add("tasks", "renew the library card")
+    dump = "need to renew the Library Card. need to renew library card!. need to file the form."
+    out = apply(butler, sort(dump), [1, 2, 3], note_sink=None)
+    names = [i.name for i in butler.list("tasks")]
+    assert names.count("renew the library card") == 1 and "file the form" in names
+    assert "1 added" in out and "already" in out
+
+
+def test_a_decision_is_kept_as_something_to_decide_and_the_original_ramble_is_filed_once(butler):
+    c = sort("should I post on reddit or hacker news first? I need to email sir")
+    saved = []
+    out = apply(butler, c, [1, 2], note_sink=lambda title, text: saved.append((title, text)), source="the whole ramble")
+    assert [i.name for i in butler.list("ideas")] == ["Decide: should I post on reddit or hacker news first"]
+    assert [i.name for i in butler.list("tasks")] == ["email sir"]
+    assert ("Brain dump", "the whole ramble") in saved and sum(1 for t, _ in saved if t == "Brain dump") == 1
+    assert "2 added" in out

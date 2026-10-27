@@ -29,7 +29,7 @@ class ButlerProvider:
         self._store: ButlerStore | None = None
         self._key: tuple | None = None
         self._last_review = ""
-        self.last_dump: tuple[float, list] | None = None  # (when, candidates) of the latest brain-dump sort
+        self.last_dump: tuple | None = None  # (when, candidates, the original text) of the latest brain-dump sort
 
     def active(self) -> bool:
         return bool(self._config().butler.enabled)

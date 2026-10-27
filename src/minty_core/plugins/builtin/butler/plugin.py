@@ -86,13 +86,14 @@ def register(ctx):
         n = butler().delete(str(args.get("domain") or ""), str(args.get("item") or ""))
         return f"Deleted {n} item{'s' * (n != 1)}."
 
-    LABEL = {"todo": "to-do", "waiting": "follow-up", "idea": "idea", "note": "note"}
+    LABEL = {"todo": "to-do", "waiting": "follow-up", "idea": "idea", "question": "decision", "note": "note"}
     MAX_AGE_S = 1800
 
     def sort_(args):
         butler()  # off means off
-        found = braindump.sort(str(args.get("text") or ""))
-        provider.last_dump = (provider._clock(), found)
+        text = str(args.get("text") or "")
+        found = braindump.sort(text)
+        provider.last_dump = (provider._clock(), found, text)
         if not found:
             return "I didn't find anything to sort in that."
         lines = []
@@ -115,7 +116,7 @@ def register(ctx):
                                      tags=["brain-dump"], source="brain dump")
 
         sink = note_sink if vault is not None and vault.active() else None
-        return braindump.apply(b, saved[1], picks, note_sink=sink)
+        return braindump.apply(b, saved[1], picks, note_sink=sink, source=saved[2] if len(saved) > 2 else None)
 
     def undo(args):
         b = butler()
