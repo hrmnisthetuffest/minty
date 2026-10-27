@@ -34,6 +34,24 @@ or blocks them. Memory refuses to store passwords, PINs, one-time codes and keys
 - Only Telegram chats paired with a one-time code are answered. The local API and the panel listen on `127.0.0.1` only.
 - **Safe mode** (`minty --safe`, or say "enter safe mode") starts only the basic tools.
 
+## The terminal
+
+Minty can run a command, but only once you switch it on (`shell.enabled`, Settings: "Let Minty use the terminal"). It is the
+most powerful thing Minty can do, so it has its own rules:
+
+- A few read-only commands run at once, without asking: `pwd`, `ls`, `whoami`, `date`, `uname`, `uptime`, `df`, `free`, `hostname`,
+  `which`, and `git status`, `git log`, `git diff`, `git branch`. Each is checked word by word and run without a shell; one special
+  character (`; & | < > $` or a back-tick) is enough to send a command to the question instead.
+- **Every other command is asked about every time, with the exact command read out, whatever safety level you picked.** This is
+  the real protection. Minty also refuses `sudo`, `su` and the like before it even asks, but that is only a convenience: a command
+  can always be written another way, which is why nothing runs unapproved.
+- A command runs in its own process group with none of your keys in its environment, no keyboard input, a time limit
+  (`shell.timeout_s`, 30 seconds) and a cap on what it can print (the start and end are kept; anything that looks like a key is
+  hidden). When it stops, or when you speak over Minty, everything it started is stopped too.
+- Its output is **data**, never instructions, like a web page.
+- Background helpers never get the terminal, lockdown stops it, and in privacy mode only the read-only commands above run.
+- Read the command before you say yes. Minty cannot tell you that a command is safe, only what it says.
+
 ## Your keys
 
 `~/.config/minty/secrets.toml` is created with mode 0600. Keys are typed hidden, never printed and never written to logs or

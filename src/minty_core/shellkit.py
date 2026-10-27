@@ -62,7 +62,8 @@ def _git(args: list[str]) -> list[str] | None:
         return _GIT_HEAD + ["branch", *rest] if all(a in _BRANCH_FLAGS for a in rest) else None
     if sub in ("log", "diff"):
         ok = all(a in _LOG_FLAGS or re.fullmatch(r"-\d{1,4}", a) or (not a.startswith("-") and _PLAIN.match(a)) for a in rest)
-        return _GIT_HEAD + [sub, "--no-ext-diff", "--no-textconv", *rest] if ok else None
+        extra = ["-c", "log.showSignature=false"] if sub == "log" else []  # a repository's setting must not run a signature program
+        return _GIT_HEAD + extra + [sub, "--no-ext-diff", "--no-textconv", *rest] if ok else None
     return None
 
 

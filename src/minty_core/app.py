@@ -1029,8 +1029,24 @@ def preload_voice_models(store) -> float:
     return time.monotonic() - started
 
 
+def voice_libraries_missing() -> str:
+    """The first voice library that is not installed, or "" when the voice can run. The Docker core image has none on purpose."""
+    import importlib.util
+
+    for name in ("sounddevice",):
+        if importlib.util.find_spec(name) is None:
+            return name
+    return ""
+
+
 async def _start_voice(ctx: AppContext) -> None:
     pipeline = ctx.pipeline
+    missing = voice_libraries_missing()
+    if missing:  # text, the panel, Telegram and the tools do not need a microphone: start without the voice, quietly
+        log.info("voice is off: %s is not installed (text, the panel and Telegram still work; for voice: pip install 'minty-core[voice]')",
+                 missing)
+        pipeline.ready.set()
+        return
     pipeline._set_state("loading")
     seconds = await asyncio.to_thread(preload_voice_models, ctx.store)
     log.info("voice models ready in %.1fs", seconds)

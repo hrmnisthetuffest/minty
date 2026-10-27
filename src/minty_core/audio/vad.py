@@ -65,6 +65,9 @@ class FrameVAD:
 def build_frame_vad():
     try:
         return FrameVAD()
+    except ImportError as e:  # the speech libraries are an optional extra (the Docker core image has none): one line is enough
+        log.warning("speech detector unavailable (%s); quiet speech relies on loudness alone", e)
+        return None
     except Exception:  # noqa: BLE001 — no onnxruntime/model: the loudness gate works alone, as before
         log.warning("speech detector unavailable; quiet speech relies on loudness alone", exc_info=True)
         return None

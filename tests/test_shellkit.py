@@ -30,6 +30,7 @@ def test_git_reads_run_with_the_settings_that_could_run_code_switched_off():
     assert safe_argv("git status") == ["git", "--no-pager", "-c", "core.fsmonitor=false", "status"]
     log = safe_argv("git log --oneline -5")
     assert log[:4] == ["git", "--no-pager", "-c", "core.fsmonitor=false"] and "--no-ext-diff" in log and "--no-textconv" in log
+    assert "log.showSignature=false" in log  # a repository's settings must not be able to run a signature checker
     assert log[-2:] == ["--oneline", "-5"]
     assert safe_argv("git branch") == ["git", "--no-pager", "-c", "core.fsmonitor=false", "branch"]
 
