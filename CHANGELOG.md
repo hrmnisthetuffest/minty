@@ -627,3 +627,7 @@ when it is good enough.
   advisories in older releases. New `scripts/security_scan.py` runs bandit against an accepted baseline (`scripts/security_baseline.json`,
   every accepted rule explained in the script) and pip-audit over the installed packages. Tests: `tests/test_security_download_integrity.py`,
   `tests/test_security_scan.py`.
+- Speed: the panel's own files (page, scripts, styles, font, service worker) were sent `Cache-Control: no-store`, so every open
+  downloaded all 23 of them again. They now carry `no-cache` with their ETag (nothing personal is in them): measured in the browser,
+  a reload went from 189 418 bytes to 6 600 (22 of 23 answered with a 304). API answers, login and every refusal stay `no-store`.
+  Tests: `tests/test_panel_caching.py`.

@@ -104,7 +104,11 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
             response = JSONResponse({"detail": "bad host"}, status_code=421)
         else:
             response = await call_next(request)
-        response.headers["Cache-Control"] = "no-store"
+        # The panel's own files hold no personal data: keep them, but ask every time whether they changed (ETag, so a reload costs a
+        # 304 with no body). Anything else, and every refusal, is never stored.
+        own_file = request.method in ("GET", "HEAD") and response.status_code in (200, 304) and (
+            request.url.path in ("/", "/sw.js") or request.url.path.startswith("/static/"))
+        response.headers["Cache-Control"] = "no-cache" if own_file else "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Content-Security-Policy"] = CSP
         response.headers["X-Frame-Options"] = "DENY"
