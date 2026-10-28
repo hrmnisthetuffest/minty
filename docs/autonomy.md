@@ -17,6 +17,24 @@ What Minty does by itself, how it is kept safe, and what is not done. Each part 
 | Optimise the whole workflow: the manual work that is left (point 11) | `friction.py` counts what *you* still do: questions a day, how long work waited for your answer, questions per finished job, and per tool whether you always say yes (a question that can go), nobody answers (work that waited and gave up) or you usually say no (offered too eagerly). It proposes (a standing approval, or to ask for it in your own words where a mandate exists); class 3 is never proposed away; nothing is changed. `notices_friction` shows it, and a quiet weekly note goes through the notifier when a week had at least ten questions and something that could go. | `friction.py`, `notices_friction` |
 | External text cannot take over | Unchanged and relied on: provenance tagging, untrusted result wrappers, the mandate ignores anything but your own words, the Gmail watcher shows a message as plain text and never follows it, its Composio steps must each be a read. | `provenance.py`, `policy.py` |
 
+## The request, section by section
+
+The pasted request ends, in the saved conversation, exactly at the first sentence of point 11 ("...should minimize the amount of manual work required"); there is no more text to build from. Status of each point:
+
+| Point | Status |
+| --- | --- |
+| 1 Execute, do not ask | **Done** for the actions with a mandate (research, coding agents, preferences, writes into sheets and docs Minty knows, optionally one plain mail). Not done by design: class 3 (money, keys, deletion, messages to people) is still asked. |
+| 2 Orchestration | **Already there, checked in the code:** durable tasks with a lifecycle (queued, running, needs you, waiting for approval, done, failed, cancelled, timeout, interrupted, blocked), checkpoints and resume after a restart, planner / executor / verifier with a ledger. **Not built:** parallel steps inside one mission, dependency tracking between steps, a job state that waits on an outside event. |
+| 3 Workflow brain | **Done** for goals: a plain question is answered directly, a big goal gets a brief; reminders for deadlines. Calendar events are not created (Composio's create-event invites people, so it is class 3). |
+| 4 Sheets and tools | **Done:** find-or-create through the artifact registry, step-by-step Composio rules, no duplicates. **Partly:** reading back what was written is told to the worker in the brief but is **not enforced in code**; reconciling and marking stale rows is likewise the worker's job. |
+| 5 Gmail | 5.1 and 5.2 **done** (incremental, scored, notified once with who / why / next step / what was already done). 5.3 **partly:** requests and deadlines are found, reminders are set, unanswered mail is chased; replies are not drafted or sent automatically and mail is not labelled. 5.4 **done** (feedback becomes suggestions you accept). |
+| 6 Initiative | **Partly:** mail events, deadlines, unanswered mail, finished and blocked jobs (already announced), weekly manual-work note. Not wired: stalled projects, spreadsheet gaps. |
+| 7 Notifications | **Done** except phone calls (no calling service is connected; none is faked). |
+| 8 Learning | **Done:** scoped, explainable, correctable preferences; versioned, measured playbooks. **Not automatic:** noticing a tool sequence that worked and turning it into a playbook; you create playbooks. |
+| 9 Policy | **Done** in the safety layer (`policy.py`), not in a prompt. |
+| 10 External instructions | **Done:** unchanged protections plus two holes closed (forwarded text, mail snippets through the digest). |
+| 11 Optimise the whole workflow | The text stops after one sentence; built as it reads: measure and propose away the manual work that is left (`friction.py`). |
+
 ## What is not built, and why
 
 - **Parallel steps inside one mission.** A mission's plan runs one checkpoint at a time against one ledger and one conversation. Parallel
