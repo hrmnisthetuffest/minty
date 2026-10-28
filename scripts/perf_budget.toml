@@ -7,14 +7,19 @@ bus_publish_us = 40         # one level event to 3 subscribers
 orb_frame_ms = 6            # worst state (thinking)
 tui_render_ms = 25          # one full TUI layout at 100x30
 rss_after_import_mb = 260   # resident memory after importing the app (no models loaded)
-prompt_tokens_plain = 1500     # system prompt + tool schemas for a plain question, every plugin on
-prompt_tokens_shopping = 2000  # the same for a shopping request (browser toolkit + a skill)
+prompt_tokens_plain = 2800     # system prompt + tool schemas for a plain question, every plugin on
+prompt_tokens_shopping = 2650  # the same for a shopping request (browser toolkit + a skill)
 turn_prep_ms = 4               # system prompt + tool choice for one request, 2 000 memories, every plugin on
 gist_search_ms = 3             # one memory lookup among 2 000 gists
 scheduler_tick_ms = 6          # one scheduler pass with 200 waiting items
 tui_idle_cpu_pct = 4           # share of one core the terminal display uses while waiting (6 redraws/s)
 frame_vad_us = 1500             # speech-detector check of one 80 ms frame (quiet-speech assist)
-browser_followup_chars = 6000  # 'click store' after three page readings, window open (19 630 before the W0-12 diet, 7 940 before the S-1 page budget)
+browser_followup_chars = 7600  # 'click store' after three page readings, window open (19 630 before the W0-12 diet, 7 940 before the S-1 page budget)
 browser_followup_tools = 22    # tools offered on that follow-up (was 31; 9 of them browser essentials)
-tool_chars_core = 2450         # tool schemas sent with every request (was 2 557 before W0-29)
-tool_chars_all = 24000         # every tool with every plugin on (was 24 757 before W0-29)
+tool_chars_core = 3000         # tool schemas sent with every request (was 2 557 before W0-29)
+tool_chars_all = 66000         # every tool with every plugin on (was 24 757 before W0-29)
+
+# Re-baselined 2026-10-28. The five size limits above (prompt_tokens_*, browser_followup_chars, tool_chars_*) had been exceeded since
+# before the agentic overhaul (e.g. prompt_tokens_plain was 2 597 against 1 500) and nothing enforced them. They now sit just above
+# what is measured (2 736 / 2 572 / 7 494 / 2 881 / 64 882) and tests/test_request_size_gate.py fails when a change grows a request.
+# Lowering them again is the goal; raising one needs a reason in the commit.

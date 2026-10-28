@@ -647,3 +647,7 @@ when it is good enough.
   `studio.library_max_mb` (1500) removes the least recently shown fetched clips (never yours); `studio.auto_discover` (off) runs it daily in
   the maintenance window (plugins can now register maintenance tasks). Tests: `tests/test_studio_catalog.py`, `test_studio_discover.py`,
   `test_plugin_studio_catalog.py`, `test_maintenance_plugin_tasks.py`.
+- Speed: the size budgets in `scripts/perf_budget.toml` (system prompt + tool schemas of a request, the follow-up after page readings)
+  had been exceeded since before the agentic overhaul (a plain question was 2 597 tokens against a limit of 1 500) and nothing enforced
+  them. They are re-baselined just above what is measured (a plain question 2 979 -> 2 736 tokens after the shorter tool menu) and
+  `tests/test_request_size_gate.py` now fails when a change makes a request bigger. Lowering them is the goal; raising one needs a reason.
