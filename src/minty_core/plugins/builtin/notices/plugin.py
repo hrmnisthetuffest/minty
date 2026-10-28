@@ -36,6 +36,22 @@ def register(ctx):
             lines.append(f"{alias}: last checked {when}" + (f", failed {a['failures']} times ({a['last_error']})" if a["failures"] else ", no problems"))
         return "\n".join(lines)
 
+    async def feedback(args):
+        key, useful = str(args.get("key") or ""), bool(args.get("useful"))
+        watch, prefs = ctx.services.get("gmail_watch_store"), ctx.services.get("prefs")
+        sender = watch.sender_of(key) if watch is not None else ""
+        if not sender or prefs is None:
+            return "I do not know who that notice was about."
+        kind, opposite = ("mail.vip", "mail.mute") if useful else ("mail.mute", "mail.vip")
+        prefs.contradict(f"{opposite}:{sender}", "mail")  # what you just said undoes the opposite habit
+        learned = prefs.observe(f"{kind}:{sender}", "mail", ref=key)
+        if learned is None:
+            return "Noted. I will not suggest that again for a while."
+        if learned.status == "suggested":
+            what = "treat mail from them as important" if useful else "stay quiet about mail from them"
+            return f"I have noticed this a few times: should I {what}? It is a suggestion, not a rule: say yes (prefs_accept {learned.id}) or no (prefs_reject)."
+        return f"Noted ({learned.evidence} so far). I will not change anything until I have seen it a few times."
+
     s = {"type": "string"}
     return [
         Tool("recent", "What Minty told the user on its own lately (mail that mattered, failed jobs ...), with a key for each.",
@@ -43,4 +59,6 @@ def register(ctx):
         Tool("resolve", "The user dealt with a notice: stop reminding them about it (its key from notices_recent).",
              {"type": "object", "properties": {"key": s}, "required": ["key"]}, resolve, risk=R1),
         Tool("status", "Is the Gmail watcher on and working, per account.", {"type": "object", "properties": {}}, status),
+        Tool("feedback", "The user says a mail notice was useful or noise (key from notices_recent): learn slowly who matters. Only suggests.",
+             {"type": "object", "properties": {"key": s, "useful": {"type": "boolean"}}, "required": ["key", "useful"]}, feedback, risk=R1),
     ]

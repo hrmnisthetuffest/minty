@@ -162,6 +162,7 @@ n8n_get_workflow                   0 read
 n8n_list_executions                0 read
 n8n_list_workflows                 0 read
 n8n_trigger_webhook                2 visible
+notices_feedback                   1 change
 notices_recent                     0 read
 notices_resolve                    1 change
 notices_status                     0 read
@@ -169,6 +170,12 @@ outbox_discard                     1 change
 outbox_draft                       0 read
 outbox_list                        0 read
 outbox_send                        3 critical +args sensitive
+prefs_accept                       2 visible
+prefs_correct                      1 change
+prefs_forget                       1 change
+prefs_list                         0 read
+prefs_reject                       1 change
+prefs_set                          2 visible
 productivity_alarm                 0 read     +args
 productivity_day                   0 read     sensitive
 productivity_habit                 0 read     +args

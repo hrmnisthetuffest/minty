@@ -1,0 +1,3 @@
+name = "prefs"
+description = "What Minty has learned about how you work: told by you, accepted from a suggestion, guessed or for one task. See where each came from, correct it, remove it. Habits are offered and never applied until you accept; none can touch permissions."
+default_enabled = true

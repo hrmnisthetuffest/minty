@@ -760,4 +760,14 @@ when it is good enough.
   answer. The phone gets `phone` events (never held by the push router, since the notifier weighed the quiet hours) and `local` notices are not
   mirrored. Off by default (`gmail_watch.enabled`); no phone-call channel exists and none is faked. See docs/proactive-mail.md. Tests: `test_notifier`,
   `test_mailscore`, `test_gmailwatch`, `test_composio_gmail`, `test_gmail_wiring`, `test_telegram_push`. **Not run unattended against a real mailbox.**
+- Autonomy 4: a brief for big goals and a learning layer you can correct. `workflow.py`: a plain question gets a direct answer; a goal that researches,
+  compares, ranks or tracks several things gets a short brief in the mission's background (a sheet found with `artifacts_list` before one is made, a
+  doc, reminders for deadlines, follow-ups as drafts, "read back what you wrote", and a plain "no spreadsheet tool is connected" when none is). `prefs.py`
+  and the `prefs` plugin: preferences are told, repeated-and-accepted, guessed, temporary or merely suggested; scoped, with confidence, origin and a
+  last-reinforced date; three sightings make a suggestion that is never applied until you accept it; a correction halves confidence and a second removes
+  it; a rejected or removed one is not offered for a month; a guess nobody repeats fades. Only a short list of kinds exists (how research is kept, which
+  senders matter or stay quiet), so nothing learned can reach a permission. Wired: asking for research in a sheet three times offers "keep research in a
+  sheet"; `notices_feedback` (useful or noise) teaches the Gmail watcher about a sender, and accepted `mail.vip`/`mail.mute` habits change its scoring (a
+  muted sender is silent unless urgent). `urgent` mail now needs something due very soon, not just a deadline. docs/autonomy.md maps the whole overhaul and
+  lists what is not built. Tests: `test_workflow*`, `test_prefs*`, `test_gmail_wiring`.
 

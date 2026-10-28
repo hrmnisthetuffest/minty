@@ -71,12 +71,14 @@ def register(ctx):
                 reseed_provenance(helper.provenance, resume.get("ledger"))  # what it read before the restart is still untrusted
             is_private = ctx.services.get("is_private")
             known = ctx.services.get("mission_context")
+            brief = ctx.services.get("workflow_brief")
+            background = "\n\n".join(x for x in (known(goal) if known is not None else "", brief(goal) if brief is not None else "") if x)
             result = await run_mission(
                 router, goal, specs=worker.specs, call_tool=worker.call, progress=job_ctx.progress, save=job_ctx.checkpoint,
                 tracer=ctx.services.get("tracer"), sensitive=(lambda: bool(is_private())) if is_private else (lambda: False),
                 budget=Budget(steps=max_steps, seconds=max(60.0, max_runtime - 30), tokens=TOKENS),
                 resume=resume, question=question, answer=answer,
-                context=known(goal) if known is not None else "")
+                context=background)
             job_ctx.checkpoint({"verified": result.verified, "plan": result.plan_json, "ledger": result.ledger,
                                 "step_mark": len(result.ledger)})
             if result.status == "done":

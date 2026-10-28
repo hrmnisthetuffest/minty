@@ -380,7 +380,8 @@ def build_context(config_dir: Path) -> AppContext:
     services["gmail_watch_store"] = WatchStore(config_dir / "gmailwatch.db")
     services["gmail_watcher"] = build_gmail_watcher(
         store, McpRegistry(config_dir / "mcp.json"), secrets.get, services["notifier"], services["gmail_watch_store"],
-        halted=lambda: bool(getattr(services.get("lockdown"), "active", False)) or store.config.safety.privacy_mode)
+        halted=lambda: bool(getattr(services.get("lockdown"), "active", False)) or store.config.safety.privacy_mode,
+        prefs=lambda key: services["prefs"].value(key, ("mail",)) if "prefs" in services else None)
     def fast_action(text: str):  # simple commands about the open page skip the model (fastpath.py)
         page = services.get("browser_page")
         return fastpath.match(text, page() if page else None, wake_words=tuple(store.config.audio.wake_phrases))
@@ -535,6 +536,23 @@ def build_context(config_dir: Path) -> AppContext:
     services["agent_factory"] = make_subagent
     services["mission_worker"] = make_worker
     services["mission_context"] = mission_context
+
+    def workflow_brief(goal: str) -> str:
+        """What would make a big goal's result useful (a sheet, a doc, reminders), or a plain note that no sheet tool is connected."""
+        from minty_core.workflow import asks_sheet_for_research, brief
+
+        hint = services["mcp_hint"](goal) if "mcp_hint" in services else ""
+        can_sheet = "COMPOSIO_MULTI_EXECUTE_TOOL" in hint and "artifacts" in services
+        prefers, prefs = services.get("prefers"), services.get("prefs")
+        if prefs is not None and asks_sheet_for_research(goal):  # a habit being seen: three of these make a suggestion, never a rule
+            try:
+                import hashlib
+                prefs.observe("research->sheet", "research", ref=hashlib.sha256(goal.encode()).hexdigest()[:12])
+            except Exception:  # noqa: BLE001 — learning must never get in the way of the work
+                log.warning("could not note a preference", exc_info=True)
+        return brief(goal, can_sheet=can_sheet, prefers=prefers).text()
+
+    services["workflow_brief"] = workflow_brief
     services["confirm"] = confirm
     services["is_private"] = is_private
     services["quick_only"] = lambda: bool(getattr(agent, "quick_only", False))

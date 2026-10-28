@@ -16,6 +16,7 @@ from typing import Callable
 
 TIME = re.compile(r"\b(today|tonight|tomorrow|by (?:eod|end of (?:day|week)|noon|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|"
                   r"deadline|due|overdue|expires?|expiring|last day|final notice|asap|urgent|immediately|within \d+ (?:hours?|days?))\b", re.I)
+SOON = re.compile(r"\b(today|tonight|tomorrow|within \d+ hours?|by (?:eod|end of day|noon))\b", re.I)  # "due Friday" is a deadline, "by tomorrow" is soon
 STRONG = re.compile(r"\b(overdue|final notice|past due|expires? today|asap|urgent|immediately|last day)\b", re.I)
 REQUEST = re.compile(r"\?|\b(can you|could you|would you|please|need (?:you|it|this)|let me know|waiting (?:for|on)|follow(?:ing)? up|"
                      r"confirm|approve|approval|sign|review|reply|respond|send me|send the)\b", re.I)
@@ -167,8 +168,8 @@ def score(mail: Mail, ctx: Context) -> Verdict:
     for name in ("notable", "important"):
         if total >= THRESHOLDS[name]:
             severity = name
-    if total >= THRESHOLDS["urgent"] and time_pressure and (relation > 0):
-        severity = "urgent"
+    if total >= THRESHOLDS["urgent"] and (STRONG.search(text) or SOON.search(text)) and relation > 0:
+        severity = "urgent"  # a score that high, something due very soon, and a reason to think it is meant for you
 
     action = "read"
     if security:

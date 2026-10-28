@@ -71,7 +71,8 @@ class WatchStore:
             "failures INTEGER NOT NULL DEFAULT 0, next_poll REAL NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '');"
             "CREATE TABLE IF NOT EXISTS seen (account TEXT NOT NULL, message_id TEXT NOT NULL, ts REAL NOT NULL, PRIMARY KEY (account, message_id));"
             "CREATE TABLE IF NOT EXISTS senders (account TEXT NOT NULL, address TEXT NOT NULL, known INTEGER NOT NULL, ts REAL NOT NULL, "
-            "PRIMARY KEY (account, address));")
+            "PRIMARY KEY (account, address));"
+            "CREATE TABLE IF NOT EXISTS threads (thread_id TEXT PRIMARY KEY, sender TEXT NOT NULL, ts REAL NOT NULL);")
         self._db.commit()
 
     def account(self, alias: str) -> dict:
@@ -97,6 +98,17 @@ class WatchStore:
                              (self._clock() + wait_s, error[:120], alias))
             self._db.commit()
             return self._db.execute("SELECT failures FROM accounts WHERE alias = ?", (alias,)).fetchone()[0]
+
+    def note_thread(self, thread_id: str, sender: str) -> None:
+        """Who a thread's notice was about, so "that one mattered" or "that was noise" can be taken as a hint about the sender."""
+        with self._lock:
+            self._db.execute("INSERT OR REPLACE INTO threads (thread_id, sender, ts) VALUES (?,?,?)", (thread_id, sender, self._clock()))
+            self._db.execute("DELETE FROM threads WHERE ts < ?", (self._clock() - 60 * 86400,))
+            self._db.commit()
+
+    def sender_of(self, thread_id: str) -> str:
+        row = self._db.execute("SELECT sender FROM threads WHERE thread_id = ?", (thread_id,)).fetchone()
+        return row[0] if row else ""
 
     def aliases(self) -> list[str]:
         return [r[0] for r in self._db.execute("SELECT alias FROM accounts ORDER BY alias").fetchall()]
@@ -126,8 +138,10 @@ class WatchStore:
 
 class GmailWatcher:
     def __init__(self, source: MailSource, store: WatchStore, notifier: Notifier, settings: Callable[[], WatchSettings], *,
-                 clock: Callable[[], float] = time.time, halted: Callable[[], bool] = lambda: False):
+                 clock: Callable[[], float] = time.time, halted: Callable[[], bool] = lambda: False,
+                 prefs: Callable[[str], str | None] = lambda key: None):
         self._source, self._store, self._notifier, self._settings, self._clock, self._halted = source, store, notifier, settings, clock, halted
+        self._prefs = prefs  # what you accepted or said about senders (mail.vip:, mail.mute:); never anything about permissions
         self._round_wait, self._round_failures = 0.0, 0
 
     async def poll_once(self) -> dict:
@@ -220,11 +234,17 @@ class GmailWatcher:
             except Exception:  # noqa: BLE001 — not knowing is allowed
                 known = None
         me = (settings.me or {}).get(alias)
-        return Context(me=(me,) if me else (), vips=settings.vips, topics=settings.topics, known=lambda a, k=known: k if a == address else None)
+        vips = settings.vips + ((address,) if address and self._prefs(f"mail.vip:{address}") == "1" else ())
+        return Context(me=(me,) if me else (), vips=vips, topics=settings.topics, known=lambda a, k=known: k if a == address else None)
 
     def _tell(self, alias: str, mail: Mail, ctx: Context, settings: WatchSettings) -> None:
         verdict = score(mail, ctx)
         severity = verdict.severity
+        address = address_of(mail.sender)
+        if address:
+            self._store.note_thread(mail.thread_id or mail.id, address)
+            if severity != "urgent" and self._prefs(f"mail.mute:{address}") == "1":
+                severity = "info"  # you asked for quiet about this sender; only an urgent one still gets through
         if RANK[severity] >= RANK["important"] and verdict.confidence < settings.min_confidence:
             severity = "notable"  # not sure enough to interrupt
         who = name_of(mail.sender)

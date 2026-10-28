@@ -95,7 +95,7 @@ async def test_the_notices_tools_show_resolve_and_report_status(tmp_path):
     services["gmail_watch_store"] = watch
     n.publish(ev("urgent"))
     host.reload()
-    assert {s.name for s in host.tool_specs() if s.name.startswith("notices_")} == {"notices_recent", "notices_resolve", "notices_status"}
+    assert {s.name for s in host.tool_specs() if s.name.startswith("notices_")} == {"notices_recent", "notices_resolve", "notices_status", "notices_feedback"}
     out = await host.call("notices_recent", {})
     assert "urgent" in out and "Mail from Alex" in out
     assert "Marked" in await host.call("notices_resolve", {"key": "t1"}) and "not one" in await host.call("notices_resolve", {"key": "nope"})
@@ -130,3 +130,27 @@ async def test_the_loop_polls_only_when_switched_on_and_keeps_the_notifier_movin
     calls.clear()
     await _gmail_loop(ctx, first_s=0, rounds=1, sleep=lambda s: asyncio.sleep(0))
     assert calls == ["poll", "retry", "remind"]
+
+
+async def test_telling_it_a_notice_was_useful_or_noise_teaches_it_slowly_and_never_by_itself(tmp_path):
+    from minty_core.gmailwatch import WatchStore
+    from minty_core.prefs import PreferenceStore
+
+    services = {}
+    host = make_host(tmp_path, services=services)
+    watch = WatchStore(tmp_path / "gmailwatch.db")
+    services["gmail_watch_store"] = watch
+    prefs = services["prefs"]
+    for i in range(1, 4):
+        watch.note_thread(f"t{i}", "sam@acme.test")
+    host.reload()
+    assert "do not know" in await host.call("notices_feedback", {"key": "nope", "useful": True})
+    first = await host.call("notices_feedback", {"key": "t1", "useful": True})
+    assert "until I have seen it" in first and prefs.value("mail.vip:sam@acme.test", ("mail",)) is None
+    await host.call("notices_feedback", {"key": "t2", "useful": True})
+    third = await host.call("notices_feedback", {"key": "t3", "useful": True})
+    assert "prefs_accept" in third and prefs.value("mail.vip:sam@acme.test", ("mail",)) is None  # offered, not applied
+    assert prefs.suggestions()[0].key == "mail.vip:sam@acme.test"
+    prefs.set_explicit("mail.mute:sam@acme.test", "mail")
+    await host.call("notices_feedback", {"key": "t1", "useful": True})  # you found it useful after all: the mute is lowered
+    assert prefs.list(status="active")[0].confidence < 1.0

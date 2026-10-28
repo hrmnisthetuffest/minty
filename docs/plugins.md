@@ -448,6 +448,7 @@ On by default: yes.
 | `notices_recent` | What Minty told the user on its own lately (mail that mattered, failed jobs ...), with a key for each. |  |
 | `notices_resolve` | The user dealt with a notice: stop reminding them about it (its key from notices_recent). | risk varies |
 | `notices_status` | Is the Gmail watcher on and working, per account. |  |
+| `notices_feedback` | The user says a mail notice was useful or noise (key from notices_recent): learn slowly who matters. Only suggests. | risk varies |
 
 ## outbox
 
@@ -462,6 +463,21 @@ Settings: `user`, `smtp_host`, `smtp_port`, `smtp_security`, `auto_reply_to`, `n
 | `outbox_send` | Send an outbox item. Within the user's auto-reply rules it goes by itself; anything else asks the user with the whole message shown. | sensitive, risk varies |
 | `outbox_list` | What is in the outbox: drafted, sent (and how), failed or unknown. |  |
 | `outbox_discard` | Throw away an unsent outbox item. | risk 1 |
+
+## prefs
+
+What Minty has learned about how you work: told by you, accepted from a suggestion, guessed or for one task. See where each came from, correct it, remove it. Habits are offered and never applied until you accept; none can touch permissions.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `prefs_list` | What Minty has learned about how the user works (and what it only suggests), with where each came from. |  |
+| `prefs_set` | Save a preference the user just stated (key such as research->sheet, scope such as research or global). Only their own words. | risk varies |
+| `prefs_accept` | The user agreed to a suggested habit (its id from prefs_list). | risk varies |
+| `prefs_reject` | The user said no to a suggested habit: do not offer it again for a month. | risk varies |
+| `prefs_correct` | The user corrected what a habit led to: trust it less, and drop it on a second correction. | risk varies |
+| `prefs_forget` | Remove a learned preference for good. | risk varies |
 
 ## productivity
 
