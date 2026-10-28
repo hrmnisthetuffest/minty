@@ -1,6 +1,7 @@
 import asyncio
 import hmac
 import json
+import logging
 import time
 from typing import Any, Literal
 
@@ -13,6 +14,8 @@ from minty_core.context import AppContext
 from minty_core.keystore import SecretsDamaged
 from minty_core.llm.types import LLMError
 from minty_core.trace import turn_scope
+
+security = logging.getLogger("minty.security")
 
 
 class SecretBody(BaseModel):
@@ -613,18 +616,33 @@ def create_app(ctx: AppContext) -> FastAPI:
 
     @app.websocket("/events")
     async def events(ws: WebSocket):
-        if not hmac.compare_digest(ws.query_params.get("token", "").encode(), ctx.token.encode()):
+        # The token travels in a header, never in the address: an address is written to logs (uvicorn logs it) and
+        # to every proxy and history it passes. A token in the query string is refused even when it is right.
+        supplied = ws.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        if not hmac.compare_digest(supplied.encode(), ctx.token.encode()):
+            security.warning("events socket refused: %s from %s", "token in the address, not a header" if ws.query_params.get("token")
+                             else "missing or wrong token", ws.client.host if ws.client else "unknown")
             await ws.close(code=4401)
             return
         await ws.accept()
         queue = ctx.bus.subscribe()
-        try:
+
+        async def send() -> None:
             await ws.send_json({"type": "hello"})
             while True:
                 await ws.send_json(await queue.get())
-        except (WebSocketDisconnect, RuntimeError):
-            pass
+
+        async def watch() -> None:  # nothing is expected from the client: reading tells us when it has gone
+            while (await ws.receive())["type"] != "websocket.disconnect":
+                pass
+
+        tasks = [asyncio.create_task(send()), asyncio.create_task(watch())]
+        try:
+            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)  # WebSocketDisconnect / a closed socket end here
             ctx.bus.unsubscribe(queue)
 
     return app

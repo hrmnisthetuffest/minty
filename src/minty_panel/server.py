@@ -67,7 +67,7 @@ class LoginBody(BaseModel):
 def default_connect(core: CoreClient):
     import websockets
 
-    return lambda: websockets.connect(core.ws_url())
+    return lambda: websockets.connect(core.ws_url(), additional_headers=core.ws_headers())
 
 
 async def relay_events(ws: WebSocket, connect) -> None:

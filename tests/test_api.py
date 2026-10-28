@@ -117,10 +117,10 @@ def test_mute_and_say_need_a_pipeline(client, auth, ctx):
 
 
 def test_events_websocket_requires_token(client, ctx):
-    with client.websocket_connect(f"/events?token={ctx.token}") as ws:
+    with client.websocket_connect("/events", headers={"Authorization": f"Bearer {ctx.token}"}) as ws:
         assert ws.receive_json() == {"type": "hello"}
     with pytest.raises(WebSocketDisconnect):
-        with client.websocket_connect("/events?token=bad"):
+        with client.websocket_connect("/events", headers={"Authorization": "Bearer bad"}):
             pass
 
 

@@ -30,4 +30,7 @@ class CoreClient:
             raise CoreUnavailable(str(e)) from e
 
     def ws_url(self) -> str:
-        return self._base.replace("http", "ws", 1) + "/events?token=" + self._token()
+        return self._base.replace("http", "ws", 1) + "/events"  # no secret in an address: addresses get logged
+
+    def ws_headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._token()}"}

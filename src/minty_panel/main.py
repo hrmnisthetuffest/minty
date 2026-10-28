@@ -9,6 +9,7 @@ from pathlib import Path
 import uvicorn
 
 from minty_core._toml import tomllib
+from minty_core.logredact import install_uvicorn_redaction
 from minty_core.paths import config_dir
 from minty_panel.auth import LoginThrottle, PasswordStore, SessionStore
 from minty_panel.core_client import CoreClient
@@ -98,6 +99,7 @@ def main(argv=None) -> None:
             sys.exit(str(e))
         print("panel PIN saved" + (" (it is easy to guess: anyone who can reach the panel can try it)" if args.allow_easy else ""))
         return
+    install_uvicorn_redaction()
     uvicorn.run(**build_panel_app(directory), log_level="info", proxy_headers=False)
 
 

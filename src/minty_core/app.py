@@ -20,6 +20,7 @@ from minty_core.safemode import SAFE_PLUGINS, BootLog, is_deliberate_stop, start
 from minty_core.supervisor import VoiceSupervisor
 from minty_core.keyimport import extract_keys
 from minty_core.keystore import SecretsDamaged, SecretsStore
+from minty_core.logredact import install_uvicorn_redaction
 from minty_core.paths import config_dir
 
 log = logging.getLogger("minty")
@@ -958,8 +959,7 @@ async def _maintenance_loop(ctx, directory: Path) -> None:
 
 def _start_tui(ctx, directory: Path):
     """Run the full-screen display; log lines go to a file so they don't tear the screen."""
-    from logging.handlers import RotatingFileHandler
-
+    from minty_core.logredact import PrivateRotatingFileHandler
     from minty_core.tui import Hotkeys, TerminalUI
     from minty_core.typed import typed_chat
 
@@ -967,7 +967,7 @@ def _start_tui(ctx, directory: Path):
     for handler in list(root.handlers):
         if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
             root.removeHandler(handler)
-    log_file = RotatingFileHandler(directory / "minty.log", maxBytes=1_000_000, backupCount=2)
+    log_file = PrivateRotatingFileHandler(directory / "minty.log", maxBytes=1_000_000, backupCount=2)
     log_file.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
     root.addHandler(log_file)
 
@@ -1430,6 +1430,7 @@ def _run_overlay() -> None:
 
 def main(argv=None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    install_uvicorn_redaction()  # request lines never carry a secret-looking query value into the console, journal or log file
     logging.getLogger("faster_whisper").setLevel(logging.WARNING)  # one line per transcription otherwise
     for noisy in ("httpx", "httpcore"):  # they log full request URLs at INFO, which can carry query-auth keys
         logging.getLogger(noisy).setLevel(logging.WARNING)
