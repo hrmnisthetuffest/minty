@@ -615,3 +615,8 @@ when it is good enough.
   document named `clip.mp4` is refused by `probe` and by the asset library (which also stores files under a name made from their
   bytes, never `.m3u8`, so nothing text-like or misnamed reaches ffmpeg's playlist readers or an Instagram upload). Every ffmpeg
   and ffprobe input is read as a plain file (`-protocol_whitelist file`). Tests: `tests/test_security_media_sniff.py`.
+- Security: guessing the panel PIN now gets slower: each lockout of an address is twice as long as the last (a minute, two, four ... up
+  to an hour; a day without failures starts again), the lockout says how long to wait (`Retry-After`), and the panel as a whole checks
+  at most 30 PINs a minute however many addresses try. Refused logins, lockouts, foreign hosts, requests from outside your network,
+  missing CSRF headers and refused event sockets are written to the `minty.security` log (the address and the reason; never a PIN,
+  a cookie or a token). Tests: `tests/test_security_panel_login.py`.

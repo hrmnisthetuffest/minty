@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import ipaddress
+import logging
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 
@@ -11,9 +12,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from minty_panel.auth import LoginThrottle, PasswordStore, SessionStore
+from minty_panel.auth import GlobalBudget, LoginThrottle, PasswordStore, SessionStore
 from minty_panel.core_client import CoreClient, CoreUnavailable
 
+security = logging.getLogger("minty.security")  # who was refused and why; never a PIN, a cookie or a token
 STATIC = Path(__file__).parent / "static"
 COOKIE = "minty_session"
 ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags", "profile"}
@@ -83,15 +85,22 @@ async def relay_events(ws: WebSocket, connect) -> None:
 
 
 def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle: LoginThrottle,
-                     core: CoreClient, *, allowed_hosts=DEFAULT_HOSTS, ws_connect=None, lan_only: bool = False) -> FastAPI:
+                     core: CoreClient, *, allowed_hosts=DEFAULT_HOSTS, ws_connect=None, lan_only: bool = False,
+                     login_budget: GlobalBudget | None = None) -> FastAPI:
     app = FastAPI(title="minty-panel")
     login_lock = asyncio.Lock()
+    login_budget = login_budget or GlobalBudget()
+
+    def who_is(request) -> str:
+        return request.client.host if request.client else "unknown"
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
         if lan_only and not private_client(request.client.host if request.client else ""):
+            security.warning("request refused: %s is outside your own network", who_is(request))
             response = JSONResponse({"detail": LAN_ONLY_MESSAGE}, status_code=403)
         elif not host_allowed(request.headers.get("host", ""), allowed_hosts):
+            security.warning("request refused: bad host %r from %s", request.headers.get("host", "")[:80], who_is(request))
             response = JSONResponse({"detail": "bad host"}, status_code=421)
         else:
             response = await call_next(request)
@@ -119,19 +128,31 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
 
     @app.post("/login")
     async def login(request: Request, body: LoginBody):
+        who = who_is(request)
         if not csrf_ok(request):
+            security.warning("login refused: missing csrf header from %s", who)
             return JSONResponse({"detail": "missing X-Requested-With header"}, status_code=403)
-        who = request.client.host if request.client else "unknown"
         if throttle.blocked(who):
-            return JSONResponse({"detail": "too many attempts, try again in a minute"}, status_code=429)
+            wait = throttle.retry_after(who)
+            security.warning("login refused: %s is locked out for another %d seconds", who, wait)
+            return JSONResponse({"detail": f"too many attempts, try again in {wait} seconds"}, status_code=429,
+                                headers={"Retry-After": str(wait)})
         if not passwords.is_set():
             return JSONResponse({"detail": "No PIN set. Run: minty set-pin"}, status_code=503)
+        if not login_budget.take():
+            security.warning("login refused: the panel is already checking as many PINs a minute as it allows (%s)", who)
+            return JSONResponse({"detail": "the panel is busy checking PINs, try again in a minute"}, status_code=429,
+                                headers={"Retry-After": "60"})
         throttle.record_failure(who)  # reserve the attempt before awaiting
         async with login_lock:
             ok = await asyncio.to_thread(passwords.verify, body.password)
         if not ok:
+            security.warning("login failed from %s", who)
+            if throttle.blocked(who):
+                security.warning("login locked: %s is locked out for %d seconds", who, throttle.retry_after(who))
             return JSONResponse({"detail": "wrong PIN"}, status_code=401)
         throttle.reset(who)
+        security.info("login ok from %s", who)
         response = Response(status_code=204)
         response.set_cookie(COOKIE, sessions.create(), httponly=True, samesite="strict", max_age=12 * 3600)
         return response
@@ -150,6 +171,7 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
         if not logged_in(request):
             return JSONResponse({"detail": "not logged in"}, status_code=401)
         if request.method != "GET" and not csrf_ok(request):
+            security.warning("api request refused: missing csrf header (%s /api/%s from %s)", request.method, path[:40], who_is(request))
             return JSONResponse({"detail": "missing X-Requested-With header"}, status_code=403)
         segments = path.split("/")
         if segments[0] not in ALLOWED or ".." in segments:
@@ -170,16 +192,20 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
         # Refusals accept first and then close with an application code: a handshake refused before
         # accept() reaches browsers only as HTTP 403 / close 1006, never as 4401 or 4403. Nothing is
         # relayed before these checks pass, so the brief accept leaks no event data.
-        if lan_only and not private_client(ws.client.host if ws.client else ""):
+        peer = ws.client.host if ws.client else "unknown"
+        if lan_only and not private_client(peer):
+            security.warning("events socket refused: %s is outside your own network", peer)
             await ws.accept()
             await ws.close(code=4403)
             return
         if not sessions.valid(ws.cookies.get(COOKIE, "")):
+            security.warning("events socket refused: not logged in (%s)", peer)
             await ws.accept()
             await ws.close(code=4401)
             return
         origin = ws.headers.get("origin")
         if origin is not None and not host_allowed(urlsplit(origin).netloc, allowed_hosts):
+            security.warning("events socket refused: another site's page (origin %r) from %s", origin[:80], peer)
             await ws.accept()
             await ws.close(code=4403)
             return
