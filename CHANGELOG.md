@@ -716,3 +716,9 @@ when it is good enough.
   Checked against `connect.composio.dev/mcp` with an invalid key (401), and with a real consumer key (`minty mcp tools` lists its 11 tools).
 - `minty set-key NAME --show`: the key is typed or pasted in plain sight instead of hidden, for when a hidden paste leaves you guessing whether
   it arrived. The confirmation still names the key, never its value. Tests: `tests/test_app.py`.
+- Fix: with Composio connected, "check my gmail" still opened Chrome. `browser_task` is always offered, while the MCP tools only came with the
+  words "mcp server tool", so a request about Gmail, Slack, GitHub and the like never loaded them. They are now their own toolkit, `apps`
+  (routed by composio, mcp, gmail, calendar, slack, github, notion, drive, sheets ... and 20 other app names), and `mcp_call` says to use it
+  for a connected app instead of opening a browser. Tests: `tests/test_toolkits.py` (28). **Whether the model then picks Composio over the
+  browser has not been run against a live model**; MCP must also be switched on (`[mcp] enabled`, the Switches page) and Minty restarted.
+

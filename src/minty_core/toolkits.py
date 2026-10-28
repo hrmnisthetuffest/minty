@@ -92,10 +92,12 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "selfcheck": (("selfcheck",), "what happened lately, weekly report, failures",
                  "timeline happened report weekly week self failures failure proposals proposal approve tip card "
                  "summary today problems errors what went wrong"),
-    "world": (("integrations", "mcp"), "calendar, Home Assistant, weather alerts, network, MCP",
+    "world": (("integrations",), "calendar, Home Assistant, weather alerts, network",
              "calendar agenda schedule event events meeting free busy scene scenes movie night energy electricity "
-             "kwh sleep timer fade weather alert storm heat lan network devices router wifi n8n workflow template "
-             "mcp server tool"),
+             "kwh sleep timer fade weather alert storm heat lan network devices router wifi n8n workflow template"),
+    "apps": (("mcp",), "your connected apps (Gmail, Slack, GitHub) via MCP/Composio",
+            "mcp composio server tool gmail google calendar slack github notion drive sheet sheets outlook teams "
+            "linear jira trello asana discord twitter figma hubspot salesforce dropbox airtable stripe"),
     "creator": (("create",), "news, arXiv, ideas, slides, pictures, translation, clips",
                "news headlines brief feed rss arxiv paper papers research idea ideas inbox mind map mindmap slides "
                "slide deck powerpoint presentation outline image picture draw generate translate translation "

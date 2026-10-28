@@ -129,3 +129,21 @@ def test_only_using_a_toolkit_keeps_it_sticky_not_mentioning_it():
     r.used("spotify_play")
     r.next_turn()
     assert "spotify_pause" in offered(r, "yes")
+
+
+@pytest.mark.parametrize("text", [
+    "check my gmail", "any new mail in gmail", "what's on my google calendar", "post this to slack",
+    "open an issue on github", "add a row to my sheet", "ask composio to find my last invoice",
+])
+def test_apps_you_connected_through_mcp_are_offered_for_the_apps_they_serve(text):
+    plugins = {**PLUGINS, "mcp": ["mcp_servers", "mcp_directory", "mcp_call"]}
+    r = ToolkitRouter(lambda: plugins)
+    assert "apps" in r.select(text)
+    assert "mcp_call" in r.tool_names(text)  # not only the always-offered browser_task
+
+
+def test_an_unrelated_request_does_not_pull_in_the_mcp_tools():
+    plugins = {**PLUGINS, "mcp": ["mcp_servers", "mcp_directory", "mcp_call"]}
+    r = ToolkitRouter(lambda: plugins)
+    assert "mcp_call" not in r.tool_names("play some music") and "mcp_call" not in r.tool_names("tell me a joke")
+

@@ -119,7 +119,8 @@ def register(ctx):
         Tool("servers", "The MCP servers set up, with each tool's state (descriptions come from outside).", obj, guarded(servers),
              sensitive=True),
         Tool("directory", "A starting list of MCP servers. Adding one is a terminal command.", obj, guarded(directory)),
-        Tool("call", "Run a tool you allowed on an MCP server: server, tool, arguments (object). Asks first.",
+        Tool("call", "Run a tool you allowed on an MCP server: server, tool, arguments (object). Asks first. For Gmail, Slack etc. use "
+                     "this, not a browser; composio: COMPOSIO_SEARCH_TOOLS first.",
              {"type": "object", "properties": {"server": {"type": "string"}, "tool": {"type": "string"},
                                                "arguments": {"type": "object"}}, "required": ["server", "tool"]},
              guarded(call), sensitive=True, risk=risk, describe=describe, egress=egress),
