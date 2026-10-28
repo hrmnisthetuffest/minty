@@ -55,6 +55,11 @@ What that means for you:
 - `COMPOSIO_MULTI_EXECUTE_TOOL` can act on **every** account you connected (send mail, post, delete). It, the workbench, the bash tool and
   the connection and skill managers are class 3: always asked, with the actual arguments shown (recipient, subject ...), however you set the asking mode.
   Mail sent this way does not go through Minty's outbox rules, so allow it only if that is what you want.
+- The one exception is reading. A `COMPOSIO_MULTI_EXECUTE_TOOL` call whose every step is a read (a slug like `GMAIL_FETCH_EMAILS`,
+  `GITHUB_GET_...`, `..._LIST_...`, `..._SEARCH_...`, with no write word such as SEND, CREATE, DELETE, UPDATE in it) is not asked about. One
+  write step, or a step Minty cannot tell, and the whole call is asked. The search, schema and wait tools you allowed as read-only are not asked either.
+- A server you set up at the terminal counts as a destination you named, so Minty does not ask "this sends data to a new party" about it on
+  every call.
 - Tools are pinned by a hash of their name, description and inputs. Composio is a service that changes: a changed description switches
   the tool off until you look and allow it again.
 - What a tool answers is outside text, shown tagged as such, never followed as instructions.

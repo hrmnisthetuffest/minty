@@ -725,4 +725,16 @@ when it is good enough.
   the toolkit was only chosen by keywords. When MCP is switched on and a server is set up, the MCP tools are now offered on every request
   (the plugin registers `apps` as a live toolkit, about three small tools). With no server, or MCP off, nothing changes. Tests:
   `tests/test_mcp_remote.py` (51).
+- Fewer questions with Composio. Every Composio call, even a search you had allowed as read-only, was asked as class 3 ("sends data to
+  composio.dev, which you did not mention"), and again each time. Two changes: a server you set up at the terminal counts as a destination you
+  named (`Agent.trusted_destinations`; the MCP plugin lists the hosts of its http and Composio servers), and a `COMPOSIO_MULTI_EXECUTE_TOOL` call
+  whose every step is a read (`GMAIL_FETCH_EMAILS`, `GITHUB_GET_...`, `..._LIST_...`, no write word in the slug) is class 1 instead of 3. One write
+  step, an unknown step or a malformed call is still class 3 and asks about the whole call. Class 3 itself is unchanged. Tests:
+  `tests/test_mcp_remote.py` (53), `tests/test_safety_egress.py`.
+- Fix: "Check my Gmail" was answered with "Shall I enable Composio's email-search tool?" instead of the answer. The model did not know which
+  MCP tools it could just call (and `mcp_call` said "Asks first", which it took as its own cue to ask). When MCP is on and a server is set up, each
+  request now carries one short line naming the servers and the tools you allowed (names only, never a server's descriptions) and saying to call
+  them directly; `mcp_call` no longer says "Asks first". The question to you still comes from Minty's own gate when one is needed. Tests:
+  `tests/test_mcp_remote.py` (55). **Not run against a live model**; an old conversation that already contains the "enable" talk can still
+  steer it, so say "new conversation" once.
 

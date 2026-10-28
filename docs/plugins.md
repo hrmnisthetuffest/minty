@@ -360,7 +360,7 @@ On by default: yes.
 |---|---|---|
 | `mcp_servers` | The MCP servers set up, with each tool's state (descriptions come from outside). | sensitive |
 | `mcp_directory` | A starting list of MCP servers. Adding one is a terminal command. |  |
-| `mcp_call` | Run a tool you allowed on an MCP server: server, tool, arguments (object). Asks first. For Gmail, Slack etc. use this, not a browser; composio: COMPOSIO_SEARCH_TOOLS first. | sensitive, risk varies, sends to a destination |
+| `mcp_call` | Run a tool you allowed on an MCP server: server, tool, arguments (object). Call it directly; the system asks when needed. Gmail, Slack etc.: use this, not a browser. | sensitive, risk varies, sends to a destination |
 
 ## memory
 

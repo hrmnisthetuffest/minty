@@ -369,6 +369,8 @@ def build_context(config_dir: Path) -> AppContext:
     agent.toolkits = ToolkitRouter(
         lambda: {p["name"]: p["tools"] for p in host.list_plugins() if p["enabled"] and not p["error"]},
         tracer=tracer, live=live_sessions, diet=lambda: store.config.turn.request_diet)
+    agent.trusted_destinations = lambda: services["trusted_destinations"]() if "trusted_destinations" in services else set()
+    agent.turn_extras.append(lambda request: services["mcp_hint"](request) if "mcp_hint" in services else "")
     def fast_action(text: str):  # simple commands about the open page skip the model (fastpath.py)
         page = services.get("browser_page")
         return fastpath.match(text, page() if page else None, wake_words=tuple(store.config.audio.wake_phrases))

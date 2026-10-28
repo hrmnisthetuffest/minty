@@ -57,3 +57,21 @@ def test_personal_data_is_masked_in_the_traces_but_not_in_the_numbers(tmp_path):
     event = read_events(tmp_path / "t")[0]
     assert event["args"] == {"from": "[email]", "n": 5}
     assert "[phone]" in event["note"] and "98765" not in event["note"] and "402-5551234" in event["note"]
+
+
+async def test_a_destination_the_user_set_up_is_not_asked_about_but_a_stranger_is(tmp_path):
+    rounds = lambda: [[call("remote_call", {"q": "x"})]]
+    egress = lambda a: "https://connect.composio.dev/mcp"
+    agent, host, asked = build(tmp_path, {"remote_call": (1, egress)}, rounds())
+    await say(agent, "check it")
+    assert asked  # nobody named composio.dev: data going to a new party is asked
+    agent, host, asked = build(tmp_path, {"remote_call": (1, egress)}, rounds())
+    agent.trusted_destinations = lambda: {"composio.dev"}  # the user added that server at the terminal
+    await say(agent, "check it")
+    assert asked == [] and host.called == [("remote_call", {"q": "x"})]
+    other = lambda a: "https://evil.test/up"
+    agent, host, asked = build(tmp_path, {"remote_call": (1, other)}, rounds())
+    agent.trusted_destinations = lambda: {"composio.dev"}
+    await say(agent, "check it")
+    assert asked  # only the destinations that were set up count
+

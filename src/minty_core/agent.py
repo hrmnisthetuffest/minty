@@ -213,6 +213,7 @@ class Agent:
         self.on_reset: list[Callable[[], None]] = []  # called when the conversation is started over
         # (text) -> a fixed reply or None: asked before any model call (the coach's safety gate); a reply ends the turn
         self.input_gates: list[Callable[[str], str | None]] = []
+        self.trusted_destinations: Callable[[], set[str]] | None = None  # places the user set up (an MCP server): as good as named
         self.offline = None  # offline.OfflineHandler: local answers when there is no internet
         # request -> FastAction for simple page commands ("click Store"), or None: run with no model call (fastpath.py)
         self.fastpath: Callable[[str], object] | None = None
@@ -519,6 +520,11 @@ class Agent:
         if self.guard is None:
             self.guard = Guard(self._store, tracer=self.tracer)
         known = set().union(*(destinations_in(m.content) for m in self.history if m.role == "user"))
+        if self.trusted_destinations is not None:
+            try:
+                known |= set(self.trusted_destinations())
+            except Exception:  # noqa: BLE001 — if the list cannot be read, nothing extra is trusted
+                log.warning("trusted destinations unavailable", exc_info=True)
         prompt, extra = _confirmation_prompt(tool, call), 0
         if self.provenance is not None:
             mine = " ".join(m.content for m in self.history if m.role == "user")
