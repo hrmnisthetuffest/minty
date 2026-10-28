@@ -111,6 +111,14 @@ class ApprovalStore:
             self._db.commit()
             return cur.rowcount == 1
 
+    def history(self, since: float) -> list[Approval]:
+        """Every question asked since a time that has been decided or has expired (one still waiting is not counted yet), oldest first."""
+        with self._lock:
+            self._expire(self._clock())
+            rows = self._db.execute("SELECT id, hash, tool, question, risk, status, created, expires, decided, via, job_id FROM approvals "
+                                    "WHERE created >= ? AND status != ? ORDER BY created, id", (float(since), PENDING)).fetchall()
+        return [Approval(*r) for r in rows]
+
     def find_pending(self, question: str) -> "Approval | None":
         """The newest open question with exactly these words that no job is waiting on yet (the one the safety gate just opened)."""
         with self._lock:

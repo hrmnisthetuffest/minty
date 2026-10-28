@@ -1,6 +1,8 @@
 """What Minty has told you by itself, and whether the Gmail watcher is working. Nothing here reads mail or sends anything."""
+import time
 from datetime import datetime
 
+from minty_core.friction import DAY, analyze, render
 from minty_core.plugins.host import Tool
 from minty_core.policy import R1
 
@@ -52,6 +54,18 @@ def register(ctx):
             return f"I have noticed this a few times: should I {what}? It is a suggestion, not a rule: say yes (prefs_accept {learned.id}) or no (prefs_reject)."
         return f"Noted ({learned.evidence} so far). I will not change anything until I have seen it a few times."
 
+    async def friction(args):
+        approvals = ctx.services.get("approvals")
+        if approvals is None:
+            return "Questions are not being kept, so there is nothing to count."
+        days = max(1, min(30, int(args.get("days") or 7)))
+        get_tool = ctx.services.get("get_tool")
+        has = (lambda tool: getattr(get_tool(tool), "mandate", None) is not None) if get_tool is not None else (lambda tool: False)
+        now = time.time()
+        jobs = ctx.services.get("jobs")
+        done = sum(1 for j in jobs.select() if j.status == "done" and (j.finished or 0) >= now - days * DAY) if jobs is not None else 0
+        return render(analyze(approvals.history(now - days * DAY), now=now, days=days, has_mandate=has, outcomes=done))
+
     s = {"type": "string"}
     return [
         Tool("recent", "What Minty told the user on its own lately (mail that mattered, failed jobs ...), with a key for each.",
@@ -59,6 +73,8 @@ def register(ctx):
         Tool("resolve", "The user dealt with a notice: stop reminding them about it (its key from notices_recent).",
              {"type": "object", "properties": {"key": s}, "required": ["key"]}, resolve, risk=R1),
         Tool("status", "Is the Gmail watcher on and working, per account.", {"type": "object", "properties": {}}, status),
+        Tool("friction", "How much manual work is left: the questions the user answered lately, how long work waited for them, and which questions "
+                         "could go. Only proposes.", {"type": "object", "properties": {"days": {"type": "integer"}}}, friction),
         Tool("feedback", "The user says a mail notice was useful or noise (key from notices_recent): learn slowly who matters. Only suggests.",
              {"type": "object", "properties": {"key": s, "useful": {"type": "boolean"}}, "required": ["key", "useful"]}, feedback, risk=R1),
     ]

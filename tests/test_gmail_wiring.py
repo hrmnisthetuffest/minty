@@ -95,7 +95,7 @@ async def test_the_notices_tools_show_resolve_and_report_status(tmp_path):
     services["gmail_watch_store"] = watch
     n.publish(ev("urgent"))
     host.reload()
-    assert {s.name for s in host.tool_specs() if s.name.startswith("notices_")} == {"notices_recent", "notices_resolve", "notices_status", "notices_feedback"}
+    assert {s.name for s in host.tool_specs() if s.name.startswith("notices_")} == {"notices_recent", "notices_resolve", "notices_status", "notices_feedback", "notices_friction"}
     out = await host.call("notices_recent", {})
     assert "urgent" in out and "Mail from Alex" in out
     assert "Marked" in await host.call("notices_resolve", {"key": "t1"}) and "not one" in await host.call("notices_resolve", {"key": "nope"})

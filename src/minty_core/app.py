@@ -844,6 +844,10 @@ async def _gmail_loop(ctx, *, first_s: float = 180.0, rounds: int | None = None,
             try:
                 notifier.retry_due()
                 notifier.remind_due()
+                approvals, host = ctx.services.get("approvals"), getattr(ctx, "host", None)
+                if approvals is not None and host is not None:  # once a week, only if there was a lot of asking and something that could go
+                    from minty_core.friction import friction_note
+                    friction_note(approvals, notifier, host.get_tool)
             except Exception:  # noqa: BLE001
                 log.warning("notifier upkeep failed", exc_info=True)
         await sleep(cfg.interval_s if cfg.enabled else 300.0)

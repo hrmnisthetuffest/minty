@@ -799,4 +799,9 @@ when it is good enough.
 - Autonomy 8: a promised answer that has not arrived. The Gmail watcher looks (headers and a snippet, at most five a round) at mail you sent only to see whether it
   asked something; if it did and nobody has answered in `gmail_watch.follow_up_days` days (default 3, 0 = off) you are told once, quietly (the screen and the digest):
   "no reply yet from X about Y", with the subject left out when it holds a sensitive word. Any message in that thread ends the wait. Tests: `test_gmailwatch`.
+- Autonomy 9 (point 11 of the prompt: optimise the whole workflow, minimise manual work). `friction.py` + `notices_friction`: from the approval records, the questions a day,
+  how long work waited for the user's answer, questions per finished job, and per tool whether the answer is always yes (proposal: a standing approval, or ask in your own
+  words where the tool has a mandate), never given (work waited and gave up) or usually no (offered too eagerly); class 3 is never proposed away and nothing is changed. A quiet
+  weekly note goes through the notifier when a week had at least ten questions and something that could go (`friction_note`, told once per ISO week). `ApprovalStore.history`.
+  Tests: `tests/test_friction.py`.
 

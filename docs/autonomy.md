@@ -14,6 +14,7 @@ What Minty does by itself, how it is kept safe, and what is not done. Each part 
 | Reusable ways of working, kept honest | `playbooks.py`: context, steps, output, checks and recovery for a kind of goal, found by trigger words and handed to a matching mission as background to adapt; every run records how it ended and how long it took; an improvement is a **proposal** that changes nothing until you accept it (asked, with the numbers); going back is one step; one bad run never swaps a version. Plain text only: no links, nothing that gives orders to a model. | `playbooks.py`, the `playbooks` plugin |
 | Deadlines in mail become reminders | An important mail that names a date a few days off gets one reminder the morning before (a weekday, "tomorrow" and written dates are understood; the notice itself covers the near ones; a sensitive subject stays out of the reminder). | `gmailwatch.py`, `mailscore.deadline_in` |
 | A promised answer that has not arrived | Mail you sent that asks something is followed; if nobody has answered in three days (`gmail_watch.follow_up_days`) you are told once, quietly, and any message in that thread ends the wait. | `gmailwatch.py` |
+| Optimise the whole workflow: the manual work that is left (point 11) | `friction.py` counts what *you* still do: questions a day, how long work waited for your answer, questions per finished job, and per tool whether you always say yes (a question that can go), nobody answers (work that waited and gave up) or you usually say no (offered too eagerly). It proposes (a standing approval, or to ask for it in your own words where a mandate exists); class 3 is never proposed away; nothing is changed. `notices_friction` shows it, and a quiet weekly note goes through the notifier when a week had at least ten questions and something that could go. | `friction.py`, `notices_friction` |
 | External text cannot take over | Unchanged and relied on: provenance tagging, untrusted result wrappers, the mandate ignores anything but your own words, the Gmail watcher shows a message as plain text and never follows it, its Composio steps must each be a read. | `provenance.py`, `policy.py` |
 
 ## What is not built, and why
@@ -28,7 +29,7 @@ What Minty does by itself, how it is kept safe, and what is not done. Each part 
   follow-ups owed are on the attention list, but a mission that pauses itself until an outside event happens is not a state of its own.
 - **Phone calls.** No calling service is integrated. Telegram is the strongest channel.
 - **A model's judgment on borderline mail.** `mailscore` flags a result as borderline; nothing yet asks a model about it.
-- **A point 11 in your prompt** ("optimize the full workflow") was cut off where it was pasted; nothing was built for it.
+- **Point 11 of your prompt** was cut off where it was pasted ("Optimize the full workflow, not just the response. A genuinely autonomous agent should minimize the amount of manual work required"). It was built as the sentence reads: measure the manual work left (`friction.py`), not only how fast a reply comes back. If the rest of that point asked for something else, it is not here.
 
 ## What was not verified
 

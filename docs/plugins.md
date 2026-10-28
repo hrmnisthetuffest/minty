@@ -448,6 +448,7 @@ On by default: yes.
 | `notices_recent` | What Minty told the user on its own lately (mail that mattered, failed jobs ...), with a key for each. |  |
 | `notices_resolve` | The user dealt with a notice: stop reminding them about it (its key from notices_recent). | risk varies |
 | `notices_status` | Is the Gmail watcher on and working, per account. |  |
+| `notices_friction` | How much manual work is left: the questions the user answered lately, how long work waited for them, and which questions could go. Only proposes. |  |
 | `notices_feedback` | The user says a mail notice was useful or noise (key from notices_recent): learn slowly who matters. Only suggests. | risk varies |
 
 ## outbox

@@ -163,6 +163,7 @@ n8n_list_executions                0 read
 n8n_list_workflows                 0 read
 n8n_trigger_webhook                2 visible
 notices_feedback                   1 change
+notices_friction                   0 read
 notices_recent                     0 read
 notices_resolve                    1 change
 notices_status                     0 read

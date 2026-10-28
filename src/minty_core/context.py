@@ -535,6 +535,7 @@ def build_context(config_dir: Path) -> AppContext:
         return await agent.confirm(prompt)
 
     services["call_tool"] = host.call
+    services["get_tool"] = host.get_tool
     services["proactive_control"] = ProactiveControl(store)
     services["agent_factory"] = make_subagent
     services["mission_worker"] = make_worker
