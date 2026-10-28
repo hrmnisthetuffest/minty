@@ -4,6 +4,7 @@ Nothing here runs unless a step asks, and every step that downloads or installs 
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import os
 import platform
@@ -25,6 +26,15 @@ VOICE_FILES = {
                (f"{KOKORO_BASE}/voices-v1.0.bin", "voices-v1.0.bin")],
 }
 VOICE_SIZE = {"piper": "about 65 MB", "kokoro": "about 340 MB"}
+# SHA-256 of each file. The two Piper files were checked against Hugging Face's published digests (the .onnx's LFS sha256; the small
+# .json's git object id). GitHub publishes no digest for the Kokoro release; those two are pinned from the copies downloaded on
+# 2026-10-10, whose sizes match the release listing. A model is loaded into Minty's own process: it must be the one that was pinned.
+VOICE_SHA256 = {
+    "en_US-lessac-medium.onnx": "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+    "en_US-lessac-medium.onnx.json": "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0",
+    "kokoro-v1.0.onnx": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
+    "voices-v1.0.bin": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
+}
 
 
 def data_dir() -> Path:
@@ -54,15 +64,28 @@ def pip_install(spec: str) -> tuple[bool, str]:
     return run_command([sys.executable, "-m", "pip", "install", spec])
 
 
+def _file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
 def download(url: str, dest: Path) -> tuple[bool, str]:
-    """Fetch one file to `dest` (through a .part file, so a broken download never looks finished)."""
+    """Fetch one file to `dest` (through a .part file, so a broken download never looks finished). A file with a pinned digest
+    must match it, whether it is downloaded now or already on disk."""
     import httpx
     from rich.progress import BarColumn, DownloadColumn, Progress, TextColumn, TransferSpeedColumn
 
+    pinned = VOICE_SHA256.get(dest.name)
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists() and dest.stat().st_size > 0:
-        return True, f"{dest.name} is already there."
+        if pinned is None or _file_sha256(dest) == pinned:
+            return True, f"{dest.name} is already there."
+        dest.unlink()  # not the file that was pinned: fetch it again rather than load it
     part = dest.with_suffix(dest.suffix + ".part")
+    digest = hashlib.sha256()
     try:
         with httpx.stream("GET", url, follow_redirects=True, timeout=60.0) as r:
             r.raise_for_status()
@@ -72,7 +95,11 @@ def download(url: str, dest: Path) -> tuple[bool, str]:
                 with part.open("wb") as f:
                     for chunk in r.iter_bytes(1 << 16):
                         f.write(chunk)
+                        digest.update(chunk)
                         bar.update(task, advance=len(chunk))
+        if pinned is not None and digest.hexdigest() != pinned:
+            part.unlink(missing_ok=True)
+            return False, f"{dest.name}: the download does not match its published checksum, so it was thrown away"
         part.replace(dest)
     except (httpx.HTTPError, OSError) as e:
         part.unlink(missing_ok=True)

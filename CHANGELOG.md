@@ -620,3 +620,10 @@ when it is good enough.
   at most 30 PINs a minute however many addresses try. Refused logins, lockouts, foreign hosts, requests from outside your network,
   missing CSRF headers and refused event sockets are written to the `minty.security` log (the address and the reason; never a PIN,
   a cookie or a token). Tests: `tests/test_security_panel_login.py`.
+- Security: the voice models (Piper, Kokoro: hundreds of MB loaded into Minty's own process) are checked against pinned SHA-256
+  digests when they are downloaded, and a copy already on disk that does not match is replaced (the Piper digests are Hugging Face's
+  published ones; GitHub publishes none for the Kokoro release, so those two are pinned from the copies downloaded on 2026-10-10,
+  whose sizes match the release listing). `certifi>=2026.10.18` and, for the voice extra, `filelock>=4.2.1` after `pip-audit` found
+  advisories in older releases. New `scripts/security_scan.py` runs bandit against an accepted baseline (`scripts/security_baseline.json`,
+  every accepted rule explained in the script) and pip-audit over the installed packages. Tests: `tests/test_security_download_integrity.py`,
+  `tests/test_security_scan.py`.
