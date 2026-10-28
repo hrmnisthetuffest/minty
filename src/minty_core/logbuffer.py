@@ -39,7 +39,7 @@ class LogBuffer(logging.Handler):
             text = text.replace(value, "***")
         return text
 
-    def recent(self, limit: int = 200, min_level: str = "INFO") -> list[dict]:
+    def recent(self, limit: int = 200, min_level: str = "INFO", name: str = "") -> list[dict]:
         floor = logging.getLevelName(min_level.upper())
         floor = floor if isinstance(floor, int) else logging.INFO
         self.acquire()
@@ -47,7 +47,7 @@ class LogBuffer(logging.Handler):
             snapshot = list(self._records)
         finally:
             self.release()
-        rows = [r for r in snapshot if r["levelno"] >= floor][-limit:]
+        rows = [r for r in snapshot if r["levelno"] >= floor and (not name or r["name"] == name or r["name"].startswith(name + "."))][-limit:]
         return [
             {"time": r["time"], "level": r["level"], "name": r["name"], "message": self._redact(r["message"])}
             for r in rows

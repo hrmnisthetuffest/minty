@@ -658,3 +658,5 @@ when it is good enough.
 - Fix: when the agent runs in the sandbox, a project test program that lives in a folder the sandbox hides (a version manager under your
   home folder) used to look like failing tests and could send the agent round again; the result now says the tests could not start in
   the sandbox and the verdict is "not confirmed".
+- Security: `docs/security-audit.md` lists what was audited, fixed (nine items, each with its test), accepted and left open; the logs endpoint
+  can show one source (`/logs?name=minty.security`). `SECURITY.md` says how coding agents are contained.

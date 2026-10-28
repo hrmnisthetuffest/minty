@@ -609,8 +609,9 @@ def create_app(ctx: AppContext) -> FastAPI:
         return {"reply": " ".join(sentences)}
 
     @api.get("/logs")
-    async def get_logs(level: str = "INFO", limit: int = 200):
-        return ctx.logs.recent(limit=max(1, min(limit, 500)), min_level=level) if ctx.logs else []
+    async def get_logs(level: str = "INFO", limit: int = 200, name: str = ""):
+        """name: only one source, e.g. minty.security (refused logins, lockouts, refused sockets, denied requests)."""
+        return ctx.logs.recent(limit=max(1, min(limit, 500)), min_level=level, name=name[:80]) if ctx.logs else []
 
     app.include_router(api)
 

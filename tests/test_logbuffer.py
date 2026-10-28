@@ -89,3 +89,12 @@ def test_url_encoded_forms_of_secrets_are_redacted():
     for row in buf.recent():
         assert not any(form in row["message"] for form in forms)
         assert row["message"].endswith("apikey=*** done")
+
+
+def test_security_events_can_be_read_on_their_own():
+    buf = LogBuffer()
+    for name, msg in (("minty.security", "login failed from 192.168.1.9"), ("minty.core", "started"), ("minty.security.extra", "locked")):
+        buf.emit(logging.LogRecord(name, logging.WARNING, __file__, 1, msg, (), None))
+    got = buf.recent(min_level="INFO", name="minty.security")
+    assert [r["message"] for r in got] == ["login failed from 192.168.1.9", "locked"]
+    assert len(buf.recent(min_level="INFO")) == 3

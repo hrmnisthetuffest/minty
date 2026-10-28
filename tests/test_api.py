@@ -292,3 +292,18 @@ def test_a_damaged_secrets_file_is_a_clear_conflict_not_a_server_error(tmp_path)
     assert res.status_code == 409 and "damaged" in res.json()["detail"]
     assert client.delete("/secrets/groq", headers=auth).status_code == 409
     assert (tmp_path / "secrets.toml").read_text() == "= = broken"
+
+
+def test_logs_can_be_read_for_one_source(client, ctx, auth):
+    import logging
+
+    root = logging.getLogger()
+    root.addHandler(ctx.logs)
+    try:
+        logging.getLogger("minty.security").warning("login failed from 10.0.0.2")
+        logging.getLogger("minty.other").warning("something else")
+    finally:
+        root.removeHandler(ctx.logs)
+    got = client.get("/logs?name=minty.security", headers=auth).json()
+    assert [r["message"] for r in got] == ["login failed from 10.0.0.2"]
+    assert len(client.get("/logs", headers=auth).json()) >= 2
