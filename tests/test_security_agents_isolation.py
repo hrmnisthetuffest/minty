@@ -59,7 +59,7 @@ class Claudeish:
         return Parsed(stdout.strip(), session_id=None)
 
 
-def make(tmp_path, isolation, adapter=None):
+def make(tmp_path, isolation, adapter=None, check=None):
     root = tmp_path / "projects"
     (root / "p").mkdir(parents=True)
     home = tmp_path / "home"
@@ -67,7 +67,7 @@ def make(tmp_path, isolation, adapter=None):
     (home / ".claude.json").write_text("{}")
     (home / ".gitconfig").write_text("[user]\n")
     mgr = JobManager(root, {"fake": adapter or Claudeish()}, lambda _t: None, state={}, log_dir=tmp_path / "logs",
-                     sessions_path=tmp_path / "s.json", check=[sys.executable, "-c", "print('1 passed')"], verify_work=False,
+                     sessions_path=tmp_path / "s.json", check=check or [sys.executable, "-c", "print('1 passed')"], verify_work=False,
                      isolation=isolation)
     return mgr, root / "p"
 
@@ -227,26 +227,36 @@ def test_required_raises_without_a_sandbox(tmp_path):
         Isolation("required", sandbox=FakeBox(False, "nope"), home=tmp_path).prepare()
 
 
-class BrokenCheckBox(FakeBox):
-    """A sandbox in which the project's test program is not there (it lives in a folder the sandbox hides)."""
-
-    def command(self, argv, *, network=False, **kw):
-        super().command(argv, network=network, **kw)
-        if network:
-            return list(argv)
-        return [sys.executable, "-c", "import sys; print('bwrap: execvp pytest: No such file or directory'); sys.exit(1)"]
-
-
 class Writer(Claudeish):
     def build(self, project, prompt, session_id, readonly=False):
         return Invocation([sys.executable, "-c", "open('a.txt', 'w').write('hi'); print('Changed: a.txt')"], project)
 
 
 async def test_tests_that_cannot_start_in_the_sandbox_are_not_counted_as_failing_tests(tmp_path):
-    box = BrokenCheckBox()
-    mgr, project = make(tmp_path, Isolation("auto", sandbox=box, home=tmp_path / "home"), adapter=Writer())
+    box = FakeBox()
+    mgr, project = make(tmp_path, Isolation("auto", sandbox=box, home=tmp_path / "home"), adapter=Writer(), check=["no-such-test-runner-xyz", "-q"])
     mgr._verify = True
     job = await go(mgr)
     assert job.verdict == "unchecked" and job.status == "done" and job.rounds == 1, (job.verdict, job.summary)
-    assert "could not start inside the sandbox" in job.summary and "pytest" in job.summary
-    assert job.changed == ["a.txt"]
+    assert "could not start inside the sandbox" in job.summary and "no-such-test-runner-xyz" in job.summary
+    assert job.changed == ["a.txt"] and all(c["network"] for c in box.calls)  # nothing was run for the check: it was decided beforehand
+
+
+async def test_a_test_runner_in_a_hidden_home_folder_is_not_run_either(tmp_path):
+    home = tmp_path / "home"
+    runner = home / ".nvm" / "bin" / "npm"
+    runner.parent.mkdir(parents=True)
+    runner.write_text("#!/bin/sh\n")
+    mgr, _ = make(tmp_path, Isolation("auto", sandbox=FakeBox(), home=home), adapter=Writer(), check=[str(runner), "test"])
+    mgr._verify = True
+    job = await go(mgr)
+    assert job.verdict == "unchecked" and "npm" in job.summary
+
+
+async def test_a_test_the_agent_wrote_cannot_pose_as_a_sandbox_problem_to_escape_judgement(tmp_path):
+    lie = [sys.executable, "-c", "print('bwrap: execvp pytest: No such file or directory'); raise SystemExit(1)"]
+    mgr, _ = make(tmp_path, Isolation("auto", sandbox=FakeBox(), home=tmp_path / "home"), adapter=Writer(), check=lie)
+    mgr._verify = True
+    job = await go(mgr)
+    assert job.verdict in ("checks_failed", "already_failing") and job.status == "failed", (job.verdict, job.summary)
+    assert "could not start inside the sandbox" not in job.summary

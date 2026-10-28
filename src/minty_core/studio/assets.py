@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 import re
 import shutil
@@ -106,7 +107,8 @@ class AssetLibrary:
         if license not in LICENSES:
             options = "; ".join(f"{k}: {v[0]}" for k, v in LICENSES.items())
             raise AssetError(f"say what licence this file is under, one of: {options}")
-        if LICENSES[license][1] and not attribution.strip():
+        attribution = clean_title(attribution, 300, "")  # a stranger's words: cleaned first, and a required credit must survive that
+        if LICENSES[license][1] and not attribution:
             raise AssetError(f"the {license} licence needs a credit: say who to credit")
         if not source.strip():
             raise AssetError("say where it came from")
@@ -135,7 +137,7 @@ class AssetLibrary:
                 shutil.copy2(src, dest)
             cur = self._db.execute(
                 "INSERT INTO assets(path, kind, license, source, attribution, note, sha, added) VALUES (?,?,?,?,?,?,?,?)",
-                (str(dest), kind, license, source.strip()[:300], clean_title(attribution, 300, ""), clean_title(note, 200, ""), sha, time.time()))
+                (str(dest), kind, license, source.strip()[:300], attribution, clean_title(note, 200, ""), sha, time.time()))
             self._db.commit()
             return self.get(cur.lastrowid)
 
@@ -185,7 +187,7 @@ class AssetLibrary:
             return [self._asset(r) for r in self._db.execute(sql, (kind,) if kind else ())]
 
     def pick(self, kind: str, rng: random.Random | None = None) -> Asset | None:
-        found = self.list(kind)
+        found = [a for a in self.list(kind) if os.path.isfile(a.path)]  # a clip removed to save space is not offered
         return (rng or random).choice(found) if found else None
 
     def _clean(self, asset: Asset, seen: frozenset = frozenset()) -> bool:

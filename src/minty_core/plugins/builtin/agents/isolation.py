@@ -14,7 +14,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from minty_core.sandbox import Sandbox, SandboxUnavailable
+from minty_core.sandbox import SAFE_PATH, Sandbox, SandboxUnavailable
 
 log = logging.getLogger(__name__)
 MODES = ("auto", "required", "off")
@@ -69,3 +69,19 @@ class Isolation:
     def check_command(self, argv, project: Path) -> list[str]:
         project = Path(project).resolve()
         return self._box.command(argv, network=False, rw=[project], cwd=project)
+
+    def check_blocked(self, argv, project: Path) -> str:
+        """Why the project's test program would not start in the sandbox, decided before anything runs ('' when it would). Decided here and
+        not from what the test prints: the tests are code the agent may have written, and what they print is theirs to choose."""
+        program = str(argv[0])
+        project = Path(project).resolve()
+        if "/" not in program:
+            return "" if shutil.which(program, path=SAFE_PATH) else f"{program} is not in {SAFE_PATH}"
+        path = Path(program)
+        resolved = (path if path.is_absolute() else project / path).resolve()
+        for folder in (project,):
+            if resolved == folder or folder in resolved.parents:
+                return ""
+        if self._home == resolved or self._home in resolved.parents:
+            return f"{resolved.name} is in your home folder, which the sandbox hides"
+        return "" if resolved.exists() else f"{resolved.name} does not exist"

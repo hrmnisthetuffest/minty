@@ -13,7 +13,7 @@ from minty_core.provenance import looks_like_injection
 
 _URL = re.compile(r"(?i)\b(?:https?://|www\.)\S+|\b[\w-]+\.(?:com|net|org|io|co|me|ly|gg|tv|xyz|ru|cn)\b\S*")
 _TAG = re.compile(r"<[^>]*>")
-_HANDLE = re.compile(r"[@#]\S*")
+_SIGILS = re.compile(r"[@#]")  # the name stays, the mention does not: "@bob" is "bob" in a caption
 _NAME_OK = re.compile(r"[^\w\s.'’&()\-]")
 _LINE_OK = re.compile(r"[^\w\s.,'’&()\-:;!?/]")
 
@@ -26,7 +26,7 @@ def _scrub(raw, max_len: int, outside: re.Pattern, fallback: str) -> str:
         return fallback
     text = re.sub(r"\s+", " ", text)
     text = "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")  # control and format characters (bidi overrides ...)
-    for pattern in (_TAG, _URL, _HANDLE, outside):
+    for pattern in (_TAG, _URL, _SIGILS, outside):
         text = pattern.sub(" ", text)
     text = re.sub(r"\s+", " ", text).strip(" -,;:/")
     return text[:max_len].rstrip(" -,;:/") or fallback

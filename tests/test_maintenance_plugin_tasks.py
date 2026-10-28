@@ -25,3 +25,14 @@ async def test_a_task_that_fails_is_named_and_the_rest_still_run():
 
 async def test_no_tasks_is_not_an_error():
     assert await plugin_maintenance(Ctx({}))() == "nothing registered"
+
+
+async def test_nothing_is_fetched_or_run_for_plugins_during_a_lockdown():
+    from types import SimpleNamespace
+
+    ran = []
+    ctx = Ctx({"studio": lambda: ran.append(1) or "2 new"})
+    ctx.services["lockdown"] = SimpleNamespace(active=True)
+    assert "lockdown" in await plugin_maintenance(ctx)() and ran == []
+    ctx.services["lockdown"] = SimpleNamespace(active=False)
+    assert "studio: 2 new" in await plugin_maintenance(ctx)() and ran == [1]

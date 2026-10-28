@@ -157,3 +157,19 @@ async def test_a_blocked_address_or_a_failed_request_is_a_clear_error(lib, monke
     monkeypatch.setattr(fetch, "safe_fetch", FakeNet(lambda url: FetchFailed("API request failed: timeout")))
     with pytest.raises(AssetError, match="timeout"):
         await fetch.fetch_url(lib, "https://example.com/a.mp4", "video", "owned", source="me")
+
+
+def test_a_clip_whose_file_has_been_removed_is_never_picked(tmp_path):
+    import random
+
+    lib = AssetLibrary(tmp_path / "lib")
+    a = tmp_path / "a.mp4"
+    b = tmp_path / "b.mp4"
+    make_clip(a)
+    make_clip(b, seconds=3)
+    one = lib.add(a, "video", "owned", source="me")
+    two = lib.add(b, "video", "owned", source="me")
+    Path(one.path).unlink()
+    assert {lib.pick("video", random.Random(i)).id for i in range(30)} == {two.id}
+    Path(two.path).unlink()
+    assert lib.pick("video") is None

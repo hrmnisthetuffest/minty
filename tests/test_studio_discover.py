@@ -260,3 +260,13 @@ async def test_a_long_download_is_cut_to_the_length_a_background_needs(world, mo
     await go(world, Net(nasa_routes(long.read_bytes(), "Long")), monkeypatch)
     info = await media.probe(Path(catalog.clips("space")[0].asset.path))
     assert 4.5 <= info.duration <= 5.6
+
+
+def test_the_hosts_a_provider_may_point_us_at_are_exact():
+    ok = discover.host_ok
+    assert ok("pexels", "https://videos.pexels.com/video-files/1/1.mp4")
+    assert ok("pexels", "https://player.vimeo.com/external/291648067.hd.mp4?s=abc&profile_id=175")  # what Pexels' own documentation shows
+    assert not ok("pexels", "https://player.vimeo.com/video/291648067")  # only the files Pexels hands out, not any Vimeo page
+    assert not ok("pexels", "http://videos.pexels.com/x.mp4") and not ok("pexels", "https://videos.pexels.com.evil.example/x.mp4")
+    assert not ok("pexels", "https://user:pw@videos.pexels.com/x.mp4") and not ok("pexels", "https://videos.pexels.com:8443/x.mp4")
+    assert not ok("nasa", "https://videos.pexels.com/x.mp4") and ok("nasa", "https://images-assets.nasa.gov/video/a/a~mobile.mp4")

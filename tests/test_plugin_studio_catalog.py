@@ -183,3 +183,15 @@ async def test_discovery_can_run_by_itself_in_the_quiet_window_only_when_switche
     scripted_nasa(tmp_path, monkeypatch)
     result = await host2._services["maintenance_tasks"]["studio"]()
     assert "space" in result and "2 new" in result
+
+
+async def test_a_removed_clip_is_not_offered_again_and_the_library_says_so(tmp_path, monkeypatch):
+    host, _ = with_clock(tmp_path, library_max_mb=0.000001)
+    scripted_nasa(tmp_path, monkeypatch)
+    await host.call("studio_make", {"action": "discover"})
+    lib = await host.call("studio_make", {"action": "library"})
+    assert "file removed" in lib
+    first_id = lib.splitlines()[0].split(".")[0]
+    out = await host.call("studio_make", {"action": "video", "background": first_id, "seconds": 3, "name": "gone"})
+    assert out.startswith("Error") and "removed" in out
+    assert "Error" not in await host.call("studio_make", {"action": "video", "background": "auto", "seconds": 3, "name": "plain2"})  # a plain one

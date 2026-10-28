@@ -893,6 +893,9 @@ def plugin_maintenance(ctx):
     """One maintenance task that runs whatever plugins registered in `ctx.services["maintenance_tasks"]`. Looked up each day, so a
     plugin that was reloaded since start-up is the one that runs; one that fails is named and does not stop the others."""
     async def run() -> str:
+        lock = ctx.services.get("lockdown")
+        if lock is not None and lock.active:  # a lockdown stops what runs by itself, downloads included
+            return "skipped (lockdown is on)"
         done = []
         for name, task in list((ctx.services.get("maintenance_tasks") or {}).items()):
             try:

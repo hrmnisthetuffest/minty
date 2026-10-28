@@ -42,7 +42,8 @@ recordings, never fetched), and `nature`, `city`, `satisfying`, `abstract` and `
   (`daily`, the default, or `each_video`). `shuffle` changes the style now. `catalog` shows what there is.
 - Nothing in the catalogue: a plain animated colour background is made (once) and the result says so and how to get real footage.
 
-Where footage comes from (`studio_make action discover`, asked first):
+Where footage comes from (`studio_make action discover`: a change to your library, so it is a class 1 action, asked in the careful
+mode and run without asking in the default one; it is bounded as described below):
 
 | Provider | Key | Terms (read 2026-10-28) | Credit |
 |---|---|---|---|

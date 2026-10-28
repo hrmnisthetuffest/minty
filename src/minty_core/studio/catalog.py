@@ -173,14 +173,13 @@ class Catalog:
             self._db.commit()
 
     def clips(self, category: str | None = None, states: tuple = ("ready",)) -> list[Clip]:
-        marks = ",".join("?" for _ in states)
-        sql = ("SELECT a.id, a.path, a.kind, a.license, a.source, a.attribution, a.note, a.sha, a.added, a.parents, m.category, m.quality,"
-               " m.provider, m.external_id, m.state, (SELECT COUNT(*) FROM plays p WHERE p.asset_id=a.id),"
-               " COALESCE((SELECT MAX(at) FROM plays p WHERE p.asset_id=a.id), 0) FROM clip_meta m JOIN assets a ON a.id=m.asset_id"
-               f" WHERE m.state IN ({marks})" + (" AND m.category=?" if category else "") + " ORDER BY a.id")
         with self._lock:
-            rows = self._db.execute(sql, (*states, *([category] if category else []))).fetchall()
-        return [Clip(self.lib._asset(r[:10]), r[10], r[11], r[12], r[13], r[14], r[15], r[16]) for r in rows]
+            rows = self._db.execute(
+                "SELECT a.id, a.path, a.kind, a.license, a.source, a.attribution, a.note, a.sha, a.added, a.parents, m.category, m.quality,"
+                " m.provider, m.external_id, m.state, (SELECT COUNT(*) FROM plays p WHERE p.asset_id=a.id),"
+                " COALESCE((SELECT MAX(at) FROM plays p WHERE p.asset_id=a.id), 0) FROM clip_meta m JOIN assets a ON a.id=m.asset_id"
+                " WHERE (? IS NULL OR m.category=?) ORDER BY a.id", (category, category)).fetchall()
+        return [Clip(self.lib._asset(r[:10]), r[10], r[11], r[12], r[13], r[14], r[15], r[16]) for r in rows if r[14] in states]
 
     def _ready(self) -> dict[str, list[Clip]]:
         """Ready clips by category. A file that has gone from the disk is marked missing here and left out."""
@@ -220,10 +219,20 @@ class Catalog:
                 out[category] = kept
         return out
 
-    def _last_play(self, where: str, args: tuple) -> tuple[str, str] | None:
+    def _last_play_on(self, day: str) -> str | None:
         with self._lock:
-            row = self._db.execute(f"SELECT category, day FROM plays WHERE {where} ORDER BY id DESC LIMIT 1", args).fetchone()
-        return (row[0], row[1]) if row else None
+            row = self._db.execute("SELECT category FROM plays WHERE day=? ORDER BY id DESC LIMIT 1", (day,)).fetchone()
+        return row[0] if row else None
+
+    def _last_play_before(self, day: str) -> str | None:
+        with self._lock:
+            row = self._db.execute("SELECT category FROM plays WHERE day<? ORDER BY id DESC LIMIT 1", (day,)).fetchone()
+        return row[0] if row else None
+
+    def _last_play_ever(self) -> str | None:
+        with self._lock:
+            row = self._db.execute("SELECT category FROM plays ORDER BY id DESC LIMIT 1").fetchone()
+        return row[0] if row else None
 
     def _last_day_shown(self) -> dict[str, str]:
         with self._lock:
@@ -231,10 +240,9 @@ class Catalog:
 
     def _style_for(self, today: str, eligible: dict, prefs: dict) -> tuple[str, str]:
         daily = prefs["mode"] == "daily"
-        if daily and (todays := self._last_play("day=?", (today,))) and todays[0] in eligible:
-            return todays[0], "today's style"
-        previous = self._last_play("day<?" if daily else "1=1", (today,) if daily else ())
-        previous = previous[0] if previous else None
+        if daily and (todays := self._last_play_on(today)) in eligible:
+            return todays, "today's style"
+        previous = self._last_play_before(today) if daily else self._last_play_ever()
         shown, salt, weights = self._last_day_shown(), prefs["salt"], prefs["weights"]
 
         def rank(category: str):
@@ -299,8 +307,8 @@ class Catalog:
         if not eligible:
             return None
         today = _day(now)
-        current = self._last_play("day=?", (today,))
-        current = current[0] if current and current[0] in eligible else self._style_for(today, eligible, prefs)[0]
+        current = self._last_play_on(today)
+        current = current if current in eligible else self._style_for(today, eligible, prefs)[0]
         others = [c for c in eligible if c != current]
         category, why = (rng.choices(others, weights=[float(prefs["weights"].get(c, 1.0)) for c in others])[0], "shuffled") if others \
             else (current, "shuffled: only one style, so another clip")

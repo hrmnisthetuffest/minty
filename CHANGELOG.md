@@ -640,7 +640,7 @@ when it is good enough.
   same after a restart (kept in the library database, no model involved). `studio_make` gains `discover`, `catalog`, `prefer`, `shuffle`
   and `tag`; `add` takes a `category`. Parkour and other gameplay are only ever your own recordings. With nothing in the catalogue a plain
   generated background is made (once) and the result says so.
-- Video: discovery. `studio_make discover` (asked first) fetches from NASA's library (no key), Pexels and Pixabay (your own free keys; new
+- Video: discovery. `studio_make discover` (a class 1 action: asked in the careful mode) fetches from NASA's library (no key), Pexels and Pixabay (your own free keys; new
   setting-free secret `plugin.studio.pixabay_key`): once a day per provider and style, a few clips a run, 200 MB a run, answers only from
   the provider's own hosts through the guarded fetcher, real media only, hits that look like someone else's work skipped, credit kept (new
   licence `nasa`). A clip is cut to a minute, made portrait and stripped of sound: a real 55 MB NASA download is kept as 4.5 MB.
@@ -658,5 +658,11 @@ when it is good enough.
 - Fix: when the agent runs in the sandbox, a project test program that lives in a folder the sandbox hides (a version manager under your
   home folder) used to look like failing tests and could send the agent round again; the result now says the tests could not start in
   the sandbox and the verdict is "not confirmed".
-- Security: `docs/security-audit.md` lists what was audited, fixed (nine items, each with its test), accepted and left open; the logs endpoint
+- Security: `docs/security-audit.md` lists what was audited, fixed (ten items, each with its test), accepted and left open; the logs endpoint
   can show one source (`/logs?name=minty.security`). `SECURITY.md` says how coding agents are contained.
+- Review fixes (from an independent pass over this work): the catalogue builds no SQL from fragments (so `scripts/security_scan.py` is green
+  again); whether the project's tests can start in the sandbox is decided before they run, never from what they print (a test the agent
+  wrote cannot make itself "not checked"); `@bob` in a credit becomes `bob` (the creator stays, the mention goes) and a licence that
+  needs a credit is refused when cleaning leaves none; a test that no tool the model can call takes a safeguard setting as a parameter;
+  removed clips are not offered again; plugin maintenance (the daily discovery) stops during a lockdown; Pexels files are accepted from
+  `videos.pexels.com` and from `player.vimeo.com/external/` (where its own documentation puts them) and nowhere else.

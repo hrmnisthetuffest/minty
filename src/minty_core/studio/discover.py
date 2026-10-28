@@ -23,10 +23,10 @@ from minty_core.studio.catalog import CATEGORIES, Catalog
 from minty_core.studio.safetext import clean_credit_name, clean_title
 
 PROVIDERS = ("nasa", "pexels", "pixabay")  # keyless first
-HOSTS = {  # the only hosts a provider's answers may point us at
-    "nasa": ("images-api.nasa.gov", "images-assets.nasa.gov"),
-    "pexels": ("api.pexels.com", "videos.pexels.com"),
-    "pixabay": ("pixabay.com", "cdn.pixabay.com"),
+HOSTS = {  # the only hosts (and, where a host is shared, the only paths) a provider's answers may point us at
+    "nasa": {"images-api.nasa.gov": "/", "images-assets.nasa.gov": "/"},
+    "pexels": {"api.pexels.com": "/v1/", "videos.pexels.com": "/", "player.vimeo.com": "/external/"},  # Vimeo: where Pexels' own documentation puts its files
+    "pixabay": {"pixabay.com": "/", "cdn.pixabay.com": "/"},
 }
 MAX_CLIP_BYTES = 60_000_000
 BG_SECONDS = 60.0  # a background longer than this is cut: it is looped anyway
@@ -65,7 +65,8 @@ class Cand:
 
 def host_ok(provider: str, url: str) -> bool:
     parts = urlsplit(url)
-    return parts.scheme == "https" and not parts.username and parts.port in (None, 443) and (parts.hostname or "").lower() in HOSTS[provider]
+    prefix = HOSTS[provider].get((parts.hostname or "").lower())
+    return parts.scheme == "https" and not parts.username and parts.port in (None, 443) and prefix is not None and parts.path.startswith(prefix)
 
 
 def _https(url: str) -> str:

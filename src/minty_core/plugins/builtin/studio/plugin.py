@@ -127,7 +127,7 @@ def register(ctx):
         if not value:
             return None
         if value.isdigit() and (a := lib.get(int(value))):
-            return Path(a.path)
+            return Path(a.path) if Path(a.path).is_file() else None  # removed to keep the library small: the record stays, the file is gone
         for ext in (".wav", ".mp4", ".mp3"):
             if (work / f"{NAME.sub('-', value.lower())}{ext}").is_file():
                 return work / f"{NAME.sub('-', value.lower())}{ext}"
@@ -242,7 +242,8 @@ def register(ctx):
                 return await refresh_token()
             if action == "library":
                 found = lib.list(str(args.get("kind") or "") or None)
-                return "\n".join(f"{a.id}. {a.kind} [{a.license}] {a.path}" + (f" ({a.note})" if a.note else "") for a in found[:40]) or "The library is empty."
+                return "\n".join(f"{a.id}. {a.kind} [{a.license}] {a.path}" + (f" ({a.note})" if a.note else "")
+                                  + ("" if Path(a.path).is_file() else " (file removed)") for a in found[:40]) or "The library is empty."
         except (AssetError, media.MediaError, ValueError) as e:
             return f"Error: {e}"
         return f"Error: action must be one of: {', '.join(ACTIONS)}."
@@ -333,7 +334,8 @@ def register(ctx):
             else:
                 backgrounds.append(ref(token))
         if not backgrounds or any(b is None for b in backgrounds):
-            return "Error: give a background clip: auto, a style (nature, city, space ...), an asset id, or gameplay/video to pick from the library."
+            return ("Error: give a background clip: auto, a style (nature, city, space ...), an asset id, or gameplay/video to pick from the library "
+                    "(a clip whose file was removed to save space is not available; its record stays).")
         vo = ref(str(args.get("voiceover") or "")) if args.get("voiceover") else None
         if args.get("voiceover") and vo is None:
             return "Error: I could not find that voiceover; make one first with action voice."
