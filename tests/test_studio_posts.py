@@ -139,3 +139,15 @@ def test_hard_limits_are_refused():
     assert check(facts(caption="x" * 2300)).mode == "refuse"
     assert check(facts(caption="#a " * 31)).mode == "refuse"
     assert check(facts(caption="   ")).mode == "refuse"
+
+
+def test_how_a_post_did_is_kept_with_it_and_tags_say_what_kind_of_post_it_was(store):
+    a = add(store, tags="parkour,facts")
+    store.claim(a.id, "approved")
+    store.finish(a.id, "posted", media_id="1")
+    assert store.get(a.id).tags == "parkour,facts" and store.get(a.id).insights == {}
+    store.set_insights(a.id, {"reach": 120, "likes": 9})
+    assert store.get(a.id).insights == {"reach": 120, "likes": 9}
+    assert [p.id for p in store.posted_with_media()] == [a.id]
+    store.claim(add(store, content_hash="other").id, "approved")  # still publishing: no media yet
+    assert [p.id for p in store.posted_with_media()] == [a.id]

@@ -145,3 +145,73 @@ async def test_a_carousel_is_children_then_a_carousel_container_then_publish():
     assert out.media_id == "1790"
     with pytest.raises(ValueError, match="2 to 20"):
         await (await ig(Meta())).publish_carousel(["https://pics.example.com/1.jpg"], "c")
+
+
+class Refresh(Meta):
+    def handler(self, request):
+        if request.url.path.endswith("/refresh_access_token"):
+            self.requests.append((request.method, str(request.url), dict(request.headers), request.content))
+            return httpx.Response(200, json={"access_token": "NEW-TOKEN", "token_type": "bearer", "expires_in": 5184000})
+        return super().handler(request)
+
+
+async def test_a_long_lived_token_can_be_refreshed_for_another_sixty_days():
+    meta = Refresh()
+    api = await ig(meta)
+    token, seconds = await api.refresh_token()
+    assert token == "NEW-TOKEN" and seconds == 5184000
+    method, url, headers, _ = meta.requests[0]
+    assert method == "GET" and url.startswith("https://graph.instagram.com/refresh_access_token")
+    assert "grant_type=ig_refresh_token" in url and "access_token=SECRET-TOKEN" in url
+
+
+async def test_refreshing_only_works_on_the_instagram_login_host():
+    api = Instagram("1784", "T", host="graph.facebook.com", client=client(Meta()))
+    with pytest.raises(InstagramError, match="Instagram login"):
+        await api.refresh_token()
+
+
+async def test_a_refused_refresh_never_shows_the_token():
+    def handler(request):
+        return httpx.Response(400, json={"error": {"message": "Token SECRET-TOKEN is too new"}})
+
+    api = Instagram("1784", "SECRET-TOKEN", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    with pytest.raises(InstagramError) as e:
+        await api.refresh_token()
+    assert "SECRET-TOKEN" not in str(e.value) and "too new" in str(e.value)
+
+
+class Insights(Meta):
+    def __init__(self, bad=()):
+        super().__init__()
+        self.bad = set(bad)
+
+    def handler(self, request):
+        if request.url.path.endswith("/insights"):
+            self.requests.append((request.method, str(request.url), dict(request.headers), request.content))
+            metrics = request.url.params.get("metric", "").split(",")
+            if self.bad & set(metrics):
+                return httpx.Response(400, json={"error": {"message": "metric not supported for this media"}})
+            return httpx.Response(200, json={"data": [{"name": m, "values": [{"value": 10 + i}]} for i, m in enumerate(metrics)]})
+        return super().handler(request)
+
+
+async def test_how_a_post_did_is_read_back_as_numbers():
+    meta = Insights()
+    got = await (await ig(meta)).insights("1790")
+    assert got["reach"] == 10 and set(got) >= {"reach", "likes", "comments", "shares", "saved"}
+    assert "/1790/insights" in meta.requests[0][1]
+
+
+async def test_a_metric_that_is_not_available_does_not_lose_the_others():
+    meta = Insights(bad={"views"})
+    got = await (await ig(meta)).insights("1790")
+    assert "views" not in got and got["reach"] >= 10  # asked together first, then one at a time
+
+
+async def test_a_post_with_no_numbers_yet_is_an_empty_result_not_an_error():
+    def handler(request):
+        return httpx.Response(400, json={"error": {"message": "unsupported"}})
+
+    api = Instagram("1784", "T", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    assert await api.insights("1790") == {}

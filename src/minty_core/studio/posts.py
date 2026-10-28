@@ -16,7 +16,7 @@ from typing import Callable
 
 DRAFTED, PUBLISHING, POSTED, FAILED, UNKNOWN, DISCARDED = "drafted", "publishing", "posted", "failed", "unknown", "discarded"
 DAY_S = 86400
-_COLS = ("id, created, kind, files, caption, status, how, content_hash, problems, licensed, media_id, permalink, error, updated, ai")
+_COLS = ("id, created, kind, files, caption, status, how, content_hash, problems, licensed, media_id, permalink, error, updated, ai, tags, insights")
 
 
 class DuplicatePost(Exception):
@@ -40,6 +40,11 @@ class Post:
     error: str
     updated: float
     ai: bool = True  # labelled as AI-generated when published
+    tags: str = ""  # what kind of post (comma separated), so what works can be seen
+    insights: dict = None  # how it did, as Instagram reports (reach, likes ...)
+
+    def __post_init__(self):
+        object.__setattr__(self, "insights", self.insights or {})
 
 
 class PostStore:
@@ -54,7 +59,7 @@ class PostStore:
             " files TEXT NOT NULL, caption TEXT NOT NULL, status TEXT NOT NULL, how TEXT NOT NULL DEFAULT '',"
             " content_hash TEXT NOT NULL, problems TEXT NOT NULL DEFAULT '[]', licensed INTEGER NOT NULL DEFAULT 0,"
             " media_id TEXT NOT NULL DEFAULT '', permalink TEXT NOT NULL DEFAULT '', error TEXT NOT NULL DEFAULT '',"
-            " updated REAL NOT NULL, ai INTEGER NOT NULL DEFAULT 1)")
+            " updated REAL NOT NULL, ai INTEGER NOT NULL DEFAULT 1, tags TEXT NOT NULL DEFAULT '', insights TEXT NOT NULL DEFAULT '{}')")
         self._db.execute("UPDATE posts SET status=?, error=?, updated=? WHERE status=?",
                          (UNKNOWN, "the program stopped while this was being published", self._clock(), PUBLISHING))
         self._db.commit()
@@ -62,10 +67,10 @@ class PostStore:
     @staticmethod
     def _post(r) -> Post:
         return Post(r[0], r[1], r[2], json.loads(r[3]), r[4], r[5], r[6], r[7], json.loads(r[8]), bool(r[9]), r[10], r[11], r[12], r[13],
-                    bool(r[14]))
+                    bool(r[14]), r[15], json.loads(r[16] or "{}"))
 
     def add(self, *, kind: str, files: list[str], caption: str, content_hash: str, problems: list[str], licensed: bool,
-            ai: bool = True) -> Post:
+            ai: bool = True, tags: str = "") -> Post:
         now = self._clock()
         with self._lock:
             row = self._db.execute("SELECT id FROM posts WHERE content_hash=? AND status NOT IN (?, ?)",
@@ -73,9 +78,9 @@ class PostStore:
             if row:
                 raise DuplicatePost(f"this is already queued or posted as post {row[0]}")
             cur = self._db.execute(
-                "INSERT INTO posts(created, kind, files, caption, status, content_hash, problems, licensed, updated, ai)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?)", (now, kind, json.dumps(files), caption, DRAFTED, content_hash,
-                                                  json.dumps(problems), int(licensed), now, int(ai)))
+                "INSERT INTO posts(created, kind, files, caption, status, content_hash, problems, licensed, updated, ai, tags)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?)", (now, kind, json.dumps(files), caption, DRAFTED, content_hash,
+                                                     json.dumps(problems), int(licensed), now, int(ai), tags[:200]))
             self._db.commit()
         return self.get(cur.lastrowid)
 
@@ -121,3 +126,12 @@ class PostStore:
         approved = self._db.execute("SELECT COUNT(*) FROM posts WHERE status=? AND how='approved'", (POSTED,)).fetchone()[0]
         bad = self._db.execute("SELECT COUNT(*) FROM posts WHERE status IN (?,?)", (FAILED, UNKNOWN)).fetchone()[0]
         return {"approved_posts": approved, "bad": bad}
+
+    def set_insights(self, ident: int, numbers: dict) -> None:
+        with self._lock:
+            self._db.execute("UPDATE posts SET insights=? WHERE id=?", (json.dumps(numbers), int(ident)))
+            self._db.commit()
+
+    def posted_with_media(self) -> list[Post]:
+        rows = self._db.execute(f"SELECT {_COLS} FROM posts WHERE status=? AND media_id!='' ORDER BY id", (POSTED,)).fetchall()
+        return [self._post(r) for r in rows]

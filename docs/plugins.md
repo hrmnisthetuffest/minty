@@ -609,7 +609,7 @@ Settings: `ig_user_id`, `ig_host`, `ig_token_expires`, `post_mode`, `max_posts_p
 | `studio_make` | Make or collect video material. action: stock (Pexels clip, query), url/add (bring a file in, with its license), voice (text), music (mood), video (background, voiceover, music, script, name), check (path), library, project. | risk varies |
 | `studio_draft` | Queue a finished reel (one video) or carousel (2-20 pictures) for Instagram without posting it. The video is checked, licences are checked and credits added. It says whether your rules post it without asking. |  |
 | `studio_send` | Post a queued item to Instagram. Inside the user's posting rules it goes by itself; otherwise the user is asked with the post shown. | sensitive, risk varies |
-| `studio_posts` | What is queued or posted (action list) or throw away an unposted one (action discard, id). | risk varies |
+| `studio_posts` | What is queued or posted (list), how posted ones did (insights), or throw away an unposted one (discard, id). | risk varies |
 
 ## study
 

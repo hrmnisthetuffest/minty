@@ -64,6 +64,15 @@ clean licence, the caption has no link, no @mention and no sensitive word, under
 (default 6 hours). After you have approved five posts with nothing going wrong, `missions_review` offers to switch it on; it never
 does it for you. Posts are labelled as AI-generated unless you say they are real footage.
 
+**The token.** A long-lived Instagram token lasts 60 days. `studio_make refresh_token` (asked, because a credential changes) swaps
+it for a fresh 60-day one, never showing it; Minty warns you a week before it would run out (from the date you give, or from the
+last refresh). A token under 24 hours old cannot be refreshed yet, and a Facebook-login token is renewed in Meta's dashboard.
+
+**What works.** `studio_posts insights` asks Instagram how posted ones did (once they are about a day old: reach, likes,
+comments, shares, saves). Tag each draft (`tags`, for example `parkour,facts`) and, once there are three or more posts on each
+side, `missions_review` says which kind reaches at least 1.5 times as many people, as evidence and a suggestion. The metric
+names follow Meta's current documentation, which I could not read in full, so a metric Instagram does not offer is simply left out.
+
 Every post is recorded and never goes out twice: drafted, posted (with its link, and whether automatically or after your yes),
 failed, or **unknown** if the connection dropped after the post was requested (check the account; it is not repeated).
 
@@ -88,4 +97,7 @@ spending with the agents setting `claude_max_budget_usd` and `max_runs_per_day` 
 - Tested only against pretend servers: Pexels and the Instagram Graph API (the steps follow Meta's documentation; some details,
   such as the reel size limits and how long tokens last, are not stated on the pages I read, so the check uses common Instagram
   limits). **Nothing has been published to a real account.** Expect the first real post to need a fix or two; keep posting set to ask.
-- Not tested: Claude Code making motion graphics on this machine, and a full daily recipe over several days.
+- Tested for real, once: a Claude Code job in a studio folder made a 4-second vertical video with animated text, ran the check, and
+  Minty's verdict was "verified" (it cost a few cents). A recipe was run through the real app with a scripted model: it made a draft
+  and posted nothing.
+- Not tested: a recipe over several days with a real model, and anything against a real Instagram or Pexels account.

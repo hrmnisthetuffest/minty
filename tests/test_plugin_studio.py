@@ -36,13 +36,21 @@ class FakeIG:
     """Stands in for the Graph API client: records what would be published."""
 
     def __init__(self, error=None):
-        self.reels, self.carousels, self.error = [], [], error
+        self.reels, self.carousels, self.error, self.numbers = [], [], error, {}
 
     async def publish_reel(self, video, caption, *, ai_generated=True, share_to_feed=True):
         self.reels.append((Path(video).name, caption, ai_generated))
         if self.error:
             raise self.error
         return Published("1790", "https://www.instagram.com/reel/XYZ/")
+
+    async def refresh_token(self):
+        if self.error:
+            raise self.error
+        return "REFRESHED-TOKEN", 5184000
+
+    async def insights(self, media_id):
+        return self.numbers.get(media_id, {"reach": 100, "likes": 7})
 
     async def publish_carousel(self, urls, caption, *, ai_generated=True):
         self.carousels.append((urls, caption))
@@ -280,4 +288,56 @@ async def test_the_studio_offers_the_user_things_to_look_at_and_earned_independe
     host, _, _ = build(tmp_path, ig_token_expires="2000-01-01")
     loops = {l.key: l for l in host._services["studio_attention"]()}
     assert "studio:token" in loops and "expired" in loops["studio:token"].text and loops["studio:token"].urgency == "now"
+    assert host._services["studio_lessons"]() == []
+
+
+async def test_a_token_can_be_refreshed_and_the_warning_follows_the_new_expiry(tmp_path):
+    from minty_core.keystore import SecretsStore
+    host, _, _ = build(tmp_path, ig_token_expires="2000-01-01")
+    assert host.get_tool("studio_make").risk({"action": "refresh_token"}) == 2  # a credential changes: asked
+    assert "studio:token" in {l.key for l in host._services["studio_attention"]()}
+    out = await host.call("studio_make", {"action": "refresh_token"})
+    assert "60 days" in out and "REFRESHED" not in out  # the token itself is never shown
+    assert SecretsStore(tmp_path).get("plugin.studio.ig_token") == "REFRESHED-TOKEN"
+    assert "studio:token" not in {l.key for l in host._services["studio_attention"]()}  # the recorded refresh beats the old date
+
+
+async def test_a_refused_refresh_changes_nothing(tmp_path):
+    from minty_core.keystore import SecretsStore
+    host, _, _ = build(tmp_path, ig=FakeIG(error=InstagramError("Instagram would not refresh the token (400): too new")))
+    assert (await host.call("studio_make", {"action": "refresh_token"})).startswith("Error")
+    assert SecretsStore(tmp_path).get("plugin.studio.ig_token") == "TOKEN"
+
+
+async def test_how_posts_did_is_collected_and_the_best_kind_is_offered_as_evidence(tmp_path, gameplay):
+    host, ig, _ = build(tmp_path)
+    store = host._state["studio"]["posts"]
+    for i in range(6):
+        tags = "parkour" if i < 3 else "facts"
+        p = store.add(kind="reel", files=[f"/x/{i}.mp4"], caption=f"post {i}", content_hash=f"h{i}", problems=[], licensed=True, tags=tags)
+        store.claim(p.id, "approved")
+        store.finish(p.id, "posted", media_id=f"10{i}0", permalink="https://instagram.com/reel/x/")
+        ig.numbers[f"10{i}0"] = {"reach": 900 if tags == "parkour" else 300, "likes": 40}
+    store._db.execute("UPDATE posts SET updated=updated-172800")  # they went out two days ago
+    store._db.commit()
+    out = await host.call("studio_posts", {"action": "insights"})
+    assert "reach 900" in out and "reach 300" in out and "parkour" in out
+    assert store.get(1).insights["reach"] == 900
+    found = {l.key: l for l in host._services["studio_lessons"]()}
+    assert set(found) == {"studio:perf:parkour", "studio:autopost"}  # six posts approved with nothing wrong: independence is offered too
+    lesson = found["studio:perf:parkour"]
+    assert "3.0x" in lesson.finding and lesson.confidence == "confirmed"
+    assert "Nothing" not in lesson.proposal and "more" in lesson.proposal.lower()
+
+
+async def test_too_few_posts_say_nothing_about_what_works(tmp_path):
+    host, ig, _ = build(tmp_path)
+    store = host._state["studio"]["posts"]
+    for i in range(2):
+        p = store.add(kind="reel", files=[f"/x/{i}.mp4"], caption="c", content_hash=f"h{i}", problems=[], licensed=True, tags="parkour")
+        store.claim(p.id, "approved")
+        store.finish(p.id, "posted", media_id=f"10{i}0")
+    store._db.execute("UPDATE posts SET updated=updated-172800")
+    store._db.commit()
+    await host.call("studio_posts", {"action": "insights"})
     assert host._services["studio_lessons"]() == []

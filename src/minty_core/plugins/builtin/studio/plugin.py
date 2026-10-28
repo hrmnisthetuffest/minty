@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 import math
 import re
@@ -20,8 +21,9 @@ from minty_core.worklessons import Lesson
 
 log = logging.getLogger(__name__)
 EARNED_AFTER = 5
+PERFORMANCE_MIN = 3  # posts on each side before a difference in reach is called a finding
 DAY_S = 86400
-ACTIONS = ("stock", "url", "add", "voice", "music", "video", "check", "library", "project")
+ACTIONS = ("stock", "url", "add", "voice", "music", "video", "check", "library", "project", "refresh_token")
 NAME = re.compile(r"[^a-z0-9-]+")
 SCRIPT = Path(__file__).resolve().parents[3] / "studio" / "check_video_script.py"
 BRIEF = """# Minty studio
@@ -33,6 +35,9 @@ This folder is where videos and pictures for Minty's social posts are made. You 
   (`out/2026-10-28-parkour-fact.mp4`).
 - Pictures for a carousel: 1080x1350 PNG in `out/` (Minty converts them to JPEG).
 - Always include an audio track, even a quiet one: a silent video fails the check.
+
+## Look and feel
+If `BRAND.md` exists in this folder, follow its colours, fonts, tone and "avoid" list in everything you make.
 
 ## What you can use
 Python 3, ffmpeg and ffprobe. Draw frames with ffmpeg filters (drawtext, drawbox, overlay, zoompan, xfade) or write frames from
@@ -134,7 +139,8 @@ def register(ctx):
         if project_dir.is_symlink() or any(part.startswith(".") for part in rel.parts):
             return "Error: the studio project folder must not be a link or inside a hidden folder."
         made = []
-        for relative, text in (("CLAUDE.md", BRIEF), ("check_video.py", SCRIPT.read_text(encoding="utf-8")), (".minty/check", "python3 check_video.py out\n")):
+        for relative, text in (("CLAUDE.md", BRIEF), ("check_video.py", SCRIPT.read_text(encoding="utf-8")), (".minty/check", "python3 check_video.py out\n"),
+                               ("BRAND.md", "# Brand\n\nColours: (fill in: the main colours, and any colour to avoid)\nFonts: (fill in)\nTone: (fill in: for example bold and fast, or calm)\nAvoid: (fill in)\n")):
             target = project_dir / relative
             if not target.exists():
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -145,6 +151,21 @@ def register(ctx):
             return f"The studio project at {project_dir} is already set up; I kept your files."
         return (f"Studio project ready at {project_dir} (made: {', '.join(made)}). Ask Claude Code to work there; its job is checked "
                 "with check_video.py. Its folder name for the agents tool is " + project_dir.name + ".")
+
+    token_file = root / "token.json"
+
+    async def refresh_token() -> str:
+        """A fresh 60-day token. The new one replaces the old in the keystore (never shown), and the new expiry is remembered."""
+        if not user_id or not ctx.secret("ig_token"):
+            return "Error: set studio.ig_user_id and the key plugin.studio.ig_token first."
+        try:
+            token, seconds = await client().refresh_token()
+        except InstagramError as e:
+            return f"Error: {e}"
+        ctx.secrets.set("plugin.studio.ig_token", token)
+        root.mkdir(parents=True, exist_ok=True)
+        token_file.write_text(json.dumps({"expires": time.time() + seconds}), encoding="utf-8")
+        return f"Refreshed the Instagram token: it is good for {seconds // 86400} days from now."
 
     # ---- the media tool ---------------------------------------------------------------------------
     def kept(a) -> str:
@@ -186,6 +207,8 @@ def register(ctx):
                 return (await media.check_video(path)).summary()
             if action == "project":
                 return scaffold()
+            if action == "refresh_token":
+                return await refresh_token()
             if action == "library":
                 found = lib.list(str(args.get("kind") or "") or None)
                 return "\n".join(f"{a.id}. {a.kind} [{a.license}] {a.path}" + (f" ({a.note})" if a.note else "") for a in found[:40]) or "The library is empty."
@@ -268,7 +291,7 @@ def register(ctx):
             return "Error: I won't queue this: " + "; ".join(d.reasons)
         try:
             p = store.add(kind=kind, files=[str(f) for f in files], caption=caption, content_hash=sha_of(files), problems=problems,
-                          licensed=not licence_problems, ai=args.get("ai_generated") is not False)
+                          licensed=not licence_problems, ai=args.get("ai_generated") is not False, tags=str(args.get("tags") or ""))
         except DuplicatePost as e:
             return f"Error: {e}."
         note = f" ({'; '.join(licence_problems)})" if licence_problems else ""
@@ -368,8 +391,28 @@ def register(ctx):
         how = "automatically, under your posting rules" if auto else "after your yes"
         return f"Posted {how}. {done.permalink or 'It is live (Instagram gave no link yet).'} Post {p.id}."
 
+    async def collect_insights() -> str:
+        """Ask Instagram how the posted ones did (once a post is a day old), and show them."""
+        if not user_id or not ctx.secret("ig_token"):
+            return "Error: set studio.ig_user_id and the key plugin.studio.ig_token first."
+        api, lines = client(), []
+        for p in store.posted_with_media():
+            if time.time() - p.updated >= 20 * 3600 or p.insights:
+                try:
+                    numbers = await api.insights(p.media_id)
+                except (InstagramError, ValueError):
+                    numbers = {}
+                if numbers:
+                    store.set_insights(p.id, numbers)
+                    p = store.get(p.id)
+            if p.insights:
+                lines.append(f"#{p.id} {p.kind} [{p.tags or 'untagged'}]: " + ", ".join(f"{k} {v}" for k, v in p.insights.items()))
+        return "\n".join(lines) or "Nothing to report yet: Instagram has no numbers for these posts."
+
     async def posts_tool(args):
         action = str(args.get("action") or "list")
+        if action == "insights":
+            return await collect_insights()
         if action == "discard":
             ident = str(args.get("id") or "")
             if not ident.isdigit() or store.get(int(ident)) is None:
@@ -394,30 +437,64 @@ def register(ctx):
                 out.append(Loop(f"studio:{p.id}:failed", "studio", f"Post {p.id} was not posted ({p.error}). Say post {p.id} to try again.", p.updated, "today"))
             elif p.status == posts_mod.DRAFTED and now - p.created > DAY_S:
                 out.append(Loop(f"studio:{p.id}:waiting", "studio", f"Draft {p.id} is still waiting for you to decide.", p.created, "later"))
+        left = None
+        try:
+            recorded = json.loads(token_file.read_text(encoding="utf-8")).get("expires")
+        except (OSError, ValueError):
+            recorded = None
         expires = str(settings.get("ig_token_expires") or "").strip()
-        if expires:
+        if recorded:
+            left = int((float(recorded) - now) // DAY_S)
+        elif expires:
             try:
                 left = (datetime.strptime(expires, "%Y-%m-%d").date() - date.today()).days
             except ValueError:
                 left = None
-            if left is not None and left <= 7:
-                text = ("The Instagram token has expired: posting will fail until you make a new one and run `minty set-key plugin.studio.ig_token`."
-                        if left < 0 else f"The Instagram token runs out in {left} days: make a new one and run `minty set-key plugin.studio.ig_token`.")
-                out.append(Loop("studio:token", "studio", text, now, "now" if left < 0 else "today"))
+        if left is not None and left <= 7:
+            text = ("The Instagram token has expired: posting will fail until you make a new one and run `minty set-key plugin.studio.ig_token`."
+                    if left < 0 else f"The Instagram token runs out in {left} days. Ask me to refresh it (studio_make refresh_token), or make a new one and run "
+                                     "`minty set-key plugin.studio.ig_token`.")
+            out.append(Loop("studio:token", "studio", text, now, "now" if left < 0 else "today"))
+        return out
+
+    def performance() -> list:
+        """What kind of post reaches more people, from Instagram's own numbers: only when each side has several posts."""
+        groups: dict[str, list[int]] = {}
+        everyone: list[tuple[int, set]] = []
+        for p in store.posted_with_media():
+            reach = p.insights.get("reach")
+            if reach is None:
+                continue
+            tags = {t.strip().lower() for t in p.tags.split(",") if t.strip()}
+            everyone.append((reach, tags))
+            for t in tags:
+                groups.setdefault(t, []).append(reach)
+        out = []
+        for tag, reaches in sorted(groups.items()):
+            others = [r for r, tags in everyone if tag not in tags]
+            if len(reaches) < PERFORMANCE_MIN or len(others) < PERFORMANCE_MIN:
+                continue
+            ratio = (sum(reaches) / len(reaches)) / max(1.0, sum(others) / len(others))
+            if ratio >= 1.5:
+                out.append(Lesson(f"studio:perf:{tag}", f"Posts tagged {tag} reached {sum(reaches) / len(reaches):.0f} people on average, "
+                                  f"{ratio:.1f}x your other posts ({len(reaches)} against {len(others)})",
+                                  f"Make more {tag} posts and fewer of the others, then look again after a few more. Instagram's numbers for a "
+                                  "handful of posts can mislead.", "confirmed", len(reaches)))
         return out
 
     def lessons() -> list:
         r = store.track_record()
+        found = performance()
         if mode == "auto" or r["approved_posts"] < EARNED_AFTER or r["bad"]:
-            return []
-        return [Lesson("studio:autopost", f"You said yes to {r['approved_posts']} posts and none of them went wrong",
+            return found
+        return found + [Lesson("studio:autopost", f"You said yes to {r['approved_posts']} posts and none of them went wrong",
                        "To let me post without asking (clean licences, a safe caption, within your daily cap), set studio.post_mode to auto "
                        "yourself. Until you do, every post is still asked.", "confirmed", r["approved_posts"])]
 
     ctx.services["studio_attention"], ctx.services["studio_lessons"] = attention, lessons
 
     def make_risk(args) -> int:
-        return {"stock": 1, "url": 2, "add": 2, "project": 1}.get(str(args.get("action")), 0)
+        return {"stock": 1, "url": 2, "add": 2, "project": 1, "refresh_token": 2}.get(str(args.get("action")), 0)
 
     s, i = {"type": "string"}, {"type": "integer"}
     return [
@@ -429,11 +506,11 @@ def register(ctx):
                                                "music": s, "script": s}, "required": ["action"]}, make, risk=make_risk),
         Tool("draft", "Queue a finished reel (one video) or carousel (2-20 pictures) for Instagram without posting it. The video is "
                       "checked, licences are checked and credits added. It says whether your rules post it without asking.",
-             {"type": "object", "properties": {"kind": s, "files": {"type": "array", "items": s}, "caption": s,
+             {"type": "object", "properties": {"kind": s, "files": {"type": "array", "items": s}, "caption": s, "tags": s,
                                                "ai_generated": {"type": "boolean"}}, "required": ["files", "caption"]}, draft),
         Tool("send", "Post a queued item to Instagram. Inside the user's posting rules it goes by itself; otherwise the user is asked "
                      "with the post shown.", {"type": "object", "properties": {"id": i}, "required": ["id"]}, send,
              risk=send_risk, describe=send_describe, blocked_when=not_ready, sensitive=True),
-        Tool("posts", "What is queued or posted (action list) or throw away an unposted one (action discard, id).",
+        Tool("posts", "What is queued or posted (list), how posted ones did (insights), or throw away an unposted one (discard, id).",
              {"type": "object", "properties": {"action": s, "id": i}}, posts_tool, risk=lambda a: 1 if a.get("action") == "discard" else 0),
     ]

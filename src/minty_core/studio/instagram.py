@@ -131,3 +131,48 @@ class Instagram:
         container = await self._container(payload)
         await self._wait(container)
         return await self._publish(container)
+
+    async def refresh_token(self) -> tuple[str, int]:
+        """A new 60-day token for a long-lived Instagram-login token that is at least a day old. (Meta's documented refresh call.)"""
+        if self._host != "graph.instagram.com":
+            raise InstagramError("refreshing works for tokens from Instagram login (graph.instagram.com); a Facebook-login token is renewed in Meta's app dashboard")
+        url = f"https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token={self._token}"
+        try:
+            resp = await self._client.get(url)
+        except httpx.HTTPError as e:
+            raise InstagramError(f"could not reach Instagram ({type(e).__name__})") from None
+        try:
+            data = resp.json()
+        except ValueError:
+            data = {}
+        if resp.status_code >= 400 or not data.get("access_token"):
+            message = (data.get("error") or {}).get("message") if isinstance(data, dict) else None
+            raise InstagramError(f"Instagram would not refresh the token ({resp.status_code}): {self._clean(message or 'no reason given')}")
+        return str(data["access_token"]), int(data.get("expires_in") or 0)
+
+    async def insights(self, media_id: str) -> dict[str, int]:
+        """How a post did: reach, likes, comments, shares, saves, interactions and views, as far as Instagram says (a metric it does
+        not offer for this post is left out). The metric names follow Meta's current documentation, which I could not read in full."""
+        if not re.fullmatch(r"\d{3,30}", str(media_id)):
+            raise ValueError("a media id is a number")
+        asked = ["reach", "likes", "comments", "shares", "saved", "total_interactions", "views"]
+
+        def parse(data: dict) -> dict[str, int]:
+            out = {}
+            for item in data.get("data") or []:
+                values = item.get("values") or []
+                if item.get("name") and values and isinstance(values[0].get("value"), (int, float)):
+                    out[str(item["name"])] = int(values[0]["value"])
+            return out
+
+        try:
+            return parse(await self._json("GET", self._graph(f"{media_id}/insights") + "?metric=" + ",".join(asked)))
+        except InstagramError:
+            pass  # one metric Instagram does not offer here spoils the whole request: ask again one at a time
+        found: dict[str, int] = {}
+        for metric in asked:
+            try:
+                found.update(parse(await self._json("GET", self._graph(f"{media_id}/insights") + f"?metric={metric}")))
+            except InstagramError:
+                continue
+        return found

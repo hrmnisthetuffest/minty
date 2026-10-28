@@ -72,12 +72,12 @@ async def test_the_project_scaffold_is_made_once_and_never_overwrites_the_users_
     host = make_host(tmp_path, plugins={"studio": {"enabled": True, "project_dir": str(project)}})
     out = await host.call("studio_make", {"action": "project"})
     assert "ready" in out.lower() and str(project) in out
-    for name in ("CLAUDE.md", "check_video.py", ".minty/check", "out"):
+    for name in ("CLAUDE.md", "check_video.py", ".minty/check", "BRAND.md", "out"):
         assert (project / name).exists(), name
     assert (project / "check_video.py").read_text() == SCRIPT.read_text()
     assert verify.project_check(project) == ["python3", "check_video.py", "out"]
     brief = (project / "CLAUDE.md").read_text()
-    assert "1080x1920" in brief and "out/" in brief and "never" in brief.lower() and "post" in brief.lower()
+    assert "1080x1920" in brief and "out/" in brief and "never" in brief.lower() and "post" in brief.lower() and "BRAND.md" in brief
     (project / "CLAUDE.md").write_text("my own notes")
     again = await host.call("studio_make", {"action": "project"})
     assert "already" in again.lower() and (project / "CLAUDE.md").read_text() == "my own notes"
