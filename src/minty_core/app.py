@@ -133,6 +133,7 @@ def parse_args(argv):
     sub.add_parser("spotify-login", help="sign in to Spotify once so Minty can read your playlists")
     set_key = sub.add_parser("set-key", help="store an API key without echoing it")
     set_key.add_argument("name", help="provider name, e.g. groq")
+    set_key.add_argument("--show", action="store_true", help="show the key as you type or paste it (easier to check; it stays in the terminal's history)")
     import_help = "import API keys from a plain-text notes file; existing keys with the same name are replaced"
     import_keys = sub.add_parser("import-keys", help=import_help, description=import_help)
     import_keys.add_argument("path", help="file holding your keys")
@@ -1460,7 +1461,8 @@ def main(argv=None) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.command == "set-key":
-        value = getpass.getpass(f"API key for {args.name}: ").strip()
+        prompt = f"API key for {args.name}: "
+        value = (input(prompt) if args.show else getpass.getpass(prompt)).strip()
         if not value:
             sys.exit("empty key, nothing saved")
         try:

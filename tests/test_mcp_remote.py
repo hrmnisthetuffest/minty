@@ -377,6 +377,39 @@ def test_a_remote_call_is_always_at_least_asked_and_composios_execute_tool_is_al
     assert spec.egress({"server": "composio", "tool": "x"}) == "backend.composio.dev" and spec.egress({"server": "acme", "tool": "x"}) == "mcp.example.com"
 
 
+def test_composios_general_mcp_added_as_a_remote_server_is_treated_like_composio(tmp_path, monkeypatch):
+    from minty_core.mcp.registry import tool_hash
+
+    r = McpRegistry(tmp_path / "mcp.json")
+    r.add_remote("composio", "https://connect.composio.dev/mcp", {"x-consumer-api-key": "COMPOSIO_CONSUMER_KEY"})
+    r.add_remote("acme", URL, {"x-api-key": "ACME_API_KEY"})
+    for server, tool in (("composio", "COMPOSIO_MULTI_EXECUTE_TOOL"), ("composio", "COMPOSIO_SEARCH_TOOLS"), ("acme", "COMPOSIO_MULTI_EXECUTE_TOOL")):
+        t = {"name": tool, "description": "d", "inputSchema": {"type": "object"}}
+        r.record_tools(server, [t])
+        r.allow(server, tool, tool_hash(t), readonly=(tool == "COMPOSIO_SEARCH_TOOLS"))
+    spec = plugin_host(tmp_path, monkeypatch, Server()).get_tool("mcp_call")
+    assert spec.risk({"server": "composio", "tool": "COMPOSIO_MULTI_EXECUTE_TOOL"}) == 3  # it acts on your accounts, whichever way it was added
+    assert spec.risk({"server": "composio", "tool": "COMPOSIO_SEARCH_TOOLS"}) == 1
+    assert spec.risk({"server": "acme", "tool": "COMPOSIO_MULTI_EXECUTE_TOOL"}) == 2  # a stranger's server that merely borrows the name
+    assert spec.egress({"server": "composio", "tool": "x"}) == "connect.composio.dev"
+
+
+def test_composios_skill_and_connection_managers_are_always_asked(tmp_path, monkeypatch):
+    from minty_core.mcp.registry import tool_hash
+
+    r = McpRegistry(tmp_path / "mcp.json")
+    r.add_remote("composio", "https://connect.composio.dev/mcp", {"x-consumer-api-key": "COMPOSIO_CONSUMER_KEY"})
+    names = ("COMPOSIO_MANAGE_SKILL", "COMPOSIO_MANAGE_CONNECTIONS", "COMPOSIO_SEARCH_SKILLS", "COMPOSIO_SUBMIT_FEEDBACK")
+    for tool in names:
+        t = {"name": tool, "description": "d", "inputSchema": {"type": "object"}}
+        r.record_tools("composio", [t])
+        r.allow("composio", tool, tool_hash(t), readonly=(tool == "COMPOSIO_SEARCH_SKILLS"))
+    spec = plugin_host(tmp_path, monkeypatch, Server()).get_tool("mcp_call")
+    assert spec.risk({"server": "composio", "tool": "COMPOSIO_MANAGE_SKILL"}) == 3  # creates, changes and deletes your organisation's skills
+    assert spec.risk({"server": "composio", "tool": "COMPOSIO_MANAGE_CONNECTIONS"}) == 3
+    assert spec.risk({"server": "composio", "tool": "COMPOSIO_SEARCH_SKILLS"}) == 1 and spec.risk({"server": "composio", "tool": "COMPOSIO_SUBMIT_FEEDBACK"}) == 2
+
+
 def test_the_model_still_has_no_tool_to_add_a_server_allow_a_tool_or_hold_a_key(tmp_path, monkeypatch):
     host = plugin_host(tmp_path, monkeypatch, Server())
     names = {s.name for s in host.tool_specs() if s.name.startswith("mcp_")}

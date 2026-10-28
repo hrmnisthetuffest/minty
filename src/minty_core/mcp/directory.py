@@ -37,7 +37,7 @@ DIRECTORY = (
 # Servers reached over https (not a program on this computer): where they fit, how to add one, and what it means.
 REMOTE = (
     ("composio", "Hundreds of apps (Gmail, Calendar, Slack, GitHub ...) through YOUR Composio account",
-     "minty mcp composio NAME --user-id ID",
+     "minty mcp composio NAME --user-id ID  (or, with the dashboard's consumer key: minty mcp add-remote NAME https://connect.composio.dev/mcp --header x-consumer-api-key=SECRET_NAME)",
      "needs your own Composio account and API key; the accounts you connect there become reachable, and anything a tool is given goes to "
      "Composio and on to that app. Its execute tool can act on all of them, so every call of it is asked first with its arguments shown."),
 )

@@ -35,10 +35,25 @@ Composio's current API makes a "session" per user (`POST https://backend.composi
 runs them, `COMPOSIO_MANAGE_CONNECTIONS` links an account, `COMPOSIO_REMOTE_WORKBENCH` / `..._BASH_TOOL` run code in Composio's sandbox).
 When a tool needs an account you have not connected, Composio gives a link: you open it yourself.
 
+### If your dashboard only shows a general MCP (no API key for apps)
+
+Composio's dashboard also hands out a **general MCP address with a consumer key** (`ck_...`) for clients such as Claude Code and Codex:
+the address is `https://connect.composio.dev/mcp` and the key goes in an `x-consumer-api-key` header. Minty can use that directly:
+
+```bash
+minty mcp add-remote composio https://connect.composio.dev/mcp --header x-consumer-api-key=COMPOSIO_CONSUMER_KEY
+minty set-key plugin.mcp.composio.COMPOSIO_CONSUMER_KEY   # paste the ck_ key from the dashboard's Connect > clients page (--show shows it as you paste)
+minty mcp tools composio
+```
+
+Your apps are tied to that key's account, so there is no user id. Minty treats a server on `composio.dev` added this way exactly like one
+added with `minty mcp composio`: the same tools, the same class-3 asking for the ones that act. Composio's OAuth sign-in for clients is not
+supported; the key is the way in. Checked against the real address with an invalid key (401); not with a real key.
+
 What that means for you:
 - Anything a tool is given goes to Composio's servers and on to the app you connected. Do not give it what you would not send there.
 - `COMPOSIO_MULTI_EXECUTE_TOOL` can act on **every** account you connected (send mail, post, delete). It, the workbench, the bash tool and
-  the connection tool are class 3: always asked, with the actual arguments shown (recipient, subject ...), however you set the asking mode.
+  the connection and skill managers are class 3: always asked, with the actual arguments shown (recipient, subject ...), however you set the asking mode.
   Mail sent this way does not go through Minty's outbox rules, so allow it only if that is what you want.
 - Tools are pinned by a hash of their name, description and inputs. Composio is a service that changes: a changed description switches
   the tool off until you look and allow it again.

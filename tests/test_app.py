@@ -31,6 +31,17 @@ def test_set_key_command_stores_secret_without_echo(tmp_path, monkeypatch, capsy
     assert "gsk_abcdefghijklmnop" not in capsys.readouterr().out
 
 
+def test_set_key_show_reads_the_key_in_plain_sight_and_never_prints_it_back(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": pytest.fail("--show must not use the hidden prompt"))
+    seen = []
+    monkeypatch.setattr("builtins.input", lambda prompt="": seen.append(prompt) or " ck_abcdefghijklmnop ")
+    app.main(["set-key", "composio", "--show"])
+    assert SecretsStore(tmp_path).get("composio") == "ck_abcdefghijklmnop"
+    assert seen and "composio" in seen[0]
+    assert "ck_abcdefghijklmnop" not in capsys.readouterr().out  # the confirmation names the key, not its value
+
+
 def test_run_exits_cleanly_on_malformed_config(tmp_path, monkeypatch):
     monkeypatch.setenv("MINTY_CONFIG_DIR", str(tmp_path))
     (tmp_path / "config.toml").write_text("not = = toml")

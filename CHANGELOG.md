@@ -709,3 +709,10 @@ when it is good enough.
   workbench, manage connections) are class 3 (always asked) with the actual arguments shown, and a call names its destination host; every
   approval question now shows the real arguments (up to 600 characters). Tests: `tests/test_mcp_remote.py` (48). Checked against Composio's
   real endpoint with an invalid key (401, reported plainly); **not run with a real Composio account**.
+- Fix: Composio added by its general address (`minty mcp add-remote composio https://connect.composio.dev/mcp --header x-consumer-api-key=...`)
+  was treated like any stranger's server, so its execute tool was only a class 2 question. A server on `composio.dev` now gets the same class 3
+  treatment as one added with `minty mcp composio`; a server elsewhere that merely uses a tool of the same name does not. Docs: how to use the
+  consumer key from the dashboard. Composio's `COMPOSIO_MANAGE_SKILL` (it creates, changes and deletes your organisation's skills) is class 3 too. Tests: `tests/test_mcp_remote.py` (50).
+  Checked against `connect.composio.dev/mcp` with an invalid key (401), and with a real consumer key (`minty mcp tools` lists its 11 tools).
+- `minty set-key NAME --show`: the key is typed or pasted in plain sight instead of hidden, for when a hidden paste leaves you guessing whether
+  it arrived. The confirmation still names the key, never its value. Tests: `tests/test_app.py`.
