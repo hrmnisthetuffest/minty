@@ -13,6 +13,7 @@ What Minty does by itself, how it is kept safe, and what is not done. Each part 
 | It learns how I work, correctably | `prefs.py`: told / accepted habit / guess / one task / suggestion; scope, confidence, where it came from; a habit seen three times is **offered, never applied** until you accept; corrections lower it and a second removes it; a short fixed list of kinds, so a preference can never touch a permission. | `prefs.py`, the `prefs` plugin |
 | Reusable ways of working, kept honest | `playbooks.py`: context, steps, output, checks and recovery for a kind of goal, found by trigger words and handed to a matching mission as background to adapt; every run records how it ended and how long it took; an improvement is a **proposal** that changes nothing until you accept it (asked, with the numbers); going back is one step; one bad run never swaps a version. Plain text only: no links, nothing that gives orders to a model. | `playbooks.py`, the `playbooks` plugin |
 | Deadlines in mail become reminders | An important mail that names a date a few days off gets one reminder the morning before (a weekday, "tomorrow" and written dates are understood; the notice itself covers the near ones; a sensitive subject stays out of the reminder). | `gmailwatch.py`, `mailscore.deadline_in` |
+| A promised answer that has not arrived | Mail you sent that asks something is followed; if nobody has answered in three days (`gmail_watch.follow_up_days`) you are told once, quietly, and any message in that thread ends the wait. | `gmailwatch.py` |
 | External text cannot take over | Unchanged and relied on: provenance tagging, untrusted result wrappers, the mandate ignores anything but your own words, the Gmail watcher shows a message as plain text and never follows it, its Composio steps must each be a read. | `provenance.py`, `policy.py` |
 
 ## What is not built, and why
@@ -23,8 +24,8 @@ What Minty does by itself, how it is kept safe, and what is not done. Each part 
   on (`safety.mandate_send_mail`: one short plain mail to an address you wrote in your own words, five a day). `mailpolicy` (the narrow rules
   you write for automatic replies) governs the local outbox, and Composio's send tools do not go through it; routing replies through it is the
   next step, deliberately not done blind.
-- **A "waiting on an outside event" job state** (for example "until Alex replies"). Follow-ups owed are tracked by the attention list; a job that
-  waits for an outside event is not a state of its own.
+- **A "waiting on an outside event" job state** (for example "until Alex replies"). A mail you sent that nobody answered is chased (see above) and
+  follow-ups owed are on the attention list, but a mission that pauses itself until an outside event happens is not a state of its own.
 - **Phone calls.** No calling service is integrated. Telegram is the strongest channel.
 - **A model's judgment on borderline mail.** `mailscore` flags a result as borderline; nothing yet asks a model about it.
 - **A point 11 in your prompt** ("optimize the full workflow") was cut off where it was pasted; nothing was built for it.
