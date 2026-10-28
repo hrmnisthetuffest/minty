@@ -62,4 +62,8 @@ Docker keeps programs away from the rest of your computer, which is the point, a
 ## Safety
 
 The image runs as an ordinary user, not root; it holds no keys (they are added to the volume afterwards with `set-key`); the control
-API is not published; and `.dockerignore` keeps `.git`, key files and your own notes out of the build.
+API is not published; and `.dockerignore` keeps `.git`, key files and your own notes out of the build. The compose file also drops every
+Linux capability, forbids gaining privileges, and makes the container's program read-only (only the `/data` volume and `/tmp` are writable).
+Checked by running the core image that way: all capabilities empty, `NoNewPrivs` on, the program read-only, `/data` writable and the panel
+answering. The voice variant inherits these settings and was not run with them: if sound misbehaves, remove the `read_only` and `tmpfs`
+lines first.

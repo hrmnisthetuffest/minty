@@ -79,3 +79,10 @@ def test_the_n8n_file_runs_n8n_for_this_computer_only_with_nothing_phoning_home(
     assert any(v.startswith("n8n-data:") for v in n8n["volumes"]) and "n8n-data" in c["volumes"]  # workflows survive a rebuild
     body = text("docker-compose.n8n.yml")
     assert not re.search(r"(?i)api[_-]?key\s*[:=]\s*\S|password\s*[:=]\s*\S|secret\s*[:=]\s*\S|encryption_key\s*[:=]", body)
+
+
+def test_the_container_has_no_capabilities_cannot_gain_privileges_and_cannot_change_its_program():
+    service = yaml.safe_load(text("docker-compose.yml"))["services"]["minty"]
+    assert service["cap_drop"] == ["ALL"] and "no-new-privileges:true" in service["security_opt"]
+    assert service["read_only"] is True and service["tmpfs"] == ["/tmp"]
+    assert "minty-data:/data" in service["volumes"]  # the one place that is written

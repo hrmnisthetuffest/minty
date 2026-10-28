@@ -11,6 +11,10 @@ services:
     image: minty:local
     init: true
     restart: unless-stopped
+    cap_drop: [ALL]                    # nothing the panel and the core do needs a Linux capability
+    security_opt: ["no-new-privileges:true"]
+    read_only: true                    # the program is not writable; only /data (the volume) and /tmp are
+    tmpfs: ["/tmp"]
     ports:
       - "127.0.0.1:7778:7778"   # the panel, on this computer only. The control API (7777) stays inside the container.
     environment:

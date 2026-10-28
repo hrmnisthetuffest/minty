@@ -680,3 +680,6 @@ when it is good enough.
   19-36 ms on localhost, the switch to the clip loaded ahead 0 ms (the old element released), the failure message with "Skip this clip", data
   saving (a picture and a Play button), the backdrop on and off. Frames advancing could not be seen: the browser pane that was available
   keeps its page hidden, which pauses all video.
+- Security: the Docker Compose file drops every Linux capability, sets `no-new-privileges`, and makes the container's program read-only
+  (`/data` and `/tmp` stay writable). Run on the core image: capabilities empty, `NoNewPrivs` on, panel answering. The voice variant inherits it
+  and was not run. Test: `tests/test_docker_files.py`.

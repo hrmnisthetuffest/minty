@@ -80,8 +80,9 @@ its page hidden, which pauses video), and anything over a real network or on a p
 - Hermes and OpenClaw jobs are not sandboxed (their needs are unknown); they do get the cleaned environment, so a key they need must be named
   in `agents.agent_env`.
 - The panel speaks plain HTTP on your network by design; put it behind HTTPS if you open it beyond your home.
-- `NoNewPrivileges` and similar are not in the systemd unit: they would break `sudo` commands you approve and a setuid `bwrap`. The Docker
-  Compose file has no `cap_drop` or `no-new-privileges`: no image was built here to test it.
+- `NoNewPrivileges` and similar are not in the systemd unit: they would break `sudo` commands you approve and a setuid `bwrap`.
+- The Docker Compose file now drops every capability, forbids gaining privileges and makes the program read-only; that was run on the core
+  image (capabilities empty, `NoNewPrivs` on, `/data` writable, panel answering). The voice variant inherits it and was not run.
 - The Kokoro digests trust the copy downloaded on 2026-10-10.
 - NASA items with third-party content are filtered by words in their description (a heuristic); the Pixabay and Pexels clips are the
   providers' word for their licence.
