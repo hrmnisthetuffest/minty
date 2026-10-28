@@ -12,7 +12,8 @@ guarantee that Minty is secure: it is a list of specific weaknesses that were cl
   `--no-deps`). Both are repeatable with `python scripts/security_scan.py`.
 - Ran for real: a Claude Code job inside the new sandbox (twice, `verified`), the NASA retrieval against NASA's live library, a Pexels file
   download, the panel in a browser with its network panel measured and a real Chrome playing clips, the core and voice container images with the
-  hardened settings, ffprobe/ffmpeg against hand-made playlist files.
+  hardened settings, ffprobe/ffmpeg against hand-made playlist files, and the studio tools end to end on live NASA footage (discover, pick a
+  background automatically, offline voiceover, captions, check, credit added, queued and not posted: a 7.1 s 1080x1920 reel of 2.1 MB).
 - Did not run: Instagram, the Pexels and Pixabay search APIs (no keys), SMTP/IMAP, Telegram, the app as a system service (the systemd options were tried one by one on a transient unit), a fuzzer, a penetration test.
 
 ## Found and fixed
