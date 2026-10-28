@@ -457,7 +457,7 @@ def build_context(config_dir: Path) -> AppContext:
         return bool(getattr(agent, "force_private", False) or any(m.private for m in agent.history))
 
     def make_subagent(tier: str = "fast") -> Agent:
-        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "agents", "installer", "missions", "outbox")), store,
+        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "agents", "installer", "missions", "outbox", "recipes")), store,
                        personalities, memory, _deny, max_rounds=8, tier=tier)
         helper.guard = guard  # same rules and audit trail as the main conversation
         return helper
@@ -467,7 +467,7 @@ def build_context(config_dir: Path) -> AppContext:
         receipts and secret checks as the conversation) with its own record of what it read, the toolkits its goal needs
         (and need_toolkit for more), and a confirm that waits for the user instead of refusing. Never the terminal, other
         helpers, the installer or missions themselves."""
-        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "installer", "missions"), allow_risky=True),
+        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "installer", "missions", "recipes"), allow_risky=True),
                        store, personalities, memory, confirm or _deny, max_rounds=8, tier="deep")
         helper.guard, helper.safety, helper.receipts = guard, safety, receipts
         helper.provenance = Provenance()  # what this mission reads does not taint the conversation, and the other way round

@@ -35,6 +35,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "attention": (("attention",), "what needs the user: blocked missions, overdue items, follow-ups, dismiss or snooze them",
                   "attention pending waiting overdue outstanding unfinished loose open items needs dismiss snooze nag "
                   "forgetting whats"),
+    "recipes": (("recipes",), "automations that run by themselves on a schedule: set one up, list, run, pause, resume, delete",
+                "automation automations automate recipe recipes schedule scheduled every daily weekly weekdays nightly morning "
+                "evening routine routines recurring regularly automatically post posting upload"),
     "terminal": (("shell",), "run a command in the terminal (always asked first, except a few read-only ones)",
                  "terminal shell command commands run execute bash cli console script ls pwd git status log diff "
                  "directory uptime disk whoami hostname uname"),

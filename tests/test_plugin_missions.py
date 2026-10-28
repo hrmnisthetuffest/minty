@@ -241,3 +241,30 @@ async def test_the_review_includes_the_offers_to_trust_someone_more(tmp_path):
                                                       "add it to auto_reply_to yourself", "confirmed", 6)]
     out = await host.call("missions_review", {})
     assert "mum@home.in" in out and "auto_reply_to" in out and "Nothing was changed" in out
+
+
+async def test_other_parts_of_minty_can_start_a_mission_through_a_service(tmp_path):
+    router = ScriptedRouter([tool("notes_find", q="a"), say("done")])
+    host, runner = build(tmp_path, router, World())
+    job_id = host._services["start_mission"]("find my notes about the trip", {"recipe": "weekly", "run": 4})
+    job = runner.get(job_id)
+    assert job.kind == "mission" and job.payload["recipe"] == "weekly" and job.payload["run"] == 4
+    assert job.payload["goal"] == "find my notes about the trip"
+    await runner.wait(job_id)
+    assert runner.get(job_id).status == "done"
+
+
+async def test_the_service_obeys_the_same_limits_as_the_tool(tmp_path):
+    router = ScriptedRouter([tool("notes_find", q="a"), say("done")])
+
+    async def slow(name, args, world):
+        await asyncio.sleep(5)
+
+    host, runner = build(tmp_path, router, World(on_call=slow), max_concurrent=1)
+    host._services["start_mission"]("first goal here", {})
+    import pytest
+    with pytest.raises(RuntimeError, match="already running"):
+        host._services["start_mission"]("second goal here", {})
+    with pytest.raises(ValueError):
+        host._services["start_mission"]("   ", {})
+    await runner.cancel_all()

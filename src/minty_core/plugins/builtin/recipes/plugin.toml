@@ -1,0 +1,7 @@
+name = "recipes"
+description = "Automations you set up by talking: a goal that runs by itself on a schedule (a daily reel, a weekly report). Each run is a mission with all its checks; it holds no permissions of its own and pauses itself when it keeps failing."
+default_enabled = true
+
+[settings.catch_up_minutes]
+type = "number"
+label = "A run missed because the computer was off is still made within this many minutes, else skipped (default 120)"

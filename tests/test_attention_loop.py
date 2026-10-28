@@ -54,3 +54,27 @@ async def test_it_looks_on_the_event_loop_because_the_things_it_reads_are_change
     att = Counting()
     await run_for(ctx(attention=att))
     assert att.threads == {threading.get_ident()}
+
+
+async def test_the_recipe_clock_starts_what_is_due_every_minute_and_survives_a_failure():
+    from minty_core.app import _recipes_loop
+
+    class Clock:
+        def __init__(self, fail=False):
+            self.ticks, self.fail, self.threads = 0, fail, set()
+
+        def tick(self):
+            self.threads.add(threading.get_ident())
+            self.ticks += 1
+            if self.fail:
+                raise RuntimeError("boom")
+
+    for fail in (False, True):
+        rec = Clock(fail)
+        c = SimpleNamespace(services={"recipes": rec})
+        task = asyncio.create_task(_recipes_loop(c, every_s=0.02))
+        await asyncio.sleep(0.2)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        assert rec.ticks >= 3 and rec.threads == {threading.get_ident()}
+    await asyncio.wait_for(_recipes_loop(SimpleNamespace(services={}), every_s=0.01, rounds=2), 1)  # no recipes plugin: waits, ends

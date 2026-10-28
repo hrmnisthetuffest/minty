@@ -470,6 +470,20 @@ On by default: yes.
 | `prompts_forget` | Forget a learned rule (match by words in it). | risk varies |
 | `prompts_list` | List the standing instructions, learned rules and custom commands. |  |
 
+## recipes
+
+Automations you set up by talking: a goal that runs by itself on a schedule (a daily reel, a weekly report). Each run is a mission with all its checks; it holds no permissions of its own and pauses itself when it keeps failing.
+
+On by default: yes.
+Settings: `catch_up_minutes`.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `recipes_create` | Set up an automation that runs a goal on a schedule, e.g. make and queue a reel every day at 18:00. name: lowercase-with-dashes; at: HH:MM; days: daily, weekdays, weekends or mon,wed,fri. | risk 3 |
+| `recipes_list` | The automations that are set up, or one by name with its recent runs. |  |
+| `recipes_run_now` | Run an automation once now. | risk varies |
+| `recipes_manage` | Pause, resume or delete an automation. | risk varies |
+
 ## reminders
 
 Reminders for a time of day or a date. They survive restarts and always speak at the time you set.

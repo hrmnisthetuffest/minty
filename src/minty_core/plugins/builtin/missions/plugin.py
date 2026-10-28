@@ -82,18 +82,31 @@ def register(ctx):
         job = jobs.get(int(args["id"])) if jobs is not None and args.get("id") is not None else None
         return job if job is not None and job.kind == "mission" else None
 
-    async def start(args):
-        goal = " ".join(str(args.get("goal") or "").split())
+    def submit(goal: str, extra: dict | None = None):
+        goal = " ".join(str(goal or "").split())
         if not goal:
-            return "Tell me what the mission is."
+            raise ValueError("Tell me what the mission is.")
         if len(goal) > MAX_GOAL_CHARS:
-            return f"That goal is too long (over {MAX_GOAL_CHARS} characters); give me the outcome in a few sentences."
+            raise ValueError(f"That goal is too long (over {MAX_GOAL_CHARS} characters); give me the outcome in a few sentences.")
         jobs = runner()
         if jobs is None or ctx.services.get("router") is None or ctx.services.get("mission_worker") is None:
-            return "Missions are unavailable: no model or tools are connected."
+            raise LookupError("Missions are unavailable: no model or tools are connected.")
         if len(jobs.select(active_only=True, kinds={"mission"})) >= max_concurrent:
-            return f"{max_concurrent} mission(s) are already running. Wait for one to finish or cancel it."
-        job = jobs.submit("mission", goal, make_work(goal), budget_s=max_runtime, resumable=True, payload={"goal": goal})
+            raise RuntimeError(f"{max_concurrent} mission(s) are already running. Wait for one to finish or cancel it.")
+        return jobs.submit("mission", goal, make_work(goal), budget_s=max_runtime, resumable=True,
+                           payload={**(extra or {}), "goal": goal})
+
+    def start_mission(goal: str, extra: dict | None = None) -> int:
+        """For the rest of Minty (recipes): the same limits as the tool. Returns the job id."""
+        return submit(goal, extra).id
+
+    ctx.services["start_mission"] = start_mission
+
+    async def start(args):
+        try:
+            job = submit(str(args.get("goal") or ""))
+        except (ValueError, LookupError, RuntimeError) as e:
+            return str(e)
         return f"Started mission {job.id}. I'll tell you when it's done, stuck, or needs you."
 
     async def answer(args):

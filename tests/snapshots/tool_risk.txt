@@ -176,6 +176,10 @@ prompts_forget                     1 change
 prompts_forget_command             1 change
 prompts_learn                      1 change
 prompts_list                       0 read
+recipes_create                     3 critical
+recipes_list                       0 read
+recipes_manage                     1 change   +args
+recipes_run_now                    1 change
 reminders_cancel                   1 change
 reminders_list                     0 read
 reminders_set                      1 change

@@ -95,3 +95,11 @@ async def test_the_attention_plugin_reviews_dismisses_and_nudges_through_the_sch
     assert "Nothing needs you" in await host.call("attention_review", {})
     assert "No open item" in await host.call("attention_dismiss", {"key": "nope"})
     assert "No open item" in await host.call("attention_snooze", {"key": "nope", "hours": 3})
+
+
+async def test_a_recipe_that_paused_itself_reaches_the_attention_list(tmp_path):
+    from minty_core.attention import Loop
+    loop = Loop("recipe:daily-reel:paused", "recipe", "The recipe daily-reel paused itself: it failed 3 times", 1.0, "today")
+    host = make_host(tmp_path, plugins={"attention": {"enabled": True}, "recipes": {"enabled": False}},
+                     services={"recipe_loops": lambda: [loop]})
+    assert "daily-reel paused itself" in await host.call("attention_review", {})

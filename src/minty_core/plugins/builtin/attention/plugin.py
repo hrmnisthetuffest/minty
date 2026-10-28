@@ -24,6 +24,7 @@ def register(ctx):
         "missions": lambda: mission_loops(ctx.services.get("jobs")),
         "butler": lambda: butler_loops(ctx.services.get("butler")),
         "outbox": outbox,
+        "recipes": lambda: (ctx.services.get("recipe_loops") or (lambda: []))(),
     }, nudge=nudge)
     ctx.services["attention"] = attention
 
