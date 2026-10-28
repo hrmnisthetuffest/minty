@@ -737,4 +737,10 @@ when it is good enough.
   them directly; `mcp_call` no longer says "Asks first". The question to you still comes from Minty's own gate when one is needed. Tests:
   `tests/test_mcp_remote.py` (55). **Not run against a live model**; an old conversation that already contains the "enable" talk can still
   steer it, so say "new conversation" once.
+- Autonomy 1: what you just asked for is not asked about again. `policy.Mandate` (a field on `Tool`) says what your own request must say for a
+  tool's question to be redundant: the action's words, the people or places it names (`targets`), and a per-call check; the Guard lifts the
+  question only when your latest real request (not "yes"/"go ahead", never tool output) matches, no argument came from outside content, the class is
+  not above the mandate's `max_class`, and no deny rule or lockdown applies. Class 3 stays asked unless the tool names it (research costs credits;
+  money, keys, deletion and people never). Applied to `research_start` (a deep one still asks unless you asked for depth), `agents_start_task` and
+  `agents_start_project`. Switch: `safety.mandates`. "Research X" no longer ends in "Shall I start researching?". Tests: `tests/test_policy_mandate.py` (18).
 

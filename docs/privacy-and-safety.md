@@ -29,6 +29,14 @@ or blocks them. Memory refuses to store passwords, PINs, one-time codes and keys
 - Every tool has a **risk class**. The safety level you pick (careful, balanced, trusting) decides how much it asks about; money,
   credentials and permanent deletion are always asked about.
 - Approvals can be given in the terminal, the panel or Telegram, and are recorded.
+- **What you just asked for is not asked about again.** A tool that declares a mandate (`policy.Mandate`) runs without a question when
+  your own words, this turn, ask for that kind of action ("research the competitors of acme", "have Claude Code fix the tests"), the
+  people or places it touches (if it names any) are in those words, and nothing it uses came from a page, an e-mail or a file. This is a
+  plain check in the safety layer, not a prompt, so a web page or a message cannot argue its way past it: content from outside never
+  counts as your words, and a call whose arguments came from outside, or from content that gave orders, is asked as before. Class 3
+  stays asked unless the tool names a cost (research costs credits) and never for money, keys, deletion or people; a deep research
+  (about 80 sources) is asked unless you asked for depth. Deny rules and lockdown still win. It is on by default; `safety.mandates`
+  turns it off. Today: `research_start`, `agents_start_task`, `agents_start_project`.
 - Web pages, files, e-mails and tool results are **data**. If one tells Minty to do something, Minty shows you the text and asks.
 - The browser stops at CAPTCHAs and waits for you; it does not try to solve them or to hide that it is automated.
 - Only Telegram chats paired with a one-time code are answered. The local API and the panel listen on `127.0.0.1` only.

@@ -162,6 +162,47 @@ from pathlib import Path  # noqa: E402
 from typing import Awaitable, Callable  # noqa: E402
 
 
+# ---- instruction is authorization -----------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Mandate:
+    """What a tool's question is for, so the user's own words can answer it. A tool that carries one is not asked about when the
+    user's current request (their words, never tool output) says this kind of action (`intent`, a regex), every argument in
+    `targets` (who or where it touches) comes from those words, nothing the call uses came from elsewhere, and its class is
+    not above `max_class`. Class 3 stays asked unless the tool names 3 here, which is for a cost (credits), never for money,
+    keys, deletion or people. Deny rules and lockdown are checked first and never lifted."""
+    intent: str
+    targets: tuple[str, ...] = ()
+    max_class: int = R2
+    check: Callable[[dict, str], bool] | None = None  # (arguments, the user's words) -> False when this call goes beyond what was asked
+
+
+_ACK = frozenset({"yes", "yeah", "yep", "yup", "sure", "ok", "okay", "go", "ahead", "do", "it", "please", "proceed", "confirm", "that",
+                  "this", "thanks", "thank", "you", "alright", "right", "fine", "good", "great", "correct", "now", "then", "so"})
+
+
+def current_request(said: list[str]) -> str:
+    """The user's latest real ask: "yes" and "go ahead" answer a question, they are not a new request."""
+    for text in reversed(said or []):
+        words = re.findall(r"[a-z']+", (text or "").lower())
+        if words and not (len(words) <= 4 and all(w in _ACK for w in words)):
+            return text
+    return said[-1] if said else ""
+
+
+def _grounded(value, request: str) -> bool:
+    """True when this argument is something the user wrote: an address or name as written, a site by its name."""
+    if isinstance(value, (list, tuple)):
+        return bool(value) and all(_grounded(v, request) for v in value)
+    text = str(value or "").strip().lower()
+    if not text:
+        return False
+    if "@" not in text and ("://" in text or _DOMAIN.fullmatch(text)):
+        return destination_key(text) in destinations_in(request)
+    return text in request.lower()
+
+
+
+
 @dataclass(frozen=True)
 class Decision:
     allowed: bool
@@ -179,6 +220,7 @@ class Assessment:
     decision: str  # allow | ask | deny
     question: str  # sanitised, ready to say to the user
     why: str = ""
+    lifted: str = ""  # set when the user's own request answered the question (see Mandate)
 
 
 def generic_prompt(name: str, args: dict) -> str:
@@ -201,7 +243,7 @@ class Guard:
         self._audit = Tracer(audit_dir, secret_values=secret_values, retention_days=366) if audit_dir else None
 
     def assess(self, tool, name: str, args: dict, prompt: str | None = None, *, extra_risk: int = 0, why: str = "",
-               known: set[str] | None = None) -> Assessment:
+               known: set[str] | None = None, request: str = "") -> Assessment:
         """What would happen to this call, without asking anyone. known: destinations the user has mentioned;
         data sent anywhere else is class 3 (personal data to a new party), so it is always asked."""
         cfg = self._store.config.safety
@@ -233,12 +275,37 @@ class Guard:
         decision = decide(name, risk, cfg.mode, cfg.rules, subject(name, args, question))
         if decision == "ask" and not cfg.confirm_risky and risk < R3:
             decision = "allow"  # "never ask" still asks for class 3
-        return Assessment(name, args, risk, decision, question, why)
+        lifted = ""
+        if decision == "ask":
+            lifted = self._mandated(tool, args, request, risk, extra_risk)
+            if lifted:
+                decision = "allow"
+        return Assessment(name, args, risk, decision, question, why, lifted)
+
+    def _mandated(self, tool, args: dict, request: str, risk: int, extra_risk: int) -> str:
+        """Why the user's own request already answers this question, or ''. Plain checks, so a persuasive page cannot argue with them."""
+        mandate = getattr(tool, "mandate", None)
+        if mandate is None or not request or extra_risk or risk > mandate.max_class or not getattr(self._store.config.safety, "mandates", True):
+            return ""
+        try:
+            if not re.search(mandate.intent, request, re.IGNORECASE):
+                return ""
+        except re.error:
+            return ""
+        if any(not _grounded(args.get(name), request) for name in mandate.targets):
+            return ""
+        if mandate.check is not None:
+            try:
+                if not mandate.check(args, request):
+                    return ""
+            except Exception:  # noqa: BLE001 — a check that cannot be made is a question
+                return ""
+        return "you asked for this"
 
     async def authorize(self, tool, name: str, args: dict, confirm: Callable[[str], Awaitable[bool]] | None,
                         prompt: str | None = None, *, extra_risk: int = 0, why: str = "",
-                        known: set[str] | None = None) -> Decision:
-        a = self.assess(tool, name, args, prompt, extra_risk=extra_risk, why=why, known=known)
+                        known: set[str] | None = None, request: str = "") -> Decision:
+        a = self.assess(tool, name, args, prompt, extra_risk=extra_risk, why=why, known=known, request=request)
         if a.decision != "ask":
             return self.settle(a)
         covered = self._standing(a, extra_risk)
@@ -315,7 +382,7 @@ class Guard:
             return self._record(a.name, a.args, a.risk,
                                 Decision(bool(answer), True, a.risk, "" if answer else "declined", approval_id),
                                 a.why, a.question)
-        return self._record(a.name, a.args, a.risk, Decision(True, False, a.risk), a.why)
+        return self._record(a.name, a.args, a.risk, Decision(True, False, a.risk, a.lifted), a.why)
 
     def _record(self, name, args, risk, decision: Decision, why: str = "", question: str = "") -> Decision:
         if self._audit is not None and self._store.config.safety.audit and (risk > R0 or not decision.allowed):

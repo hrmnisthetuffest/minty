@@ -9,7 +9,7 @@ from minty_core.plugins.builtin.agents.isolation import Isolation
 from minty_core.plugins.builtin.agents.jobs import MODES, JobManager
 from minty_core.plugins.builtin.agents.verify import parse_check
 from minty_core.plugins.host import Tool
-from minty_core.policy import R1
+from minty_core.policy import R1, Mandate
 
 
 log = logging.getLogger(__name__)
@@ -48,6 +48,10 @@ def configured_check(settings: dict) -> list[str] | None:
     if argv is None:
         log.warning("Ignoring check_command %r: it must be one plain command, with no pipes, ';', '&&' or '$'", text)
     return argv
+
+
+# a coding agent the user named ("have Claude Code fix it") is not asked about again
+AGENT_MANDATE = Mandate(r"\b(claude|hermes|openclaw|coding agent|code agent)\b")
 
 
 def register(ctx):
@@ -143,11 +147,11 @@ def register(ctx):
                                                "prompt": {"type": "string"},
                                                "mode": {"type": "string", "enum": list(MODES)},
                                                "wait": {"type": "boolean"}},
-              "required": ["agent", "project", "prompt"]}, start_task, risky=not auto_start, risk=R1,
+              "required": ["agent", "project", "prompt"]}, start_task, risky=not auto_start, risk=R1, mandate=AGENT_MANDATE,
              describe=lambda a: describe_start(a, target="project")),
         Tool("start_project", "Create a new project folder and start a coding agent on it.",
              schema(agent=agent, name=("string", True), prompt=("string", True)), start_project, risky=not auto_start, risk=R1,
-             describe=lambda a: describe_start(a, target="name", kind="new project ")),
+             mandate=AGENT_MANDATE, describe=lambda a: describe_start(a, target="name", kind="new project ")),
         Tool("task_status", "Status of one coding job, or the most recent jobs.", schema(job_id=("integer", False)), task_status),
         Tool("stop_task", "Stop a running coding job.", schema(job_id=("integer", True)), stop_task, risk=R1),
         Tool("list_projects", "List project folders.", schema(), list_projects),

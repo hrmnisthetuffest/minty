@@ -46,6 +46,8 @@ class Tool:
     # a reason this call must not run right now, or None; checked by the safety layer before anyone is asked (the terminal is
     # off, the command is refused)
     blocked_when: Callable[[dict], str | None] | None = None
+    # what the user's own request must say for the question to be redundant (policy.Mandate); None = the class decides, as always
+    mandate: Any = None
 
 
 # Tools whose repeat must not repeat the side effect (send, upload, download, install, fire a webhook). One list,

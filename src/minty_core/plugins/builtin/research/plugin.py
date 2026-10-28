@@ -7,7 +7,7 @@ from pathlib import Path
 
 from minty_core.llm.types import Message, TextDelta
 from minty_core.plugins.host import Tool
-from minty_core.policy import R1, R3
+from minty_core.policy import R1, R3, Mandate
 from minty_core.research import blueprint as bplib
 from minty_core.research.engine import DEPTHS, Research, ResearchError
 from minty_core.research.library import Library
@@ -15,6 +15,13 @@ from minty_core.research.text import html_to_text
 from minty_core.safefetch import FetchFailed, safe_fetch
 
 log = logging.getLogger(__name__)
+
+
+# a research the user asked for is not asked about again (it costs credits, so this is a class 3 that can be lifted);
+# a deep one (about 80 sources) still is, unless their words asked for depth
+RESEARCH_MANDATE = Mandate(
+    r"\b(research|investigate|look into|dig into|find out (?:about|what|who|how)|deep dive)\b", max_class=R3,
+    check=lambda args, request: args.get("depth") != "deep" or bool(re.search(r"\b(deep|thorough|exhaustive|comprehensive|in[- ]depth)", request, re.I)))
 
 
 def register(ctx):
@@ -231,7 +238,7 @@ def register(ctx):
                       "80). Only after the user asked for research or agreed to your offer.",
              {"type": "object", "properties": {"topic": {"type": "string"},
                                                "depth": {"type": "string", "enum": ["light", "normal", "deep"]}},
-              "required": ["topic"]}, start, risk=R3, describe=start_prompt),
+              "required": ["topic"]}, start, risk=R3, describe=start_prompt, mandate=RESEARCH_MANDATE),
         Tool("blueprint", "Research and draft a project blueprint (parts, steps, alternatives, risks, unknowns) for "
                           "something the user wants to build. kind: electronics, software, fabrication or general. "
                           "Only when asked.",

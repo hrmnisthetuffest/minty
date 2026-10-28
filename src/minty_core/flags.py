@@ -27,6 +27,7 @@ LABELS = {
     "safety.audit": "Keep an audit trail of decisions",
     "safety.approval_inbox": "Keep every question as an approval record",
     "safety.block_secret_egress": "Stop tool calls that would send a stored key",
+    "safety.mandates": "Do not ask again about what you just asked for (never for money, keys, deletion or people)",
     "safety.honeytokens": "Plant a decoy key file to catch anything hunting for keys",
     "safety.mask_pii_in_traces": "Mask e-mails, phones, cards and ID numbers in traces",
     "safety.audit_installs": "Say what is known about a package before installing it",

@@ -520,6 +520,7 @@ class SafetyConfig(BaseModel):
     lockdown_phrase: str = "lockdown"  # said by voice or typed, it stops everything (another phrase works too)
     unlock_phrase: str = "end lockdown"  # only the voice pipeline, the terminal or the API token can lift it
     block_secret_egress: bool = True  # a tool call whose arguments hold a stored key or a planted fake key is stopped
+    mandates: bool = True  # what you just asked for is not asked about again (class 3 and untrusted content excepted; policy.Mandate)
     honeytokens: bool = True  # plant a decoy key file in the workspace; seeing its keys go out is an alarm
     mask_pii_in_traces: bool = True  # e-mail, phone, card, Aadhaar and PAN numbers are masked in the traces
     # the same send, download or install repeated inside this many seconds runs once (0 = off, the old way)

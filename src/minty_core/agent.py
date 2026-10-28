@@ -21,7 +21,7 @@ from minty_core.llm.types import REQUEST_SHAPED, LLMError, Message, TextDelta, T
 from minty_core.memory import MemoryStore
 from minty_core.personality import PersonalityStore, compile_prompt
 from minty_core.prompts import section as prompt_section
-from minty_core.policy import Guard, destinations_in
+from minty_core.policy import Guard, current_request, destinations_in
 from minty_core.residency import LOCAL_STUB, LocalResult
 from minty_core.secretscan import SecretScanner
 from minty_core.text import SentenceSplitter
@@ -476,7 +476,7 @@ class Agent:
                 if advice:
                     prompt = f"{prompt} {advice}"
             decision = await self.guard.authorize(tool, call.name, call.arguments, self.confirm,
-                                                  prompt=prompt, extra_risk=extra, known=known)
+                                                  prompt=prompt, extra_risk=extra, known=known, request=self._request())
             approval_id = decision.approval_id
             if not decision.allowed:
                 blocked_by_rule = decision.reason == "blocked by a safety rule" or not decision.asked
@@ -514,6 +514,10 @@ class Agent:
         if tool is not None and tool.local_only and not result.startswith("Error"):
             return LocalResult(result), True
         return result, bool(tool is not None and tool.sensitive)
+
+    def _request(self) -> str:
+        """What the user last asked for, in their own words (never a tool's output): what their request already answers is not asked again."""
+        return current_request([m.content for m in self.history if m.role == "user"])
 
     def _gate_inputs(self, tool, call: ToolCall) -> tuple[set, str, int]:
         """What the safety gate is shown for this call: destinations the user mentioned, the question, any extra risk."""
