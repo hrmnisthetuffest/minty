@@ -265,6 +265,40 @@ async def music_bed(out: Path, seconds: float, mood: str = "calm") -> Path:
         part.unlink(missing_ok=True)
 
 
+async def make_background(src: Path, dst: Path, *, max_seconds: float = 60.0, size: tuple[int, int] = (720, 1280), fps: int = 30) -> Path:
+    """A downloaded clip as the background it will be used as: portrait, no sound, no longer than needed. A 3-minute 720p download
+    becomes a few megabytes, and every video made from it later does less work."""
+    src, dst = Path(src), Path(dst)
+    info = await probe(src)
+    start = min(2.0, info.duration * 0.05) if info.duration > max_seconds + 4 else 0.0  # skip a slate at the very start of a long clip
+    width, height = size
+    part = dst.with_name(dst.stem + ".part.mp4")
+    try:
+        await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", "-ss", f"{start:.2f}", "-t", f"{max_seconds:.2f}", *FILE_ONLY,
+                    "-i", str(src), "-an", "-vf", f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1,fps={fps}",
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(part)], timeout=600.0)
+        part.replace(dst)
+        return dst
+    finally:
+        part.unlink(missing_ok=True)
+
+
+async def generated_background(out: Path, seconds: float = 20.0, size: tuple[int, int] = (720, 1280)) -> Path:
+    """A slow, soft, animated colour background (no third party in it): what a video gets when nothing else is available."""
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    part = out.with_name(out.stem + ".part.mp4")
+    width, height = size
+    try:
+        await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", "-f", "lavfi", "-i",
+                    f"gradients=s={width}x{height}:d={max(1.0, float(seconds)):.2f}:r=30:speed=0.02:c0=0x1a2a6c:c1=0xb21f1f:c2=0xfdbb2d:nb_colors=3",
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(part)])
+        part.replace(out)
+        return out
+    finally:
+        part.unlink(missing_ok=True)
+
+
 async def to_jpeg(src: Path, dst: Path, width: int = 1080) -> Path:
     """A picture as the JPEG Instagram requires (it takes no other format), no wider than `width`."""
     dst = Path(dst)

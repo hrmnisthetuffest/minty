@@ -28,6 +28,36 @@ a clip from your library and a random stretch of it.
 other people's music get muted or taken down and put your account at risk. A link you give is accepted only with a licence you
 state (`owned`, `cc0`, `cc-by` with a credit, `permission`).
 
+## Background styles: a different look on different days
+The background of a video comes from a catalogue of footage, each clip filed under a style: `parkour` and `gameplay` (your own
+recordings, never fetched), and `nature`, `city`, `satisfying`, `abstract` and `space` (fetched from providers whose terms allow it).
+`studio_make action video` with `background: auto` picks the style of the day, then a clip in it:
+
+- A day keeps one style; the next day is a different one (never the same two days running while there is a choice) and every style comes
+  round before one repeats. The order starts from a private starting point, so it is not the same as anyone else's. It is plain
+  arithmetic on what was shown before, kept in the library's database, so a restart changes nothing. No language model is involved.
+- Within a style a clip that was not just shown is picked (the last few are skipped while others are left), favourites more often.
+- A style with fewer clips than `studio.min_clips_per_style` (3) is skipped for one with enough; if every style is thin they take turns anyway.
+- `prefer` turns a style off, on, more or less (`category` and `choice`), favours or skips one clip (`asset` and `choice`), or sets the mode
+  (`daily`, the default, or `each_video`). `shuffle` changes the style now. `catalog` shows what there is.
+- Nothing in the catalogue: a plain animated colour background is made (once) and the result says so and how to get real footage.
+
+Where footage comes from (`studio_make action discover`, asked first):
+
+| Provider | Key | Terms (read 2026-10-28) | Credit |
+|---|---|---|---|
+| NASA Image and Video Library | none | generally not copyrighted in the US; items with third-party rights are marked, and any hit that looks like someone else's work is skipped; never imply NASA endorses anything | "Video: NASA" |
+| Pexels | yours, free (`plugin.studio.pexels_key`) | free to use, commercial too; no redistribution of unaltered copies; its API asks for a prominent link to Pexels where content is shown | "Video by NAME on Pexels" |
+| Pixabay | yours, free (`plugin.studio.pixabay_key`) | Pixabay Content Licence: free, no credit needed; no standalone redistribution; the API asks that results are cached 24 hours and forbids systematic mass downloads | none |
+| Mixkit, game videos from video sites | | no API; its licence page could not be read; creators' gameplay is theirs | not used |
+
+Each provider is asked at most once a day for each style (a failure waits six hours), at most `limit` clips are kept per run and a run
+stops at 200 MB. Every answer is untrusted: an address must be on the provider's own hosts and goes through the same guarded fetcher as
+everything else (public addresses only, redirects checked, size capped), the bytes must be real media, and the clip is cut to at most a
+minute, made portrait and stripped of sound (a 55 MB NASA download is kept as about 4.5 MB). Fetched clips beyond
+`studio.library_max_mb` (1500) are deleted, least recently shown first; your own are never deleted, and a deleted clip's licence record stays.
+Set `studio.auto_discover` to let this happen by itself once a day in the quiet window (off by default: it downloads).
+
 ## Motion graphics with Claude Code
 
 `studio_make project` sets up a folder (default `~/Documents/project/minty-studio`) with a brief for Claude Code, the rules

@@ -53,3 +53,15 @@ label = "Send each draft video to your paired Telegram chat so you can see what 
 [settings.ig_api_version]
 type = "string"
 label = "Instagram API version (default v26.0, the one Meta's examples use; older ones are retired after about two years)"
+
+[settings.auto_discover]
+type = "boolean"
+label = "Look for new background footage by itself once a day in the quiet window (default off): NASA needs no key, Pexels and Pixabay use your own keys; a few clips a day, never more than the library limit"
+
+[settings.library_max_mb]
+type = "number"
+label = "Most megabytes of fetched background footage to keep (default 1500); the least recently shown go first, never your own"
+
+[settings.min_clips_per_style]
+type = "number"
+label = "A style with fewer clips than this is skipped for one with more (default 3)"

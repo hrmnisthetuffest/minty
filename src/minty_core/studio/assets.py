@@ -25,6 +25,7 @@ LICENSES = {  # name -> (what it means, needs a credit)
     "cc0": ("public domain (Creative Commons Zero)", False),
     "pexels": ("the Pexels licence: free to use, a credit to the creator and Pexels is asked for", True),
     "pixabay": ("the Pixabay content licence: free to use", False),
+    "nasa": ("NASA media: generally not copyrighted in the US; credit NASA and never imply it endorses anything", True),
     "cc-by": ("Creative Commons Attribution: free to use with the credit the creator asks for", True),
     "permission": ("the owner gave you permission (say who and when in the source)", False),
 }
@@ -71,6 +72,10 @@ class AssetLibrary:
             " license TEXT NOT NULL, source TEXT NOT NULL, attribution TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '',"
             " sha TEXT NOT NULL UNIQUE, added REAL NOT NULL, parents TEXT NOT NULL DEFAULT '[]')")
         self._db.commit()
+
+    def shared(self):
+        """The database connection and its lock, for the catalogue that keeps its tables beside the assets."""
+        return self._db, self._lock
 
     @staticmethod
     def _asset(r) -> Asset:

@@ -21,109 +21,108 @@ CORE_TOOLS = (
 # toolkit -> (plugins, what it is for, keywords). A plugin not listed here becomes its own toolkit.
 KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "browser": (("browser",), "web pages, forms, shopping sites",
-                "browse website web page open chrome click type form fill login sign scroll tab url link site "
-                "google amazon youtube flipkart shop buy cart checkout order search video watch"),
-    "music": (("spotify", "music_id"), "play music, what song is this",
-              "play song songs music spotify playlist album artist track volume pause resume skip next previous "
-              "shuffle shazam louder quieter listen"),
+               "browse website web page open chrome click type form fill login sign scroll tab url link site google "
+               "amazon youtube flipkart shop buy cart checkout order search video watch"),
+    "music": (("spotify", "music_id"), "play music, identify a song",
+             "play song songs music spotify playlist album artist track volume pause resume skip next previous "
+             "shuffle shazam louder quieter listen"),
     "home": (("smart_home",), "lights, locks, devices",
-             "light lights lamp fan switch brightness dim scene lock unlock door garage blinds cover home "
-             "device devices sensor thermostat temperature bedroom kitchen"),
-    "missions": (("missions",), "hand over a whole goal, then check on it, answer it or resume it",
-                 "mission missions goal objective delegate handle ownership autonomously unattended overnight resume "
-                 "blocked proof report accomplished"),
-    "attention": (("attention",), "what needs the user: blocked missions, overdue items, follow-ups, dismiss or snooze them",
-                  "attention pending waiting overdue outstanding unfinished loose open items needs dismiss snooze nag "
-                  "forgetting whats"),
-    "recipes": (("recipes",), "automations that run by themselves on a schedule: set one up, list, run, pause, resume, delete",
-                "automation automations automate recipe recipes schedule scheduled every daily weekly weekdays nightly morning "
-                "evening routine routines recurring regularly automatically post posting upload"),
-    "studio": (("studio",), "make short videos (voiceover, music, captions, stock or gameplay clips) and queue or post them to Instagram",
-               "video videos reel reels clip clips voiceover voice music captions caption instagram insta post posting upload "
-               "carousel slides minecraft parkour gameplay stock footage edit render short shorts tiktok motion graphics"),
-    "terminal": (("shell",), "run a command in the terminal (always asked first, except a few read-only ones)",
-                 "terminal shell command commands run execute bash cli console script ls pwd git status log diff "
-                 "directory uptime disk whoami hostname uname"),
+            "light lights lamp fan switch brightness dim scene lock unlock door garage blinds cover home device "
+            "devices sensor thermostat temperature bedroom kitchen"),
+    "missions": (("missions",), "hand over a whole goal and follow it",
+                "mission missions goal objective delegate handle ownership autonomously unattended overnight resume "
+                "blocked proof report accomplished"),
+    "attention": (("attention",), "what needs the user: blocked missions, overdue items",
+                 "attention pending waiting overdue outstanding unfinished loose open items needs dismiss snooze nag "
+                 "forgetting whats"),
+    "recipes": (("recipes",), "automations on a schedule: set up, list, run, pause",
+               "automation automations automate recipe recipes schedule scheduled every daily weekly weekdays "
+               "nightly morning evening routine routines recurring regularly automatically post posting upload"),
+    "studio": (("studio",), "short videos (voice, music, captions); post to Instagram",
+              "video videos reel reels clip clips voiceover voice music captions caption instagram insta post "
+              "posting upload carousel slides minecraft parkour gameplay stock footage edit render short shorts "
+              "tiktok motion graphics backgrounds nasa"),
+    "terminal": (("shell",), "run a command (asked first, except read-only ones)",
+                "terminal shell command commands run execute bash cli console script ls pwd git status log diff "
+                "directory uptime disk whoami hostname uname"),
     "files": (("files",), "files in the workspace folder",
-              "file files folder directory download upload save write read delete remove move rename document "
-              "workspace pdf text notes.txt"),
+             "file files folder directory download upload save write read delete remove move rename document "
+             "workspace pdf text notes.txt"),
     "code": (("agents", "subagents"), "coding agents and helpers",
-             "code coding program project app build develop repo repository agent claude hermes openclaw "
-             "subagent helper implement script"),
-    "system": (("installer", "n8n", "apis", "prompts"), "installs, n8n, web APIs, your standing rules",
-               "install uninstall package pip npm pipx workflow workflows n8n automation api apis register "
-               "webhook instruction instructions command commands rule rules forget learn teach always never"),
+            "code coding program project app build develop repo repository agent claude hermes openclaw subagent "
+            "helper implement script"),
+    "system": (("installer", "n8n", "apis", "prompts"), "installs, n8n, web APIs, standing rules",
+              "install uninstall package pip npm pipx workflow workflows n8n automation api apis register webhook "
+              "instruction instructions command commands rule rules forget learn teach always never"),
     "notes": (("journal", "history"), "journal and past conversations",
-              "journal diary entry entries note yesterday earlier last week history recall conversation "
-              "talked said discussed remember when"),
-    "school": (("school",), "homework, school notices, the school portal",
-               "homework school notice notices circular circulars portal schoolpad assignment assignments "
-               "teacher class due exam timetable"),
-    "mail": (("mail", "outbox"), "your e-mail: read it, and write or send replies under your rules (the outbox)",
-             "mail email emails inbox unread message messages sender gmail letter received reply replies respond answer "
-             "write draft send sent outbox compose follow"),
+             "journal diary entry entries note yesterday earlier last week history recall conversation talked said "
+             "discussed remember when"),
+    "school": (("school",), "homework, notices, the school portal",
+              "homework school notice notices circular circulars portal schoolpad assignment assignments teacher "
+              "class due exam timetable"),
+    "mail": (("mail", "outbox"), "read e-mail; write or send replies under your rules",
+            "mail email emails inbox unread message messages sender gmail letter received reply replies respond "
+            "answer write draft send sent outbox compose follow"),
     "research": (("research",), "research notes and the library",
-                 "research investigate sources notes library study literature deep dive findings cited"),
-    "learn": (("learn",), "routines Minty can remember how to do",
-              "routine routines remember approve approved learned forget quarantine macro saved replay"),
+                "research investigate sources notes library study literature deep dive findings cited"),
+    "learn": (("learn",), "routines Minty can remember",
+             "routine routines remember approve approved learned forget quarantine macro saved replay"),
     "briefing": (("briefing",), "a short brief of the day",
-                 "briefing brief summary overview agenda morning today schedule whats"),
-    "health": (("health",), "your own workouts, sleep, food and body data",
-               "health workout workouts gym lifting training sleep slept weight weigh food calories protein "
-               "nutrition steps hevy cronometer strava body fitness exercise sets reps"),
-    "coach": (("coach",), "explains your training numbers: progress, plateaus, next session, protein, sleep",
-              "coach coaching progress progressing plateau stuck deload warm warmup next session routine "
-              "personal record pr max estimated protein maintenance readiness recover recovery sets reps volume"),
-    "finance": (("finance",), "your own money: spending, budgets, savings goals, subscriptions, bills",
-                "money spend spent spending budget budgets savings saving goal bill bills subscription subscriptions "
-                "expense expenses income salary pocket rupees rs afford cost paid statement"),
-    "study": (("study",), "homework plan, exams, flashcards, checked maths, summaries, practice papers, mistakes",
-              "study homework plan planner exam exams revision revise flashcard flashcards quiz card cards tutor "
-              "check solve equation summarise summary chapter rehearse practice paper past mistake mistakes drill "
-              "timetable class bag notices"),
-    "productivity": (("productivity",), "habits, people and birthdays, trips and packing, meals and shopping, alarms, "
-                     "the day's plan, recording a lesson",
-                     "habit habits streak birthday birthdays occasion person people trip packing pack meal meals "
-                     "shopping groceries alarm wake snooze plan day wind summary record recording lecture meeting "
-                     "mark moment"),
-    "web": (("web",), "watch a price or page, read a link safely, read-later, downloads in quarantine, captions, tabs",
-            "watch watcher price prices drop stock wishlist changes changed link links safe safely suspicious phishing "
-            "later queue quarantine download downloads release captions transcript youtube session tabs restore "
-            "clickable handover login dry"),
-    "selfcheck": (("selfcheck",), "what happened lately, the weekly self-report, failure proposals, the daily tip and card",
-                  "timeline happened report weekly week self failures failure proposals proposal approve tip card summary today "
-                  "problems errors what went wrong"),
-    "world": (("integrations", "mcp"), "your calendar, Home Assistant scenes and energy, sleep timer, weather alerts, devices on the "
-              "network, n8n templates, MCP servers",
-              "calendar agenda schedule event events meeting free busy scene scenes movie night energy electricity kwh sleep timer "
-              "fade weather alert storm heat lan network devices router wifi n8n workflow template mcp server tool"),
-    "creator": (("create",), "news brief, new arXiv papers, idea inbox, mind maps and slides, pictures, translation glossary, "
-                "claim evidence, audio and video clips, lecture notes",
-                "news headlines brief feed rss arxiv paper papers research idea ideas inbox mind map mindmap slides slide "
-                "deck powerpoint presentation outline image picture draw generate translate translation glossary hindi "
-                "punjabi claim fact evidence source sources clip trim merge podcast lecture notes transcript chapters"),
-    "developer": (("dev",), "your code projects: repo summary, git digest, tests, CI, vulnerable packages, review, shell command "
-                  "explainer, snippets, plugin kit, ideas",
-                  "repo repository project onboarding digest commits test tests pytest failing ci workflow vulnerable "
-                  "vulnerability cve dependencies dependency review branch explain command shell snippet snippets idea "
-                  "issue plugin scaffold trends traces"),
-    "linux": (("system",), "this Linux computer: updates, crashes, services, volume and outputs, brightness, USB, notifications",
-               "linux system computer pc laptop update updates upgrade pacman apt crash crashed service services "
-               "systemctl volume mute louder quieter speaker headphones output brightness dim night light lock sleep "
-               "suspend usb drive eject mount notification notifications process processes cpu memory ram battery "
-               "load slow script setup file delete safe"),
-    "memory": (("memory",), "what I remember about you: list it, correct it, forget it, what I learned this week",
-               "memory remember forget forgot correct audit wrong learned know facts erase delete about me contradiction"),
-    "vault": (("vault",), "your notes folder: capture, find, decisions, bookmarks, inbox filing",
-              "note notes vault brain bookmark bookmarks decision decisions decide glossary inbox wrote written "
-              "saw seen topic resume daily evergreen pros cons weigh"),
-    "butler": (("butler",), "chores, follow-ups, where you put things, documents and renewals",
-               "chore chores rota waiting follow followup put left keys passport document documents renewal renews "
-               "expires expiry leaving checklist list done tick"),
+                "briefing brief summary overview agenda morning today schedule whats"),
+    "health": (("health",), "workouts, sleep, food, body data",
+              "health workout workouts gym lifting training sleep slept weight weigh food calories protein "
+              "nutrition steps hevy cronometer strava body fitness exercise sets reps"),
+    "coach": (("coach",), "training progress, plateaus, next session",
+             "coach coaching progress progressing plateau stuck deload warm warmup next session routine personal "
+             "record pr max estimated protein maintenance readiness recover recovery sets reps volume"),
+    "finance": (("finance",), "spending, budgets, savings, bills",
+               "money spend spent spending budget budgets savings saving goal bill bills subscription subscriptions "
+               "expense expenses income salary pocket rupees rs afford cost paid statement"),
+    "study": (("study",), "homework plan, exams, flashcards, maths",
+             "study homework plan planner exam exams revision revise flashcard flashcards quiz card cards tutor "
+             "check solve equation summarise summary chapter rehearse practice paper past mistake mistakes drill "
+             "timetable class bag notices"),
+    "productivity": (("productivity",), "habits, birthdays, trips, meals, alarms, day plan",
+                    "habit habits streak birthday birthdays occasion person people trip packing pack meal meals shopping "
+                    "groceries alarm wake snooze plan day wind summary record recording lecture meeting mark moment"),
+    "web": (("web",), "watch a price or page, read a link safely, downloads",
+           "watch watcher price prices drop stock wishlist changes changed link links safe safely suspicious "
+           "phishing later queue quarantine download downloads release captions transcript youtube session tabs "
+           "restore clickable handover login dry"),
+    "selfcheck": (("selfcheck",), "what happened lately, weekly report, failures",
+                 "timeline happened report weekly week self failures failure proposals proposal approve tip card "
+                 "summary today problems errors what went wrong"),
+    "world": (("integrations", "mcp"), "calendar, Home Assistant, weather alerts, network, MCP",
+             "calendar agenda schedule event events meeting free busy scene scenes movie night energy electricity "
+             "kwh sleep timer fade weather alert storm heat lan network devices router wifi n8n workflow template "
+             "mcp server tool"),
+    "creator": (("create",), "news, arXiv, ideas, slides, pictures, translation, clips",
+               "news headlines brief feed rss arxiv paper papers research idea ideas inbox mind map mindmap slides "
+               "slide deck powerpoint presentation outline image picture draw generate translate translation "
+               "glossary hindi punjabi claim fact evidence source sources clip trim merge podcast lecture notes "
+               "transcript chapters"),
+    "developer": (("dev",), "code projects: repo, git, tests, CI, review",
+                 "repo repository project onboarding digest commits test tests pytest failing ci workflow vulnerable "
+                 "vulnerability cve dependencies dependency review branch explain command shell snippet snippets idea "
+                 "issue plugin scaffold trends traces"),
+    "linux": (("system",), "this computer: updates, services, volume, USB",
+             "linux system computer pc laptop update updates upgrade pacman apt crash crashed service services "
+             "systemctl volume mute louder quieter speaker headphones output brightness dim night light lock sleep "
+             "suspend usb drive eject mount notification notifications process processes cpu memory ram battery "
+             "load slow script setup file delete safe"),
+    "memory": (("memory",), "what I remember about you: list, correct, forget",
+              "memory remember forget forgot correct audit wrong learned know facts erase delete about me "
+              "contradiction"),
+    "vault": (("vault",), "notes folder: capture, find, decisions",
+             "note notes vault brain bookmark bookmarks decision decisions decide glossary inbox wrote written saw "
+             "seen topic resume daily evergreen pros cons weigh"),
+    "butler": (("butler",), "chores, follow-ups, documents and renewals",
+              "chore chores rota waiting follow followup put left keys passport document documents renewal renews "
+              "expires expiry leaving checklist list done tick"),
     "reminders": (("reminders",), "reminders for a time or date",
-                  "remind reminder reminders remember alarm later tonight tomorrow morning snooze schedule"),
+                 "remind reminder reminders remember alarm later tonight tomorrow morning snooze schedule"),
     "display": (("display",), "the Minty screen",
-                "screen display show clear panel table list open url"),
+               "screen display show clear panel table list open url"),
 }
 # what a follow-up on an open page needs; the rest of the browser toolkit comes back with need_toolkit
 BROWSER_ESSENTIALS = ("browser_open", "browser_look", "browser_read", "browser_click", "browser_type",
@@ -231,7 +230,7 @@ class ToolkitRouter:
 
     def spec(self) -> ToolSpec:
         kits = self.kits()
-        listing = "; ".join(f"{k} ({KITS[k][1] if k in KITS else 'more tools'})" for k in kits)
+        listing = "; ".join(f"{k} ({KITS[k][1]})" if k in KITS else k for k in kits)
         return ToolSpec(NEED_TOOLKIT, "Load more tools when you need one you were not given. Groups: " + listing + ".",
                         {"type": "object", "properties": {"name": {"type": "string", "enum": list(kits)}},
                          "required": ["name"]})

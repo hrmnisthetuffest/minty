@@ -602,11 +602,11 @@ Settings: `player`, `playlist`.
 Make short videos (voiceover, music, captions, a background clip) and queue them for Instagram. The tools are local; posting needs your own Instagram professional account and token, and by default asks before every post.
 
 On by default: yes.
-Settings: `ig_user_id`, `ig_host`, `ig_token_expires`, `post_mode`, `max_posts_per_day`, `min_gap_hours`, `blocked_words`, `voice`, `public_dir`, `public_base_url`, `project_dir`, `preview_to_phone`, `ig_api_version`.
+Settings: `ig_user_id`, `ig_host`, `ig_token_expires`, `post_mode`, `max_posts_per_day`, `min_gap_hours`, `blocked_words`, `voice`, `public_dir`, `public_base_url`, `project_dir`, `preview_to_phone`, `ig_api_version`, `auto_discover`, `library_max_mb`, `min_clips_per_style`.
 
 | Tool | What it does | Flags |
 |---|---|---|
-| `studio_make` | Make or collect video material. action: stock (Pexels clip, query), url/add (bring a file in, with its license), voice (text), music (mood), video (background, voiceover, music, script, name), check (path), library, project. | risk varies |
+| `studio_make` | Make or collect video material. action: stock (Pexels, query), url/add (a file and its license; add takes a category), voice (text), music (mood), video (background auto/style/id, voiceover, music, script, name), check, library, project, and for background styles: discover, catalog, prefer, shuffle, tag. | risk varies |
 | `studio_draft` | Queue a finished reel (one video) or carousel (2-20 pictures) for Instagram without posting it. The video is checked, licences are checked and credits added. It says whether your rules post it without asking. |  |
 | `studio_send` | Post a queued item to Instagram. Inside the user's posting rules it goes by itself; otherwise the user is asked with the post shown. | sensitive, risk varies |
 | `studio_posts` | What is queued or posted (list), how posted ones did (insights), or throw away an unposted one (discard, id). | risk varies |

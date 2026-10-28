@@ -631,3 +631,19 @@ when it is good enough.
   downloaded all 23 of them again. They now carry `no-cache` with their ETag (nothing personal is in them): measured in the browser,
   a reload went from 189 418 bytes to 6 600 (22 of 23 answered with a 304). API answers, login and every refusal stay `no-store`.
   Tests: `tests/test_panel_caching.py`.
+- Speed: the tool menu (`need_toolkit`) is sent with every request and listed each group with a long description (3 258 characters for
+  the tool). Each group is now a few words: 2 287 characters measured, a plain question's tools 8 227 -> 7 256. The router still picks
+  groups by the same keywords; only the text the model reads shrank. Test: `tests/test_toolkit_menu_size.py`.
+- Video: background styles. Footage in the studio library is filed under a style (parkour, gameplay, nature, city, satisfying, abstract,
+  space) and `studio_make video` with `background: auto` shows one style a day and a different one the next (never the same twice running
+  while there is a choice), a clip that was not just shown, your favourites more often, your exclusions obeyed, thin styles skipped, the
+  same after a restart (kept in the library database, no model involved). `studio_make` gains `discover`, `catalog`, `prefer`, `shuffle`
+  and `tag`; `add` takes a `category`. Parkour and other gameplay are only ever your own recordings. With nothing in the catalogue a plain
+  generated background is made (once) and the result says so.
+- Video: discovery. `studio_make discover` (asked first) fetches from NASA's library (no key), Pexels and Pixabay (your own free keys; new
+  setting-free secret `plugin.studio.pixabay_key`): once a day per provider and style, a few clips a run, 200 MB a run, answers only from
+  the provider's own hosts through the guarded fetcher, real media only, hits that look like someone else's work skipped, credit kept (new
+  licence `nasa`). A clip is cut to a minute, made portrait and stripped of sound: a real 55 MB NASA download is kept as 4.5 MB.
+  `studio.library_max_mb` (1500) removes the least recently shown fetched clips (never yours); `studio.auto_discover` (off) runs it daily in
+  the maintenance window (plugins can now register maintenance tasks). Tests: `tests/test_studio_catalog.py`, `test_studio_discover.py`,
+  `test_plugin_studio_catalog.py`, `test_maintenance_plugin_tasks.py`.

@@ -889,6 +889,25 @@ async def _power_loop(ctx) -> None:
             warned_low = False
 
 
+def plugin_maintenance(ctx):
+    """One maintenance task that runs whatever plugins registered in `ctx.services["maintenance_tasks"]`. Looked up each day, so a
+    plugin that was reloaded since start-up is the one that runs; one that fails is named and does not stop the others."""
+    async def run() -> str:
+        done = []
+        for name, task in list((ctx.services.get("maintenance_tasks") or {}).items()):
+            try:
+                out = task()
+                if asyncio.iscoroutine(out):
+                    out = await out
+                done.append(f"{name}: {out}")
+            except Exception as e:  # noqa: BLE001
+                log.warning("maintenance task of plugin %s failed", name, exc_info=True)
+                done.append(f"{name}: failed ({type(e).__name__})")
+        return "; ".join(done) or "nothing registered"
+
+    return run
+
+
 async def _maintenance_loop(ctx, directory: Path) -> None:
     """Once a day in a quiet window: trim the disk, compact the databases, anything else registered."""
     from minty_core.housekeeping import DiskGuard, MaintenanceWindow, maintain_databases
@@ -937,6 +956,7 @@ async def _maintenance_loop(ctx, directory: Path) -> None:
         return report.words()
 
     window.tasks["canary"] = canary_task
+    window.tasks["plugins"] = plugin_maintenance(ctx)
     ctx.services["canary_now"] = canary_task
     ctx.services["maintenance"] = window
     while True:

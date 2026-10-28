@@ -9,12 +9,16 @@ metadata:
 
 1. **Pick the idea and write the script.** Short, spoken, about 60 to 120 words for 30 to 45 seconds. Write it yourself; do not copy
    other people's posts or videos. Open with the hook in the first line.
-2. **Get a background.** For Minecraft parkour or any gameplay look: the user's own footage (their recordings in the library
-   `studio_make action library`, kind gameplay). If there are none, say so and ask them to record or add some with
-   `studio_make action add` (license owned). Otherwise stock footage: `studio_make action stock` (free Pexels clips, with the
-   credit added for you). Do not rip clips or songs from video sites: they get posts muted or removed and put the account at risk.
+2. **Get a background.** Use `background: auto`: a style is chosen for the day from the catalogue (the user's own Minecraft parkour and
+   other gameplay, plus nature, city, satisfying, abstract and NASA space footage), a different style on different days and a clip that
+   was not just shown. `studio_make action catalog` shows what there is; `shuffle` changes it now; `prefer` turns a style off or on,
+   favours a clip or sets the mode. Ask for one style with `background: nature` (or space, city, satisfying, abstract, parkour).
+   Parkour and other gameplay are only ever the user's own footage (the licence is `owned`): add it with `studio_make action add`
+   (category parkour). To get more of the rest: `studio_make action discover` (NASA needs no key; Pexels and Pixabay use the user's free keys),
+   and the credit is added for you. If the catalogue is empty a plain generated background is used and you say so. Do not rip clips or
+   songs from video sites: they get posts muted or removed and put the account at risk.
 3. **Voice and music.** `studio_make action voice` with the script, then `studio_make action video` with that voiceover, the
-   background (`gameplay` or an id), `music` as a mood (calm, upbeat, tense) and the script so the captions are burned in. The
+   background (`auto`, a style or an id), `music` as a mood (calm, upbeat, tense) and the script so the captions are burned in. The
    music is a plain generated bed. For a real song, the user adds a track they have the right to use, with its licence.
 4. **Motion graphics.** For animated text, charts or title cards, do it with Claude Code: `studio_make action project` once to set up
    the folder, then `agents_start_task` there with the brief (the look, the length, the words). Its job is checked with the

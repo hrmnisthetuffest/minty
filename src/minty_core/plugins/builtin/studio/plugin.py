@@ -4,6 +4,7 @@ import logging
 import math
 import re
 import time
+import random
 from datetime import date, datetime
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from minty_core.attention import Loop
 from minty_core.plugins.host import Tool
 from minty_core.safefetch import FetchFailed
 from minty_core.studio import assets as assets_mod
-from minty_core.studio import fetch, media, posts as posts_mod, voice as voice_mod
+from minty_core.studio import catalog as catalog_mod, discover as discover_mod, fetch, media, posts as posts_mod, voice as voice_mod
 from minty_core.studio.assets import AssetError, AssetLibrary
 from minty_core.studio.captions import chunk_text
 from minty_core.studio.instagram import DEFAULT_VERSION, Instagram, InstagramError
@@ -23,7 +24,8 @@ log = logging.getLogger(__name__)
 EARNED_AFTER = 5
 PERFORMANCE_MIN = 3  # posts on each side before a difference in reach is called a finding
 DAY_S = 86400
-ACTIONS = ("stock", "url", "add", "voice", "music", "video", "check", "library", "project", "refresh_token")
+ACTIONS = ("stock", "url", "add", "voice", "music", "video", "check", "library", "project", "refresh_token", "discover", "catalog", "prefer",
+           "shuffle", "tag")
 NAME = re.compile(r"[^a-z0-9-]+")
 SCRIPT = Path(__file__).resolve().parents[3] / "studio" / "check_video_script.py"
 BRIEF = """# Minty studio
@@ -82,6 +84,11 @@ def register(ctx):
     store = ctx.state.get("posts")
     if store is None:
         store = ctx.state["posts"] = PostStore(root / "posts.sqlite")
+    catalog = ctx.state.get("catalog")
+    if catalog is None:
+        catalog = ctx.state["catalog"] = catalog_mod.Catalog(lib)
+    catalog.min_clips = _num(settings.get("min_clips_per_style"), 3, int, 1)
+    library_max = _num(settings.get("library_max_mb"), 1500.0, float, 0.0) * 1_000_000
     user_id = str(settings.get("ig_user_id") or "").strip()
     host = str(settings.get("ig_host") or "graph.instagram.com").strip()
     api_version = str(settings.get("ig_api_version") or "").strip() or DEFAULT_VERSION
@@ -186,8 +193,30 @@ def register(ctx):
                 src = Path(str(args.get("path") or "")).expanduser()
                 if (why := outside_ok(src)) and not inside(src):
                     return f"Error: {why}."
-                return kept(lib.add(src, str(args.get("kind") or ""), args.get("license"), source=str(args.get("source") or ""),
-                                    attribution=str(args.get("credit") or ""), note=str(args.get("note") or "")))
+                kind = str(args.get("kind") or "")
+                category = str(args.get("category") or "").strip().lower() or ("gameplay" if kind == "gameplay" else "")
+                if category and category not in catalog_mod.CATEGORIES:
+                    return f"Error: unknown category {category!r}; the categories are: {', '.join(catalog_mod.CATEGORIES)}."
+                asset = lib.add(src, kind, args.get("license"), source=str(args.get("source") or ""),
+                                attribution=str(args.get("credit") or ""), note=str(args.get("note") or ""))
+                if category and asset.kind in ("video", "gameplay"):
+                    catalog.tag(asset, category, provider="own")
+                return kept(asset) + (f" Filed under {category}." if category and asset.kind in ("video", "gameplay") else "")
+            if action == "discover":
+                return await discover_action(args)
+            if action == "catalog":
+                return catalog.summary()
+            if action == "prefer":
+                return prefer(args)
+            if action == "shuffle":
+                choice = catalog.shuffle(now=now())
+                return f"Error: {empty_note()}" if choice is None else f"Switched to {describe_choice(choice)}"
+            if action == "tag":
+                a = lib.get(int(str(args.get("asset") or "0").strip() or 0)) if str(args.get("asset") or "").strip().isdigit() else None
+                if a is None or a.kind not in ("video", "gameplay"):
+                    return "Error: give the number of a video or gameplay clip in the library (asset)."
+                catalog.tag(a, str(args.get("category") or "").strip().lower())
+                return f"Filed clip {a.id} under {str(args.get('category')).strip().lower()}."
             if action == "voice":
                 name = NAME.sub("-", str(args.get("name") or f"voice-{int(time.time())}").lower()).strip("-") or "voice"
                 seconds = await voice_mod.voiceover(str(args.get("text") or ""), work / f"{name}.wav", voice=str(args.get("voice") or voice_name),
@@ -218,10 +247,93 @@ def register(ctx):
             return f"Error: {e}"
         return f"Error: action must be one of: {', '.join(ACTIONS)}."
 
+    def now() -> datetime:
+        return ctx.services.get("studio_now", datetime.now)()
+
+    def provider_keys() -> dict:
+        return {"pexels": ctx.secret("pexels_key") or "", "pixabay": ctx.secret("pixabay_key") or ""}
+
+    def credit_of(a) -> str:
+        return f", {a.attribution}" if a.attribution else ""
+
+    def describe_choice(choice) -> str:
+        return f"{choice.category} (clip {choice.asset.id}{credit_of(choice.asset)})."
+
+    def empty_note() -> str:
+        return "there are no clips in the catalogue yet: run studio_make discover, or add your own footage with studio_make add (and a category)."
+
+    async def discover_action(args) -> str:
+        only = str(args.get("category") or "").strip().lower() or None
+        if only and only not in catalog_mod.CATEGORIES:
+            return f"Error: unknown category {only!r}; the categories are: {', '.join(catalog_mod.CATEGORIES)}."
+        if only and not catalog_mod.CATEGORIES[only].queries:
+            return f"Error: {only} is only footage you record yourself; add it with studio_make add (category {only})."
+        reports = await discover_mod.run_all(lib, catalog, keys=provider_keys(), now=now(), blocked=policy.blocked_words,
+                                             categories=(only,) if only else None)
+        lines = [f"{r.category} ({r.provider}): {r.kept} new of {r.found} found" + (f"; {len(r.skipped)} skipped" if r.skipped else "")
+                 + (f"; {r.error}" if r.error else "") for r in reports]
+        gone = catalog.prune(int(library_max)) if reports else []
+        if gone:
+            lines.append(f"removed {len(gone)} old clip(s) to stay under {library_max / 1e6:.0f} MB")
+        if not reports:
+            return ("Nothing to do: every provider was already searched for every style today (or has no key: Pexels and Pixabay need your "
+                    "free keys, `minty set-key plugin.studio.pexels_key` and `plugin.studio.pixabay_key`; NASA needs none).")
+        return "\n".join(lines)
+
+    def prefer(args) -> str:
+        choice = str(args.get("choice") or "").strip().lower()
+        category, asset = str(args.get("category") or "").strip().lower(), str(args.get("asset") or "").strip()
+        prefs = catalog.prefs()
+        try:
+            if category:
+                if category not in catalog_mod.CATEGORIES:
+                    return f"Error: unknown category {category!r}; the categories are: {', '.join(catalog_mod.CATEGORIES)}."
+                if choice not in ("off", "on", "more", "less", "normal"):
+                    return "Error: for a category choose off, on, more, less or normal."
+                excluded = [c for c in prefs["exclude_categories"] if c != category] + (["off"] and [category] if choice == "off" else [])
+                weights = {c: w for c, w in prefs["weights"].items() if c != category}
+                if choice in ("more", "less"):
+                    weights[category] = 2.0 if choice == "more" else 0.5
+                catalog.set_pref("exclude_categories", excluded)
+                catalog.set_pref("weights", weights)
+                return f"{category} is now {choice}."
+            if asset:
+                if not asset.isdigit() or lib.get(int(asset)) is None:
+                    return "Error: asset is the number of a clip in the library."
+                n = int(asset)
+                if choice not in ("favourite", "unfavourite", "skip", "unskip"):
+                    return "Error: for a clip choose favourite, unfavourite, skip or unskip."
+                key = "favourites" if "favourite" in choice else "exclude_assets"
+                ids = [i for i in prefs[key] if i != n] + ([n] if choice in ("favourite", "skip") else [])
+                catalog.set_pref(key, ids)
+                return f"clip {n} is now {'a favourite' if choice == 'favourite' else 'skipped' if choice == 'skip' else 'normal'}."
+            if choice in ("daily", "each_video"):
+                catalog.set_pref("mode", choice)
+                return f"Mode is now {choice}."
+        except catalog_mod.CatalogError as e:
+            return f"Error: {e}"
+        return "Error: say what to change: a category with off/on/more/less/normal, an asset with favourite/unfavourite/skip/unskip, or choice daily/each_video."
+
     async def video(args) -> str:
-        backgrounds = [ref(b) for b in str(args.get("background") or "").split(",") if b.strip()]
+        backgrounds, notes = [], []
+        for token in [b.strip() for b in str(args.get("background") or "").split(",") if b.strip()]:
+            if token == "auto" or (token in catalog_mod.CATEGORIES and token not in assets_mod.KINDS):
+                only = None if token == "auto" else token
+                choice = catalog.choose(now=now(), only=only)
+                if choice is None and only:
+                    return f"Error: there are no {only} clips yet: add yours with studio_make add (category {only}), or run studio_make discover."
+                if choice is None:  # nothing in the catalogue yet: a plain generated background, and the way to get real ones
+                    plain = await catalog.fallback(work)
+                    backgrounds.append(Path(plain.path))
+                    notes.append("Background: a plain generated background (nothing in the catalogue yet: run studio_make discover, or add your own "
+                                 "footage with studio_make add).")
+                    continue
+                backgrounds.append(Path(choice.asset.path))
+                notes.append(f"Background: {choice.category} (clip {choice.asset.id}{credit_of(choice.asset)}).")
+            else:
+                backgrounds.append(ref(token))
         if not backgrounds or any(b is None for b in backgrounds):
-            return "Error: give a background clip: an asset id, or gameplay/video to pick one from the library."
+            return "Error: give a background clip: auto, a style (nature, city, space ...), an asset id, or gameplay/video to pick from the library."
         vo = ref(str(args.get("voiceover") or "")) if args.get("voiceover") else None
         if args.get("voiceover") and vo is None:
             return "Error: I could not find that voiceover; make one first with action voice."
@@ -244,7 +356,7 @@ def register(ctx):
         lib.register_render(out, parents)
         report = await media.check_video(out)
         extra = f" Captions burned in: {len(caps)} chunks." if caps else " No captions."
-        return f"Made {out}.{extra} {report.summary()}"
+        return f"Made {out}.{extra} {' '.join(notes) + ' ' if notes else ''}{report.summary()}"
 
     # ---- drafting ---------------------------------------------------------------------------------
     def sha_of(files: list[Path]) -> str:
@@ -510,18 +622,25 @@ def register(ctx):
                        "yourself. Until you do, every post is still asked.", "confirmed", r["approved_posts"])]
 
     ctx.services["studio_attention"], ctx.services["studio_lessons"] = attention, lessons
+    tasks = ctx.services.setdefault("maintenance_tasks", {})
+    if settings.get("auto_discover") is True:  # off unless the user switches it on: it downloads (a few clips a day, bounded)
+        tasks["studio"] = lambda: discover_action({})
+    else:
+        tasks.pop("studio", None)
 
     def make_risk(args) -> int:
-        return {"stock": 1, "url": 2, "add": 2, "project": 1, "refresh_token": 2}.get(str(args.get("action")), 0)
+        return {"stock": 1, "url": 2, "add": 2, "project": 1, "refresh_token": 2, "discover": 1}.get(str(args.get("action")), 0)
 
     s, i = {"type": "string"}, {"type": "integer"}
     return [
-        Tool("make", "Make or collect video material. action: stock (Pexels clip, query), url/add (bring a file in, with its license), "
-                     "voice (text), music (mood), video (background, voiceover, music, script, name), check (path), library, project.",
+        Tool("make", "Make or collect video material. action: stock (Pexels, query), url/add (a file and its license; add takes a category), "
+                     "voice (text), music (mood), video (background auto|style|id, voiceover, music, script, name), check, library, project, "
+                     "and for background styles: discover, catalog, prefer, shuffle, tag.",
              {"type": "object", "properties": {"action": {"type": "string", "enum": list(ACTIONS)}, "query": s, "url": s, "path": s,
                                                "kind": s, "license": s, "source": s, "credit": s, "note": s, "text": s, "voice": s,
                                                "name": s, "mood": s, "seconds": {"type": "number"}, "background": s, "voiceover": s,
-                                               "music": s, "script": s}, "required": ["action"]}, make, risk=make_risk),
+                                               "music": s, "script": s, "category": s, "asset": s, "choice": s},
+              "required": ["action"]}, make, risk=make_risk),
         Tool("draft", "Queue a finished reel (one video) or carousel (2-20 pictures) for Instagram without posting it. The video is "
                       "checked, licences are checked and credits added. It says whether your rules post it without asking.",
              {"type": "object", "properties": {"kind": s, "files": {"type": "array", "items": s}, "caption": s, "tags": s,
