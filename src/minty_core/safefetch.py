@@ -33,10 +33,11 @@ def _origin(url: str) -> tuple:
 
 class Fetched:
     def __init__(self, status: int, content_type: str, data: bytes, charset: str, truncated: bool = False,
-                 url: str = ""):
+                 url: str = "", headers: dict | None = None):
         self.status, self.content_type, self.data, self.charset = status, content_type, data, charset
         self.truncated = truncated
         self.url = url  # the address that finally answered, after redirects
+        self.headers = headers or {}  # the answer's headers, names in lower case
 
 
 async def safe_fetch(*args, deadline: float | None = None, **kwargs) -> Fetched:
@@ -103,7 +104,8 @@ async def _fetch(method: str, url: str, *, params=None, json_body=None, content=
                                 break
                         data = b"".join(chunks)[:max_bytes]
                         return Fetched(resp.status_code, resp.headers.get("content-type", ""), data,
-                                       resp.charset_encoding or "utf-8", truncated=size >= max_bytes, url=url)
+                                       resp.charset_encoding or "utf-8", truncated=size >= max_bytes, url=url,
+                                       headers={k.lower(): v for k, v in resp.headers.items()})
                 break
             except (httpx.ConnectError, httpx.ConnectTimeout):
                 if attempt + 1 >= min(len(addresses), MAX_ADDRESSES):

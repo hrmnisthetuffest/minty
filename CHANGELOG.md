@@ -700,3 +700,12 @@ when it is good enough.
 - Fix: when Minty died while the full-screen display was open, the terminal was left reporting mouse movements as text
   (`0;45;8M0;1;1m...` all over the shell) and in single-key mode. Putting it back is now also an exit handler, safe to run twice. Tests:
   `tests/test_tui_terminal_restore.py`.
+- MCP over https, and Composio. `minty mcp add-remote NAME https://... --header NAME=SECRET` adds a server at a web address (streamable HTTP:
+  JSON or event-stream answers, the session id kept and ended politely, a server's own requests declined); `minty mcp composio NAME --user-id ID`
+  adds [Composio](https://composio.dev), which makes a fresh session with your own API key each time Minty connects and is followed only to
+  an address on `composio.dev`. Remote servers go through the same guarded fetcher as everything else (https only, public addresses only,
+  DNS pinned, cross-host redirects refused, answer size and time capped; `Fetched` now carries the answer's headers); keys live in the keystore,
+  never in `mcp.json` or a log. Tools are approved and pinned exactly like a local server's. Composio's acting tools (execute, bash,
+  workbench, manage connections) are class 3 (always asked) with the actual arguments shown, and a call names its destination host; every
+  approval question now shows the real arguments (up to 600 characters). Tests: `tests/test_mcp_remote.py` (48). Checked against Composio's
+  real endpoint with an invalid key (401, reported plainly); **not run with a real Composio account**.

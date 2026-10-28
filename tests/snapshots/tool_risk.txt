@@ -132,7 +132,7 @@ mail_read                          0 read     sensitive
 mail_search                        0 read     sensitive
 mail_triage                        0 read     sensitive
 mail_unread                        0 read     sensitive
-mcp_call                           2 visible  +args sensitive
+mcp_call                           2 visible  +args egress sensitive
 mcp_directory                      0 read
 mcp_servers                        0 read     sensitive
 memory_audit                       0 read     sensitive

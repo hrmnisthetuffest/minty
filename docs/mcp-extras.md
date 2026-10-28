@@ -5,8 +5,46 @@ allowing each tool is done at the terminal only (`minty mcp ...`); a tool you ha
 first, and a tool whose description changes later is switched off until you look at it again. Turn MCP on with `mcp.enabled`
 in the settings.
 
-Minty's MCP client talks to a server **as a local command** (standard input and output). Servers that live at a web address and
-want a key in a header are not supported yet.
+Minty's MCP client talks to a server in one of three ways: **as a local command** (standard input and output), **over https** (a server
+at a web address that wants a key in a header; MCP's "streamable HTTP"), or as **Composio** (below). A remote server is reached only over
+https and only at public addresses, through the same guarded fetcher as every other outside request (the name is resolved once and that
+address is the one connected to, redirects to another host are refused, the answer's size and the time are capped). Its key lives in
+the keystore, never in `mcp.json` or a log line, and is sent only to that address.
+
+```bash
+minty mcp add-remote NAME https://host/path --header x-api-key=NAME_API_KEY   # then: minty set-key plugin.mcp.NAME.NAME_API_KEY
+minty mcp tools NAME          # look at what it offers (nothing is allowed yet)
+minty mcp allow NAME TOOL     # allow one tool, after reading its description
+```
+
+## Composio
+
+[Composio](https://composio.dev) gives one MCP connection to many apps (Gmail, Calendar, Slack, GitHub ...) that **you** connect in your own
+Composio account. You need that account and its API key; Minty does not create either.
+
+```bash
+minty mcp composio composio --user-id YOUR_ID       # YOUR_ID names you in your Composio project
+minty set-key plugin.mcp.composio.COMPOSIO_API_KEY  # the key from your Composio dashboard
+minty mcp tools composio                            # makes a session with your key and lists what it offers
+minty mcp allow composio COMPOSIO_SEARCH_TOOLS --readonly
+```
+
+Composio's current API makes a "session" per user (`POST https://backend.composio.dev/api/v3.1/tool_router/session`, key in the
+`x-api-key` header) that answers with an MCP address; Minty makes one each time it connects, and only follows an address that is on
+`composio.dev` over https. The tools it offers are meta tools (`COMPOSIO_SEARCH_TOOLS` finds an app's actions, `COMPOSIO_MULTI_EXECUTE_TOOL`
+runs them, `COMPOSIO_MANAGE_CONNECTIONS` links an account, `COMPOSIO_REMOTE_WORKBENCH` / `..._BASH_TOOL` run code in Composio's sandbox).
+When a tool needs an account you have not connected, Composio gives a link: you open it yourself.
+
+What that means for you:
+- Anything a tool is given goes to Composio's servers and on to the app you connected. Do not give it what you would not send there.
+- `COMPOSIO_MULTI_EXECUTE_TOOL` can act on **every** account you connected (send mail, post, delete). It, the workbench, the bash tool and
+  the connection tool are class 3: always asked, with the actual arguments shown (recipient, subject ...), however you set the asking mode.
+  Mail sent this way does not go through Minty's outbox rules, so allow it only if that is what you want.
+- Tools are pinned by a hash of their name, description and inputs. Composio is a service that changes: a changed description switches
+  the tool off until you look and allow it again.
+- What a tool answers is outside text, shown tagged as such, never followed as instructions.
+- Checked against Composio's real endpoint with an invalid key (it answers 401 and Minty reports "did not accept the key"). Everything past
+  that needs a real key: **it has not been run with a real Composio account.**
 
 > The notes below come from each project's own page on 2026-10-27. **None of them has been run with Minty.** Read the project's
 > own instructions and terms before you install anything.
@@ -35,6 +73,5 @@ minty mcp allow api-anything TOOL --readonly
 
 | Project | Status |
 |---|---|
-| **Composio** (`https://connect.composio.dev/mcp`) | A hosted server that needs your own Composio account and an API key sent as a header. Minty's client does not speak that transport yet, so it cannot be connected today. Supporting it means a new network transport that sends a key to a remote host; that is a separate piece of work to design and test with a real account. |
 | **Agent-Reach** | A Python command-line tool that reads sites such as Twitter, Reddit and YouTube, and copies login sessions from your browser for some of them. It is not an MCP server, so nothing in Minty calls it. Anything it reads would be untrusted text from strangers. |
 | **billion-context** | A local proxy that sits in front of every model call from a client such as Claude Code and rewrites the traffic. Minty does not send its model calls through Claude Code's API traffic, and its licence adds an attribution requirement for products that use it. Not a fit. |

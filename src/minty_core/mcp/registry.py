@@ -10,6 +10,7 @@ import re
 import time
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urlsplit
 
 from minty_core.fsutil import atomic_write_text
 from minty_core.provenance import looks_like_injection
@@ -17,6 +18,30 @@ from minty_core.provenance import looks_like_injection
 NAME = re.compile(r"[a-z][a-z0-9_]{1,23}")
 ENV_KEY = re.compile(r"[A-Z][A-Z0-9_]{1,40}")
 MAX_ARGS, MAX_ARG_LEN, MAX_ENV = 20, 300, 8
+HEADER_NAME = re.compile(r"[A-Za-z][A-Za-z0-9-]{0,39}")
+# headers Minty sets itself (or that would change what a request means): a registered header may not be one of these
+RESERVED_HEADERS = frozenset({"host", "content-length", "content-type", "accept", "accept-encoding", "connection", "transfer-encoding",
+                              "mcp-session-id", "mcp-protocol-version", "cookie", "user-agent", "upgrade", "te", "trailer"})
+MAX_HEADERS = 4
+USER_ID = re.compile(r"[A-Za-z0-9_.@-]{1,64}")
+LOCAL_SUFFIXES = (".local", ".internal", ".lan", ".home", ".localdomain")
+
+
+def check_remote_url(url: str) -> str:
+    """A remote server's address: plain https, a public-looking name (no password in it, no address literal, nothing local)."""
+    text = str(url or "").strip()
+    parts = urlsplit(text)
+    host = (parts.hostname or "").lower().rstrip(".")
+    try:
+        port = parts.port
+    except ValueError:
+        port = -1
+    if (parts.scheme != "https" or not host or parts.username or parts.password or port not in (None, 443) or len(text) > 300
+            or parts.fragment or any(c in text for c in " \t\r\n\0")):
+        raise ValueError("A remote server needs a plain https address (no password in it, no port other than 443).")
+    if "." not in host or host.replace(".", "").isdigit() or ":" in host or host == "localhost" or host.endswith(LOCAL_SUFFIXES):
+        raise ValueError("A remote server needs a public name (not an address number, localhost or a local name).")
+    return text
 
 
 def tool_hash(tool: dict) -> str:
@@ -77,6 +102,37 @@ class McpRegistry:
         if name in data["servers"]:
             raise ValueError(f"{name} is already added.")
         data["servers"][name] = {"command": list(command), "env_keys": list(env_keys), "added": self._clock(), "tools": {}}
+        self._save(data)
+
+    def add_remote(self, name: str, url: str, headers: dict | None = None) -> None:
+        """A server reached over https. `headers` maps a header name to the NAME of the secret that holds its value (set with
+        `minty set-key plugin.mcp.NAME.SECRET`): the value itself is never kept here."""
+        if not NAME.fullmatch(str(name)):
+            raise ValueError("A server name is lowercase letters, digits and underscores, 2 to 24 characters.")
+        url = check_remote_url(url)
+        headers = dict(headers or {})
+        if len(headers) > MAX_HEADERS or any(not HEADER_NAME.fullmatch(str(h)) or str(h).lower() in RESERVED_HEADERS for h in headers):
+            raise ValueError(f"Headers are plain names (at most {MAX_HEADERS}), and not ones Minty sets itself.")
+        if any(not isinstance(k, str) or not ENV_KEY.fullmatch(k) for k in headers.values()):
+            raise ValueError("Each header takes the name of a secret in UPPER_CASE_WORDS (its value is set with minty set-key).")
+        data = self._load()
+        if name in data["servers"]:
+            raise ValueError(f"{name} is already added.")
+        data["servers"][name] = {"kind": "http", "url": url, "headers": headers, "env_keys": sorted(set(headers.values())),
+                                 "added": self._clock(), "tools": {}}
+        self._save(data)
+
+    def add_composio(self, name: str, user_id: str) -> None:
+        """Composio: its tools for the accounts YOU connect there. A fresh session is made each time Minty connects, with your own
+        Composio key (`minty set-key plugin.mcp.NAME.COMPOSIO_API_KEY`)."""
+        if not NAME.fullmatch(str(name)):
+            raise ValueError("A server name is lowercase letters, digits and underscores, 2 to 24 characters.")
+        if not USER_ID.fullmatch(str(user_id or "")):
+            raise ValueError("The user id is up to 64 letters, digits and . _ @ - (it names you in your Composio project).")
+        data = self._load()
+        if name in data["servers"]:
+            raise ValueError(f"{name} is already added.")
+        data["servers"][name] = {"kind": "composio", "user_id": str(user_id), "env_keys": ["COMPOSIO_API_KEY"], "added": self._clock(), "tools": {}}
         self._save(data)
 
     def remove_server(self, name: str) -> bool:

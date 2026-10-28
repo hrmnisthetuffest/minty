@@ -352,7 +352,7 @@ Settings: `host`, `user`.
 
 ## mcp
 
-Call tools on MCP servers you added at the terminal; each tool is allowed by you and pinned against later changes.
+Call tools on MCP servers you added at the terminal (a program here, a server over https, or Composio); each tool is allowed by you and pinned against later changes.
 
 On by default: yes.
 
@@ -360,7 +360,7 @@ On by default: yes.
 |---|---|---|
 | `mcp_servers` | The MCP servers set up, with each tool's state (descriptions come from outside). | sensitive |
 | `mcp_directory` | A starting list of MCP servers. Adding one is a terminal command. |  |
-| `mcp_call` | Run a tool you allowed on an MCP server: server, tool, arguments (object). Asks first. | sensitive, risk varies |
+| `mcp_call` | Run a tool you allowed on an MCP server: server, tool, arguments (object). Asks first. | sensitive, risk varies, sends to a destination |
 
 ## memory
 

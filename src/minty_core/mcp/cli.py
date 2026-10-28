@@ -6,13 +6,16 @@ import shlex
 from pathlib import Path
 from typing import Callable
 
-from minty_core.mcp.client import McpError, McpSession
-from minty_core.mcp.directory import DIRECTORY, command_for, find
-from minty_core.mcp.registry import McpRegistry, build_env, sanitize_description, tool_hash
+from minty_core.mcp.client import McpError, open_session
+from minty_core.mcp.directory import DIRECTORY, REMOTE, command_for, find
+from minty_core.mcp.registry import McpRegistry, sanitize_description, tool_hash
+from urllib.parse import urlsplit
 
 USAGE = """minty mcp list
 minty mcp directory
 minty mcp add NAME [--from-directory ENTRY] [--folder PATH] [--env KEY]... [-- COMMAND ARGS...]
+minty mcp add-remote NAME HTTPS_URL [--header HEADER=SECRET_NAME]...
+minty mcp composio NAME --user-id ID
 minty mcp tools NAME
 minty mcp allow NAME TOOL [--readonly] [--yes]
 minty mcp revoke NAME TOOL
@@ -21,10 +24,19 @@ Set a secret a server needs with: minty set-key plugin.mcp.NAME.KEY"""
 
 
 async def _tools(reg: McpRegistry, name: str, secret, timeout: float = 30.0) -> list[dict]:
-    server = reg.get(name)
-    async with McpSession(server["command"], build_env(name, server, secret), timeout=timeout) as s:
+    async with open_session(name, reg.get(name), secret, timeout=timeout) as s:
         await s.initialize()
         return await s.list_tools()
+
+
+def describe_server(s: dict) -> str:
+    """One line: what a server is and where it lives (never a key)."""
+    kind = s.get("kind", "stdio")
+    if kind == "http":
+        return s["url"]
+    if kind == "composio":
+        return f"Composio (user {s['user_id']})"
+    return shlex.join(s["command"])
 
 
 def _status_line(entry: dict) -> str:
@@ -46,7 +58,7 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
             if not servers:
                 out("No MCP servers added. See: minty mcp directory")
             for name, s in servers.items():
-                out(f"{name}: {shlex.join(s['command'])}")
+                out(f"{name}: {describe_server(s)}")
                 for tool, entry in sorted(s.get("tools", {}).items()):
                     out(f"  {tool} ({_status_line(entry)})" + ("  [description gives orders: not trusted]" if entry.get("flagged") else ""))
             return 0
@@ -54,6 +66,8 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
             for e in DIRECTORY:
                 out(f"{e.name}: {e.title} (needs {e.needs})" + (f"\n  Careful: {e.caution}" if e.caution else ""))
             out(DIRECTORY[0].trust + " Add one with: minty mcp add NAME --from-directory ENTRY")
+            for name, title, how, caution in REMOTE:
+                out(f"{name}: {title} (add with: {how})\n  Careful: {caution}")
             return 0
         if cmd == "add":
             if not rest:
@@ -87,6 +101,39 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
             for key in env:
                 out(f"Set its secret with: minty set-key plugin.mcp.{name}.{key}")
             out(f"Next, look at what it offers: minty mcp tools {name}")
+            return 0
+        if cmd == "add-remote":
+            if len(rest) < 2:
+                out(USAGE)
+                return 2
+            name, url, opts, headers, i = rest[0], rest[1], rest[2:], {}, 0
+            while i < len(opts):
+                if opts[i] == "--header" and i + 1 < len(opts) and "=" in opts[i + 1]:
+                    header, _, key = opts[i + 1].partition("=")
+                    headers[header] = key
+                    i += 2
+                else:
+                    raise ValueError(f"I do not understand {opts[i]!r}.\n{USAGE}")
+            reg.add_remote(name, url, headers)
+            out(f"Added {name}: {url}  (host {urlsplit(url).hostname}; only https, only public addresses)")
+            out("Anything a tool is given is sent to that server, and what it answers is outside text, not instructions.")
+            for key in sorted(set(headers.values())):
+                out(f"Set its secret with: minty set-key plugin.mcp.{name}.{key}")
+            out(f"Next, look at what it offers: minty mcp tools {name}")
+            return 0
+        if cmd == "composio":
+            if len(rest) != 3 or rest[1] != "--user-id":
+                out(USAGE)
+                return 2
+            reg.add_composio(rest[0], rest[2])
+            out(f"Added {rest[0]}: Composio, for the user id {rest[2]!r}.")
+            out(f"1. Get your API key in your Composio dashboard, then set it: minty set-key plugin.mcp.{rest[0]}.COMPOSIO_API_KEY")
+            out(f"2. Look at what it offers (it makes a session with your key each time): minty mcp tools {rest[0]}")
+            out(f"3. Allow only the tools you want: minty mcp allow {rest[0]} TOOL. COMPOSIO_MULTI_EXECUTE_TOOL can act on every account you "
+                "connect, so every call of it is asked first, with its arguments shown.")
+            out("Composio asks you to connect each of your accounts (Gmail, Slack ...) the first time a tool needs one: it gives a link, "
+                "which you open yourself. Those are your connected accounts at Composio; anything a tool is given goes to Composio's servers "
+                "and on to the app you connected.")
             return 0
         if cmd == "tools" and len(rest) == 1:
             tools = await _tools(reg, rest[0], secret)

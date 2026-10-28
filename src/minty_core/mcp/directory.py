@@ -34,6 +34,15 @@ DIRECTORY = (
 )
 
 
+# Servers reached over https (not a program on this computer): where they fit, how to add one, and what it means.
+REMOTE = (
+    ("composio", "Hundreds of apps (Gmail, Calendar, Slack, GitHub ...) through YOUR Composio account",
+     "minty mcp composio NAME --user-id ID",
+     "needs your own Composio account and API key; the accounts you connect there become reachable, and anything a tool is given goes to "
+     "Composio and on to that app. Its execute tool can act on all of them, so every call of it is asked first with its arguments shown."),
+)
+
+
 def find(name: str) -> Entry | None:
     key = str(name).strip().lower().replace("-", "_")
     return next((e for e in DIRECTORY if e.name == key), None)
