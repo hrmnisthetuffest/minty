@@ -10,9 +10,10 @@ guarantee that Minty is secure: it is a list of specific weaknesses that were cl
   studio's media handling, logging, downloads, the Docker and systemd files, the dependency list.
 - Static analysis: `bandit` on `src/` (medium and above), and `pip-audit` on a freeze of the `personal` environment (89 packages,
   `--no-deps`). Both are repeatable with `python scripts/security_scan.py`.
-- Ran for real: a Claude Code job inside the new sandbox (twice, `verified`), the NASA retrieval against NASA's live library, the panel in
-  a browser with its network panel measured, ffprobe/ffmpeg against hand-made playlist files.
-- Did not run: Instagram, Pexels, Pixabay (no keys), SMTP/IMAP, Telegram, Docker images, a system service, a fuzzer, a penetration test.
+- Ran for real: a Claude Code job inside the new sandbox (twice, `verified`), the NASA retrieval against NASA's live library, a Pexels file
+  download, the panel in a browser with its network panel measured and a real Chrome playing clips, the core and voice container images with the
+  hardened settings, ffprobe/ffmpeg against hand-made playlist files.
+- Did not run: Instagram, the Pexels and Pixabay search APIs (no keys), SMTP/IMAP, Telegram, the app as a system service (the systemd options were tried one by one on a transient unit), a fuzzer, a penetration test.
 
 ## Found and fixed
 
