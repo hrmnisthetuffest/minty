@@ -611,3 +611,7 @@ when it is good enough.
   tools away from those places too. Fixed on the way: the sandbox's `HOME` was cleared by `--clearenv` (now set after it).
   Tests: `tests/test_security_agents_env.py`, `tests/test_security_agents_isolation.py` (real bubblewrap: keys hidden, project
   writable, no network for tests). A real Claude Code job ran this way and came back `verified`.
+- Security: the studio decides what a file is from its first bytes, not its name or a server's word. A playlist, a concat list or a
+  document named `clip.mp4` is refused by `probe` and by the asset library (which also stores files under a name made from their
+  bytes, never `.m3u8`, so nothing text-like or misnamed reaches ffmpeg's playlist readers or an Instagram upload). Every ffmpeg
+  and ffprobe input is read as a plain file (`-protocol_whitelist file`). Tests: `tests/test_security_media_sniff.py`.

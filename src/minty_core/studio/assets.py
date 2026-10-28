@@ -9,12 +9,15 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
 import shutil
 import sqlite3
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+from minty_core.studio.sniff import AUDIO_TYPES, IMAGE_TYPES, VIDEO_TYPES, sniff
 
 LICENSES = {  # name -> (what it means, needs a credit)
     "owned": ("made or recorded by you", False),
@@ -104,6 +107,15 @@ class AssetLibrary:
         src = Path(src)
         if not src.is_file():
             raise AssetError(f"{src.name} is not there")
+        ext = sniff(src)  # decided by the bytes, never by the name
+        if ext is None:
+            raise AssetError(f"{src.name} is not a video, music or picture file I accept (it looks like text, a playlist or a document)")
+        if kind == "image" and ext not in IMAGE_TYPES:
+            raise AssetError(f"{src.name} is not a picture")
+        if kind in ("video", "gameplay", "render") and ext not in VIDEO_TYPES:
+            raise AssetError(f"{src.name} is {'a picture' if ext in IMAGE_TYPES else 'audio'}, not footage")
+        if kind in ("music", "voice") and ext not in AUDIO_TYPES | VIDEO_TYPES:
+            raise AssetError(f"{src.name} is not music or a voice recording (it is a picture)")
         sha = _sha(src)
         with self._lock:
             known = self._by_sha(sha)
@@ -111,7 +123,8 @@ class AssetLibrary:
                 return known
             dest_dir = self.root / kind
             dest_dir.mkdir(parents=True, exist_ok=True)
-            dest = dest_dir / f"{sha[:10]}-{src.name}"
+            stem = re.sub(r"[^A-Za-z0-9._-]+", "-", src.stem).strip("-.")[:60] or "file"
+            dest = dest_dir / f"{sha[:10]}-{stem}{ext}"  # a name from the bytes, not the sender: never .m3u8, never spaces
             if src.resolve() != dest.resolve():
                 shutil.copy2(src, dest)
             cur = self._db.execute(

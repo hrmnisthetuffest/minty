@@ -15,8 +15,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from minty_core import shellkit
+from minty_core.studio.sniff import sniff  # noqa: F401  (re-exported: media.sniff)
 from minty_core.studio.captions import Caption, to_ass
 
+FILE_ONLY = ["-protocol_whitelist", "file"]  # a clip is read as a plain file: no addresses, no pipes, no other schemes
 MIN_BLACK = 24.0  # the brightest frame's average luma (16 is black in video range): below this the picture is blank
 MOODS = {  # chord tones (Hz, level) and a slow tremolo: a plain generated bed, not a song
     "calm": ([(110.0, 1.0), (164.81, 0.7), (220.0, 0.6), (329.63, 0.25)], 0.3, 0.4),
@@ -70,8 +72,10 @@ async def probe(path: Path) -> MediaInfo:
     path = Path(path)
     if not path.is_file():
         raise MediaError(f"{path.name} is not there")
+    if sniff(path) is None:  # by its bytes: a playlist, a list of files or a document is not footage, whatever it is called
+        raise MediaError(f"{path.name} is not a media file I accept (it looks like text, a playlist or a document)")
     try:
-        out = await _run(["ffprobe", "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path)])
+        out = await _run(["ffprobe", "-v", "error", *FILE_ONLY, "-print_format", "json", "-show_format", "-show_streams", str(path)])
     except MediaError as e:
         if "not installed" in str(e) or "longer than" in str(e):
             raise
@@ -97,21 +101,21 @@ async def probe(path: Path) -> MediaInfo:
 
 
 async def mean_volume(path: Path) -> float | None:
-    text = await _run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-vn", "-af", "volumedetect", "-f", "null", "-"])
+    text = await _run(["ffmpeg", "-hide_banner", "-nostats", *FILE_ONLY, "-i", str(path), "-vn", "-af", "volumedetect", "-f", "null", "-"])
     m = re.search(r"mean_volume:\s*(-?[\d.]+) dB", text)
     return float(m.group(1)) if m else None
 
 
 async def brightest_frame(path: Path) -> float | None:
     """The highest average luma among frames sampled twice a second (16 is black)."""
-    text = await _run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-an", "-vf",
+    text = await _run(["ffmpeg", "-hide_banner", "-nostats", *FILE_ONLY, "-i", str(path), "-an", "-vf",
                        "fps=2,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-", "-f", "null", "-"])
     values = [float(v) for v in re.findall(r"lavfi\.signalstats\.YAVG=([\d.]+)", text)]
     return max(values) if values else None
 
 
 async def frame_hash(path: Path, at: float) -> str:
-    text = await _run(["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{at:.2f}", "-i", str(path), "-frames:v", "1", "-f", "md5", "-"])
+    text = await _run(["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{at:.2f}", *FILE_ONLY, "-i", str(path), "-frames:v", "1", "-f", "md5", "-"])
     m = re.search(r"MD5=([0-9a-f]+)", text)
     if not m:
         raise MediaError("could not read a frame")
@@ -193,7 +197,7 @@ async def compose_vertical(out: Path, *, background: list[Path], voiceover: Path
         for i, (p, info) in enumerate(zip(background, infos)):
             offset = start_offset if start_offset is not None else (
                 random.uniform(0, info.duration - per - 0.1) if info.duration > per + 0.6 else 0.0)
-            argv += ["-stream_loop", "-1", "-ss", f"{max(0.0, offset):.2f}", "-i", str(p)]
+            argv += ["-stream_loop", "-1", "-ss", f"{max(0.0, offset):.2f}", *FILE_ONLY, "-i", str(p)]
             graph.append(f"[{i}:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1,"
                          f"fps={fps},trim=duration={per:.3f},setpts=PTS-STARTPTS[v{i}]")
         n = len(background)
@@ -208,12 +212,12 @@ async def compose_vertical(out: Path, *, background: list[Path], voiceover: Path
         nxt = n
         parts = []
         if voiceover:
-            argv += ["-i", str(voiceover)]
+            argv += [*FILE_ONLY, "-i", str(voiceover)]
             graph.append(f"[{nxt}:a]apad,atrim=duration={total:.3f},{stereo}[avo]")
             parts.append("[avo]")
             nxt += 1
         if music:
-            argv += ["-stream_loop", "-1", "-i", str(music)]
+            argv += ["-stream_loop", "-1", *FILE_ONLY, "-i", str(music)]
             fade = max(0.0, total - 1.2)
             graph.append(f"[{nxt}:a]atrim=duration={total:.3f},volume={music_volume if voiceover else 0.6},"
                          f"afade=t=out:st={fade:.3f}:d=1.2,{stereo}[amu]")
@@ -266,7 +270,7 @@ async def to_jpeg(src: Path, dst: Path, width: int = 1080) -> Path:
     dst = Path(dst)
     part = dst.with_name(dst.stem + ".part" + dst.suffix)
     try:
-        await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", "-i", str(src), "-vf",
+        await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", *FILE_ONLY, "-i", str(src), "-vf",
                     f"scale='min({width},iw)':-2", "-frames:v", "1", "-q:v", "2", "-pix_fmt", "yuvj420p", str(part)])
         part.replace(dst)
         return dst
