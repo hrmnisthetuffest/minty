@@ -163,7 +163,7 @@ def register(ctx):
             live = {t["name"]: t for t in await session.list_tools()}
             if tool not in live:
                 raise ValueError(f"{name} has no tool called {tool!r}.")
-            state = registry.status(name, tool, tool_hash(live[tool]))
+            state = registry.status(name, tool, tool_hash(live[tool]), live[tool])
             if state == "off":
                 raise ValueError(f"{name}'s {tool} is not allowed. Allow it at the terminal: minty mcp allow {name} {tool}.")
             if state == "changed":

@@ -784,4 +784,9 @@ when it is good enough.
   `artifacts_register` grounds on the sheet's own id, not on the site; the mail recipient must be the address as its own word. Checked deterministically against a
   copy of your real settings: `COMPOSIO_SEARCH_TOOLS` and a `GMAIL_FETCH_EMAILS` step are class 1 and allowed (the 22:41 "critical, asked" case), a send is
   still asked. Tests: `test_gmail_wiring`, `test_policy_mandate`, `test_mcp_remote`, `test_plugin_artifacts`.
+- Fix (found running the watcher against the real account): Composio had reworded `COMPOSIO_SEARCH_TOOLS` since it was allowed, so the pinned hash no longer
+  matched and the tool would have been refused ("changed since you allowed it"), which stopped the watcher's account lookup. For Composio only, a new
+  description is now accepted when the tool's name and inputs are exactly what was allowed (`shape_hash`, stored by `allow`) and the new words give no orders
+  to a model; anything that asks for something new, and every other server, still switches off until you look again. The five Composio tools were re-allowed
+  once so their inputs are pinned. Tests: `tests/test_mcp_remote.py`.
 

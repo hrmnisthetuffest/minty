@@ -41,7 +41,7 @@ class ComposioRunner:
             await session.initialize()
             live = {t["name"]: t for t in await session.list_tools()}
             self._ok = {name for name in self._needs + self._optional
-                        if name in live and self._reg.status(self._server, name, tool_hash(live[name])) == "allowed"}
+                        if name in live and self._reg.status(self._server, name, tool_hash(live[name]), live[name]) == "allowed"}
             missing = [n for n in self._needs if n not in self._ok]
             if missing:
                 raise PermissionError(f"{', '.join(missing)} is not allowed on {self._server} (or its description changed since you allowed it): "

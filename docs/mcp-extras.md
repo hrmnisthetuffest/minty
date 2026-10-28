@@ -67,8 +67,11 @@ What that means for you:
   write step, or a step Minty cannot tell, and the whole call is asked. The search, schema and wait tools you allowed as read-only are not asked either.
 - A server you set up at the terminal counts as a destination you named, so Minty does not ask "this sends data to a new party" about it on
   every call.
-- Tools are pinned by a hash of their name, description and inputs. Composio is a service that changes: a changed description switches
-  the tool off until you look and allow it again.
+- Tools are pinned by a hash of their name, description and inputs, and a changed description switches the tool off until you look and allow
+  it again. Composio rewords its own tools from time to time, so for Composio only, a new description is accepted when the tool's **name and
+  inputs** are exactly what you allowed (pinned when you allowed it) and the new words give no orders to a model; a tool that asks for
+  anything new, or any other server's change, still switches it off. (Found live: Composio had reworded `COMPOSIO_SEARCH_TOOLS` since it was
+  allowed, which would have stopped it working.)
 - What a tool answers is outside text, shown tagged as such, never followed as instructions.
 - Checked against Composio's real endpoint with an invalid key (it answers 401 and Minty reports "did not accept the key"). Everything past
   that needs a real key: **it has not been run with a real Composio account.**

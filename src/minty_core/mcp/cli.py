@@ -8,7 +8,7 @@ from typing import Callable
 
 from minty_core.mcp.client import McpError, open_session
 from minty_core.mcp.directory import DIRECTORY, REMOTE, command_for, find
-from minty_core.mcp.registry import McpRegistry, sanitize_description, tool_hash
+from minty_core.mcp.registry import McpRegistry, sanitize_description, shape_hash, tool_hash
 from urllib.parse import urlsplit
 
 USAGE = """minty mcp list
@@ -141,7 +141,7 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
             known = reg.get(rest[0])["tools"]
             for t in tools:
                 desc, flagged = sanitize_description(t.get("description", ""))
-                st = reg.status(rest[0], t["name"], tool_hash(t))
+                st = reg.status(rest[0], t["name"], tool_hash(t), t)
                 hint = " (says it only reads)" if (t.get("annotations") or {}).get("readOnlyHint") else ""
                 out(f"{t['name']} [{st}]{hint}: {desc}")
                 if flagged:
@@ -161,7 +161,7 @@ async def run_cli(args: list[str], config_dir: Path, secret: Callable[[str], str
             if readonly and not (t.get("annotations") or {}).get("readOnlyHint"):
                 out("Note: the server does not say this tool only reads; calling it read-only is your judgment.")
             if "--yes" in rest or ask(f"Allow {tool} on {name}{' as read-only' if readonly else ''}? [y/N] ").strip().lower().startswith("y"):
-                reg.allow(name, tool, tool_hash(t), readonly, t.get("description", ""))
+                reg.allow(name, tool, tool_hash(t), readonly, t.get("description", ""), shape=shape_hash(t))
                 out(f"Allowed {tool} on {name}" + (" (read-only)." if readonly else ". Each call will ask you first."))
             else:
                 out("Not allowed.")

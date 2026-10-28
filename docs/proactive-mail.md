@@ -69,6 +69,7 @@ There is **no phone-call channel**: nothing here can place a call, and none is f
 ## What was and was not checked
 
 Checked: the scoring on realistic messages, the watcher against a scripted source (first look, bursts, expiry, failure and backoff,
-two accounts), the notifier's rules, and the Composio response shapes against live read-only answers from your own Composio account
-(profile, history, message headers, account list). **Not checked:** a full unattended day, Gmail history expiry on a real mailbox, the quality of the scoring on your own
+two accounts), the notifier's rules, and, against your own Composio account with read-only calls: the account list, the first look
+(history position for all three accounts), an incremental history round with nothing new, and fetching, parsing and scoring six real
+recent messages (only the verdicts were looked at, never the mail). **Not checked:** a full unattended day, Gmail history expiry on a real mailbox, the quality of the scoring on your own
 mail (tune `vips` and `topics`), and delivery to a real phone from this feature.

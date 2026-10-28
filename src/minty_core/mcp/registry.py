@@ -50,6 +50,18 @@ def tool_hash(tool: dict) -> str:
     return hashlib.sha256(body.encode()).hexdigest()[:16]
 
 
+def shape_hash(tool: dict) -> str:
+    """The tool's name and inputs, without its words: what it asks for, not how it describes itself."""
+    body = json.dumps({"name": tool.get("name"), "inputSchema": tool.get("inputSchema", {})}, sort_keys=True)
+    return hashlib.sha256(body.encode()).hexdigest()[:16]
+
+
+def vendor_managed(server: dict) -> bool:
+    """A server the vendor keeps up to date and rewords from time to time (Composio), as opposed to one you or a stranger run."""
+    host = (urlsplit(str(server.get("url") or "")).hostname or "").lower()
+    return server.get("kind") == "composio" or host == "composio.dev" or host.endswith(".composio.dev")
+
+
 def sanitize_description(text: str) -> tuple[str, bool]:
     clean = " ".join(re.sub(r"[\x00-\x1f\x7f]", " ", str(text or "")).split())[:300]
     return clean, looks_like_injection(text)
@@ -153,12 +165,12 @@ class McpRegistry:
                                   "seen": tool_hash(t)}
         self._save(data)
 
-    def allow(self, name: str, tool: str, current_hash: str, readonly: bool = False, description: str = "") -> None:
+    def allow(self, name: str, tool: str, current_hash: str, readonly: bool = False, description: str = "", shape: str = "") -> None:
         data = self._load()
         entries = data["servers"][name]["tools"]
         desc, flagged = sanitize_description(description or entries.get(tool, {}).get("description", ""))
         entries[tool] = {"hash": current_hash, "allowed": True, "readonly": bool(readonly), "description": desc,
-                         "flagged": flagged, "seen": current_hash}
+                         "flagged": flagged, "seen": current_hash, "shape": shape}
         self._save(data)
 
     def revoke(self, name: str, tool: str) -> bool:
@@ -170,11 +182,20 @@ class McpRegistry:
         self._save(data)
         return True
 
-    def status(self, name: str, tool: str, current_hash: str) -> str:
-        entry = self.servers().get(name, {}).get("tools", {}).get(tool)
+    def status(self, name: str, tool: str, current_hash: str, live: dict | None = None) -> str:
+        """off | allowed | changed. A changed description switches a tool off until you look again, with one exception: on a server its vendor
+        keeps up to date (Composio), new wording is accepted when the tool's name and inputs are exactly what you allowed (pinned when you
+        allowed it) and the new words give no orders to a model; asking for anything new is a change."""
+        server = self.servers().get(name, {})
+        entry = server.get("tools", {}).get(tool)
         if not entry or not entry.get("allowed"):
             return "off"
-        return "allowed" if entry.get("hash") == current_hash else "changed"
+        if entry.get("hash") == current_hash:
+            return "allowed"
+        if live is not None and entry.get("shape") and vendor_managed(server) and entry["shape"] == shape_hash(live) \
+                and not looks_like_injection(str(live.get("description", ""))):
+            return "allowed"
+        return "changed"
 
     def is_readonly(self, name: str, tool: str) -> bool:
         entry = self.servers().get(name, {}).get("tools", {}).get(tool) or {}
