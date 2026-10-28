@@ -299,6 +299,18 @@ class Catalog:
             self._record(clip, category, now)
         return Choice(clip.asset, category, reason)
 
+    def peek(self, n: int = 2, *, now: datetime | None = None, rng: random.Random | None = None) -> list[Choice]:
+        """What would be shown next, without using it up: today's choice first, then other clips of the same style (for loading ahead)."""
+        rng, now = rng or random.Random(), now or datetime.now()
+        prefs = self.prefs()
+        eligible = self._eligible(prefs)
+        if not eligible or n < 1:
+            return []
+        first = self.choose(rng=rng, now=now, record=False)
+        rest = [c for c in eligible[first.category] if c.asset.id != first.asset.id]
+        rng.shuffle(rest)
+        return [first] + [Choice(c.asset, first.category, "next up") for c in rest[:n - 1]]
+
     def shuffle(self, *, rng: random.Random | None = None, now: datetime | None = None) -> Choice | None:
         """Something different now: another style for the rest of the day (or another clip when there is only one style)."""
         rng, now = rng or random.Random(), now or datetime.now()

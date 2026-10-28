@@ -29,6 +29,14 @@ class CoreClient:
         except httpx.HTTPError as e:
             raise CoreUnavailable(str(e)) from e
 
+    async def open(self, path: str, *, headers: dict | None = None) -> httpx.Response:
+        """A streamed GET (the caller closes it): for clips, which are passed on as they arrive and with their byte ranges."""
+        request = self._client.build_request("GET", self._base + path, headers={**(headers or {}), "Authorization": f"Bearer {self._token()}"})
+        try:
+            return await self._client.send(request, stream=True)
+        except httpx.HTTPError as e:
+            raise CoreUnavailable(str(e)) from e
+
     def ws_url(self) -> str:
         return self._base.replace("http", "ws", 1) + "/events"  # no secret in an address: addresses get logged
 

@@ -670,3 +670,10 @@ when it is good enough.
   accepts it; data answers are never compressed (size can leak a secret). Measured in a browser with no cache: 23 requests, 189 418 -> 83 441
   bytes (-56 %); with the earlier revalidation, a reload is 6 600. Tests: `tests/test_panel_assets.py`.
 - Tests: discovery with a download cut off part-way, a file that looks like an mp4 but cannot be decoded, and a webm.
+- Studio page in the panel (new): today's background style in a player, "another clip" and "shuffle the style", styles on/off/more/less,
+  a clip grid with favourite and skip, and an optional dimmed backdrop behind the whole panel (off by default). Playback is bounded: one clip
+  plays and at most one more is loaded ahead in a hidden element (the switch is a fade, no flash); nothing loads by itself on a data-saving
+  or slow connection or with reduced motion (a picture and a Play button); everything stops when the tab is hidden or the page is left;
+  a clip that cannot be played shows why and can be skipped. The core serves clips with byte ranges and small poster frames (made once),
+  only for clips that are in the catalogue and inside the library folder; the panel streams them by number, for logged-in sessions only,
+  kept a day in a private cache. Tests: `test_studio_player_api.py`, `test_panel_media.py`. NOT yet checked in a real browser (see the ledger).

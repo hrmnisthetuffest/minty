@@ -613,6 +613,9 @@ def create_app(ctx: AppContext) -> FastAPI:
         """name: only one source, e.g. minty.security (refused logins, lockouts, refused sockets, denied requests)."""
         return ctx.logs.recent(limit=max(1, min(limit, 500)), min_level=level, name=name[:80]) if ctx.logs else []
 
+    from minty_core.studio.player_api import add_routes as studio_routes
+
+    studio_routes(api, ctx)
     app.include_router(api)
 
     @app.websocket("/events")

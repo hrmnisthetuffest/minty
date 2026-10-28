@@ -262,3 +262,18 @@ tr.cooling td { color: var(--dim); }
 .pinpad[data-shake] { animation: shake .35s; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @media (pointer: coarse) { .pin-key { height: 72px; } }
+
+/* the studio page and the optional backdrop */
+.clip-box { position: relative; width: min(100%, 320px); aspect-ratio: 9 / 16; max-height: 60vh; margin: 0 auto 10px; background: #000; border-radius: 12px; overflow: hidden; }
+.clip-box .clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s ease; }
+.clip-box .clip.on { opacity: 1; }
+.clip-status { position: absolute; inset: auto 0 0 0; padding: 12px; display: none; flex-direction: column; gap: 8px; align-items: center; text-align: center; background: rgba(8,8,22,.78); font-size: 13px; }
+.clip-status.show { display: flex; }
+.clip-note { text-align: center; margin: 0; min-height: 1.2em; }
+.clip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.clip-cell { display: flex; flex-direction: column; gap: 6px; }
+.clip-thumb { padding: 0; border: 0; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 9 / 16; }
+.clip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.clip-cell .row button { padding: 4px 8px; font-size: 12px; flex: 1; }
+.backdrop { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; opacity: .12; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .clip-box .clip { transition: none; } }

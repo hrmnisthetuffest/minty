@@ -219,3 +219,32 @@ async def test_with_nothing_in_the_catalogue_a_plain_generated_background_is_mad
     assert asset.license == "generated" and catalog.counts() == {"abstract": 1}
     again = await catalog.fallback(tmp_path / "work", seconds=4)
     assert again.id == asset.id  # made once, not every day
+
+
+def test_peek_shows_what_is_next_without_using_it_up(catalog, lib, tmp_path):
+    add(lib, tmp_path, catalog, "nature", 4)
+    before = catalog.clips("nature")
+    got = catalog.peek(3, now=D0, rng=random.Random(1))
+    assert len(got) == 3 and len({c.asset.id for c in got}) == 3 and {c.category for c in got} == {"nature"}
+    assert all(c.last_played == 0 for c in catalog.clips("nature")) and [c.plays for c in before] == [0, 0, 0, 0]  # nothing was recorded
+    shown = catalog.choose(now=D0, rng=random.Random(2))
+    assert catalog.peek(3, now=D0, rng=random.Random(3))[0].category == shown.category  # today's style stays today's
+
+
+def test_peek_with_nothing_or_one_clip(catalog, lib, tmp_path):
+    assert catalog.peek(3, now=D0) == []
+    add(lib, tmp_path, catalog, "nature", 1)
+    assert len(catalog.peek(3, now=D0)) == 1
+
+
+def test_a_poster_frame_can_be_made_for_a_clip(tmp_path):
+    import asyncio
+
+    from minty_core.studio import media
+
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg is not installed")
+    src = tmp_path / "c.mp4"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=720x1280:rate=24:duration=3", "-pix_fmt", "yuv420p", str(src)], check=True)
+    out = asyncio.run(media.poster(src, tmp_path / "t.jpg", width=240))
+    assert out.read_bytes()[:3] == b"\xff\xd8\xff" and out.stat().st_size < 30_000

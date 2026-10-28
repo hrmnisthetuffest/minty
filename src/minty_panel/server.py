@@ -8,10 +8,11 @@ from urllib.parse import quote, urlsplit
 import httpx
 
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
+from starlette.background import BackgroundTask
 
 from minty_panel.auth import GlobalBudget, LoginThrottle, PasswordStore, SessionStore
 from minty_panel.core_client import CoreClient, CoreUnavailable
@@ -19,7 +20,7 @@ from minty_panel.core_client import CoreClient, CoreUnavailable
 security = logging.getLogger("minty.security")  # who was refused and why; never a PIN, a cookie or a token
 STATIC = Path(__file__).parent / "static"
 COOKIE = "minty_session"
-ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags", "profile"}
+ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags", "profile", "studio"}
 # The panel loads only its own files. Scripts may never be inline or built from text; styles may carry a style attribute (the progress bars).
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
        "connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
@@ -123,9 +124,12 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
             response = await call_next(request)
         # The panel's own files hold no personal data: keep them, but ask every time whether they changed (ETag, so a reload costs a
         # 304 with no body). Anything else, and every refusal, is never stored.
+        if request.url.path.startswith("/media/") and request.method == "GET" and response.status_code in (200, 206, 304):
+            response.headers["Cache-Control"] = "private, max-age=86400"  # a clip never changes under its number; private: no shared cache
         own_file = request.method in ("GET", "HEAD") and response.status_code in (200, 304) and (
             request.url.path in ("/", "/sw.js") or request.url.path.startswith("/static/"))
-        response.headers["Cache-Control"] = "no-cache" if own_file else "no-store"
+        if "Cache-Control" not in response.headers or not request.url.path.startswith("/media/"):
+            response.headers["Cache-Control"] = "no-cache" if own_file else "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Content-Security-Policy"] = CSP
         response.headers["X-Frame-Options"] = "DENY"
@@ -207,6 +211,26 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
         except CoreUnavailable:
             return JSONResponse({"detail": "Minty core is not running"}, status_code=502)
         return Response(resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
+
+    @app.get("/media/{kind}/{clip_id}")
+    async def media_file(kind: str, clip_id: str, request: Request):
+        """A clip or its poster frame, streamed from the core with the browser's byte range, by number only."""
+        if not logged_in(request):
+            return JSONResponse({"detail": "not logged in"}, status_code=401)
+        if kind not in ("clip", "thumb") or not (clip_id.isascii() and clip_id.isdigit() and len(clip_id) <= 9):
+            return JSONResponse({"detail": "unknown file"}, status_code=404)
+        forward = {k: request.headers[k] for k in ("range", "if-none-match", "if-range") if k in request.headers}
+        try:
+            upstream = await core.open(f"/studio/{kind}/{clip_id}", headers=forward)
+        except CoreUnavailable:
+            return JSONResponse({"detail": "Minty core is not running"}, status_code=502)
+        if upstream.status_code not in (200, 206, 304):
+            await upstream.aclose()
+            return JSONResponse({"detail": "no such clip"}, status_code=404)  # the core's own words are not passed on
+        keep = {k: upstream.headers[k] for k in ("content-type", "content-length", "content-range", "accept-ranges", "etag", "last-modified")
+                if k in upstream.headers}
+        chunks = upstream.aiter_bytes() if upstream.is_stream_consumed else upstream.aiter_raw()  # already loaded: a small or replayed answer
+        return StreamingResponse(chunks, status_code=upstream.status_code, headers=keep, background=BackgroundTask(upstream.aclose))
 
     @app.websocket("/api/events")
     async def events(ws: WebSocket):

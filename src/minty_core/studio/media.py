@@ -265,6 +265,23 @@ async def music_bed(out: Path, seconds: float, mood: str = "calm") -> Path:
         part.unlink(missing_ok=True)
 
 
+async def poster(src: Path, dst: Path, width: int = 360) -> Path:
+    """One small JPEG frame of a clip, to show before it plays and in lists, so the clip itself is not fetched to be looked at."""
+    src, dst = Path(src), Path(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    part = dst.with_name(dst.stem + ".part.jpg")
+    try:
+        await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", "-ss", "1", *FILE_ONLY, "-i", str(src), "-frames:v", "1",
+                    "-vf", f"scale={int(width)}:-2", "-q:v", "5", "-pix_fmt", "yuvj420p", str(part)])
+        if not part.exists():  # a clip shorter than a second has no frame there
+            await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", *FILE_ONLY, "-i", str(src), "-frames:v", "1",
+                        "-vf", f"scale={int(width)}:-2", "-q:v", "5", "-pix_fmt", "yuvj420p", str(part)])
+        part.replace(dst)
+        return dst
+    finally:
+        part.unlink(missing_ok=True)
+
+
 async def make_background(src: Path, dst: Path, *, max_seconds: float = 60.0, size: tuple[int, int] = (720, 1280), fps: int = 30) -> Path:
     """A downloaded clip as the background it will be used as: portrait, no sound, no longer than needed. A 3-minute 720p download
     becomes a few megabytes, and every video made from it later does less work."""

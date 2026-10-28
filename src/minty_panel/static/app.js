@@ -18,11 +18,14 @@ import audit from "./pages/audit.js";
 import prompts from "./pages/prompts.js";
 import flags from "./pages/flags.js";
 import timeline from "./pages/timeline.js";
+import studio from "./pages/studio.js";
+import { initBackdrop, stopBackdrop } from "./backdrop.js";
 
 const PAGES = [
   ["dashboard", "Dashboard", dashboard],
   ["timeline", "Timeline", timeline],
   ["logs", "Logs", logs],
+  ["studio", "Studio", studio],
   ["settings", "Settings", settings],
   ["profile", "Profile", profile],
   ["personality", "Personality", personality],
@@ -36,7 +39,7 @@ const PAGES = [
 ];
 // The menu: pages in groups, each with a small line icon (a path in a 16 x 16 box).
 const GROUPS = [
-  ["Monitor", ["dashboard", "timeline", "logs"]],
+  ["Monitor", ["dashboard", "timeline", "logs", "studio"]],
   ["Configure", ["settings", "profile", "personality", "brain", "plugins", "flags", "prompts"]],
   ["Memory", ["memory", "notes", "audit"]],
 ];
@@ -44,6 +47,7 @@ const ICONS = {
   dashboard: "M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z",
   timeline: "M3 2v12M3 4h9M3 8h6M3 12h8",
   logs: "M2 4l4 4-4 4M8 12h6",
+  studio: "M2 3h12v10H2zM7 6l3.5 2L7 10z",
   settings: "M2 5h12M2 11h12M6 3v4M10 9v4",
   profile: "M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 14c0-3 2-4 5-4s5 1 5 4",
   personality: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM5.5 9.5c1.5 2 3.5 2 5 0M6 6v1M10 6v1",
@@ -162,9 +166,11 @@ function showApp() {
   window.onhashchange = () => render(ui);
   render(ui);
   statusBar.refresh().catch(() => {});
+  initBackdrop();
 }
 
 function stopApp() {
+  stopBackdrop();
   if (statusBar) statusBar.destroy();
   statusBar = null;
   clearInterval(clockTimer);

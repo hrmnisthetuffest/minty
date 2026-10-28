@@ -7,6 +7,7 @@ import time
 import random
 from datetime import date, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 from minty_core.attention import Loop
 from minty_core.plugins.host import Tool
@@ -624,6 +625,8 @@ def register(ctx):
                        "yourself. Until you do, every post is still asked.", "confirmed", r["approved_posts"])]
 
     ctx.services["studio_attention"], ctx.services["studio_lessons"] = attention, lessons
+    # what the panel's studio page asks the core for (no file path leaves the core; the page gets numbers and pictures)
+    ctx.services["studio_player"] = SimpleNamespace(catalog=catalog, lib=lib, thumbs=root / "thumbs", prefer=prefer, now=now)
     tasks = ctx.services.setdefault("maintenance_tasks", {})
     if settings.get("auto_discover") is True:  # off unless the user switches it on: it downloads (a few clips a day, bounded)
         tasks["studio"] = lambda: discover_action({})
