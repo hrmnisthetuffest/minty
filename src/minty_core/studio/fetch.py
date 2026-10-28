@@ -12,6 +12,7 @@ from urllib.parse import urlencode, urlsplit
 from minty_core.safefetch import FetchFailed, safe_fetch
 from minty_core.studio.assets import LICENSES, Asset, AssetError, AssetLibrary
 from minty_core.studio.media import MediaError, probe
+from minty_core.studio.safetext import clean_credit_name
 
 PEXELS_SEARCH = "https://api.pexels.com/v1/videos/search"
 MAX_DOWNLOAD = 150_000_000
@@ -58,7 +59,7 @@ async def pexels_search(query: str, key: str, *, per_page: int = 8) -> list[Cand
         f = _best_file(v.get("video_files") or [])
         if f:
             out.append(Candidate(str(f["link"]), int(f.get("width") or 0), int(f.get("height") or 0), float(v.get("duration") or 0),
-                                 str((v.get("user") or {}).get("name") or "a Pexels creator"), str(v.get("url") or "https://www.pexels.com")))
+                                 clean_credit_name((v.get("user") or {}).get("name"), "a Pexels creator"), str(v.get("url") or "https://www.pexels.com")))
     return out
 
 

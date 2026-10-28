@@ -225,3 +225,28 @@ async def test_the_real_sandbox_for_the_tests_the_agent_wrote_has_no_network(wor
 def test_required_raises_without_a_sandbox(tmp_path):
     with pytest.raises(SandboxUnavailable):
         Isolation("required", sandbox=FakeBox(False, "nope"), home=tmp_path).prepare()
+
+
+class BrokenCheckBox(FakeBox):
+    """A sandbox in which the project's test program is not there (it lives in a folder the sandbox hides)."""
+
+    def command(self, argv, *, network=False, **kw):
+        super().command(argv, network=network, **kw)
+        if network:
+            return list(argv)
+        return [sys.executable, "-c", "import sys; print('bwrap: execvp pytest: No such file or directory'); sys.exit(1)"]
+
+
+class Writer(Claudeish):
+    def build(self, project, prompt, session_id, readonly=False):
+        return Invocation([sys.executable, "-c", "open('a.txt', 'w').write('hi'); print('Changed: a.txt')"], project)
+
+
+async def test_tests_that_cannot_start_in_the_sandbox_are_not_counted_as_failing_tests(tmp_path):
+    box = BrokenCheckBox()
+    mgr, project = make(tmp_path, Isolation("auto", sandbox=box, home=tmp_path / "home"), adapter=Writer())
+    mgr._verify = True
+    job = await go(mgr)
+    assert job.verdict == "unchecked" and job.status == "done" and job.rounds == 1, (job.verdict, job.summary)
+    assert "could not start inside the sandbox" in job.summary and "pytest" in job.summary
+    assert job.changed == ["a.txt"]

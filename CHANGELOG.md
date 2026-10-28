@@ -651,3 +651,10 @@ when it is good enough.
   had been exceeded since before the agentic overhaul (a plain question was 2 597 tokens against a limit of 1 500) and nothing enforced
   them. They are re-baselined just above what is measured (a plain question 2 979 -> 2 736 tokens after the shorter tool menu) and
   `tests/test_request_size_gate.py` now fails when a change makes a request bigger. Lowering them is the goal; raising one needs a reason.
+- Security: words that come from a provider are written by strangers and now cleaned before they are kept: a Pexels creator's name (which
+  is added to the caption of a public post), NASA/Pixabay titles and tags, and every credit and note the library stores. One plain line,
+  letters and a little punctuation, no addresses, `@mentions`, `#tags`, markup or bidi tricks, a bounded length, and nothing that gives a
+  model orders (that value becomes "a Pexels creator" / "untitled"). Tests: `tests/test_security_studio_text.py`.
+- Fix: when the agent runs in the sandbox, a project test program that lives in a folder the sandbox hides (a version manager under your
+  home folder) used to look like failing tests and could send the agent round again; the result now says the tests could not start in
+  the sandbox and the verdict is "not confirmed".

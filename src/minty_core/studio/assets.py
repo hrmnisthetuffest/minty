@@ -17,6 +17,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from minty_core.studio.safetext import clean_title
 from minty_core.studio.sniff import AUDIO_TYPES, IMAGE_TYPES, VIDEO_TYPES, sniff
 
 LICENSES = {  # name -> (what it means, needs a credit)
@@ -134,7 +135,7 @@ class AssetLibrary:
                 shutil.copy2(src, dest)
             cur = self._db.execute(
                 "INSERT INTO assets(path, kind, license, source, attribution, note, sha, added) VALUES (?,?,?,?,?,?,?,?)",
-                (str(dest), kind, license, source.strip()[:300], attribution.strip()[:300], note.strip()[:200], sha, time.time()))
+                (str(dest), kind, license, source.strip()[:300], clean_title(attribution, 300, ""), clean_title(note, 200, ""), sha, time.time()))
             self._db.commit()
             return self.get(cur.lastrowid)
 

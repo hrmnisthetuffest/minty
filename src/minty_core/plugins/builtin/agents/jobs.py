@@ -267,6 +267,16 @@ class JobManager:
         """The project's tests run the agent's code: inside the sandbox they get the folder and no network."""
         return self._iso.check_command(argv, path) if self._boxed.get(job.id) else argv
 
+    async def _checked(self, job: Job, argv: list[str], path: Path) -> "verify.CheckResult":
+        """Run the project's tests, in the sandbox when the agent was. A test program the sandbox cannot see (it lives in a hidden folder
+        of the home directory) did not fail: nothing was learned, and the result says so instead of blaming the code."""
+        result = await self._run_check(path, self._boxed_check(job, argv, path), self._check_timeout_s)
+        text = f"{result.summary}\n{result.tail}"
+        if self._boxed.get(job.id) and result.ran and result.passed is False and "bwrap:" in text:
+            why = next((ln.strip() for ln in text.splitlines() if "bwrap:" in ln), "bwrap failed")
+            return verify.CheckResult(False, None, f"the project's tests could not start inside the sandbox ({why[:120]})", result.tail)
+        return result
+
     def _sandbox_sentence(self, job: Job, adapter, why: str) -> str:
         if self._iso is None or not getattr(adapter, "sandboxable", False):
             return ""
@@ -283,7 +293,7 @@ class JobManager:
             return None
         self._argv[job.id] = argv
         job.progress = (job.progress + ["checking the project's tests before starting"])[-WATCH_KEEP:]
-        check = await self._run_check(path, self._boxed_check(job, argv, path), self._check_timeout_s)
+        check = await self._checked(job, argv, path)
         job.checks_before = check.summary if check.ran else ""
         return check
 
@@ -300,7 +310,7 @@ class JobManager:
         if argv is None:
             return None
         job.progress = (job.progress + ["running the project's tests"])[-WATCH_KEEP:]
-        check = await self._run_check(path, self._boxed_check(job, argv, path), self._check_timeout_s)
+        check = await self._checked(job, argv, path)
         job.checks = check.summary
         return check
 

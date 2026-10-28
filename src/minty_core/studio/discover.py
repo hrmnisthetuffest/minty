@@ -20,6 +20,7 @@ from minty_core.safefetch import FetchFailed, safe_fetch
 from minty_core.studio import media
 from minty_core.studio.assets import AssetError, AssetLibrary
 from minty_core.studio.catalog import CATEGORIES, Catalog
+from minty_core.studio.safetext import clean_credit_name, clean_title
 
 PROVIDERS = ("nasa", "pexels", "pixabay")  # keyless first
 HOSTS = {  # the only hosts a provider's answers may point us at
@@ -106,7 +107,7 @@ async def _nasa(query: str, page: int, **_) -> list[Cand]:
         if not nid or not title or data.get("media_type") != "video":
             continue
         text = " ".join(str(data.get(k) or "") for k in ("title", "description", "secondary_creator", "photographer", "location"))
-        out.append(Cand(nid, title, "https://images.nasa.gov/details/" + quote(nid), "Video: NASA", "nasa", [str(it.get("href") or "")], text))
+        out.append(Cand(nid, clean_title(title), "https://images.nasa.gov/details/" + quote(nid), "Video: NASA", "nasa", [str(it.get("href") or "")], text))
     return out
 
 
@@ -127,7 +128,7 @@ async def _pexels(query: str, page: int, *, key: str, **_) -> list[Cand]:
     for v in (await _json("pexels", url, auth_headers={"Authorization": key})).get("videos") or []:
         files = [f for f in (v.get("video_files") or []) if f.get("file_type") == "video/mp4" and f.get("link")]
         files.sort(key=lambda f: (int(f.get("width") or 0) > 1100, -int(f.get("width") or 0)))  # up to ~1080 wide, sharpest first
-        user = str((v.get("user") or {}).get("name") or "a Pexels creator")
+        user = clean_credit_name((v.get("user") or {}).get("name"), "a Pexels creator")  # a stranger's name goes into a public caption
         out.append(Cand(str(v.get("id")), f"pexels {v.get('id')}", str(v.get("url") or "https://www.pexels.com"), f"Video by {user} on Pexels", "pexels",
                         [str(f["link"]) for f in files[:2]], vertical=True))
     return out
@@ -139,7 +140,7 @@ async def _pixabay(query: str, page: int, *, key: str, max_bytes: int, **_) -> l
     for h in (await _json("pixabay", url, auth_params={"key": key})).get("hits") or []:
         sizes = [(n, (h.get("videos") or {}).get(n) or {}) for n in ("medium", "small")]
         links = [str(s["url"]) for _n, s in sizes if s.get("url") and int(s.get("size") or 0) <= max_bytes]
-        out.append(Cand(str(h.get("id")), str(h.get("tags") or f"pixabay {h.get('id')}"), str(h.get("pageURL") or "https://pixabay.com"), "", "pixabay",
+        out.append(Cand(str(h.get("id")), clean_title(h.get("tags"), fallback=f"pixabay {h.get('id')}"), str(h.get("pageURL") or "https://pixabay.com"), "", "pixabay",
                         links, text=str(h.get("tags") or "")))
     return out
 
