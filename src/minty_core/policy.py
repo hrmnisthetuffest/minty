@@ -174,6 +174,7 @@ class Mandate:
     targets: tuple[str, ...] = ()
     max_class: int = R2
     check: Callable[[dict, str], bool] | None = None  # (arguments, the user's words) -> False when this call goes beyond what was asked
+    class3_flag: str = ""  # a call above class 2 is lifted only if this safety setting is on (it is off unless the user turned it on)
 
 
 _ACK = frozenset({"yes", "yeah", "yep", "yup", "sure", "ok", "okay", "go", "ahead", "do", "it", "please", "proceed", "confirm", "that",
@@ -286,6 +287,8 @@ class Guard:
         """Why the user's own request already answers this question, or ''. Plain checks, so a persuasive page cannot argue with them."""
         mandate = getattr(tool, "mandate", None)
         if mandate is None or not request or extra_risk or risk > mandate.max_class or not getattr(self._store.config.safety, "mandates", True):
+            return ""
+        if risk > R2 and mandate.class3_flag and not getattr(self._store.config.safety, mandate.class3_flag, False):
             return ""
         try:
             if not re.search(mandate.intent, request, re.IGNORECASE):

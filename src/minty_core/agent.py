@@ -517,6 +517,8 @@ class Agent:
 
     def _request(self) -> str:
         """What the user last asked for, in their own words (never a tool's output): what their request already answers is not asked again."""
+        if self.provenance is not None and "telegram_forward" in self.provenance.sources:
+            return ""  # a forwarded message sits inside the user's message as a quote: a stranger's words are never the user's request
         return current_request([m.content for m in self.history if m.role == "user"])
 
     def _gate_inputs(self, tool, call: ToolCall) -> tuple[set, str, int]:

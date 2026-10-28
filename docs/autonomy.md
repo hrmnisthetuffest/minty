@@ -17,8 +17,9 @@ What Minty does by itself, how it is kept safe, and what is not done. Each part 
 
 - **Parallel steps inside one mission.** A mission's plan runs one checkpoint at a time against one ledger and one conversation. Parallel
   branches would need separate ledgers and a way to ask you one question at a time; independent jobs (two missions) do run side by side.
-- **Sending mail under your auto-reply rules through Composio.** Sends stay class 3 (always asked); `mailpolicy` (the narrow rules you
-  write for automatic replies) governs the local outbox, and Composio's send tools do not go through it. Routing them through it is the
+- **Automatic replies under your `mailpolicy` rules through Composio.** Sends stay class 3 (always asked) except the one case you can turn
+  on (`safety.mandate_send_mail`: one short plain mail to an address you wrote in your own words, five a day). `mailpolicy` (the narrow rules
+  you write for automatic replies) governs the local outbox, and Composio's send tools do not go through it; routing replies through it is the
   next step, deliberately not done blind.
 - **A "waiting on an outside event" job state** (for example "until Alex replies"). Follow-ups owed are tracked by the attention list; a job that
   waits for an outside event is not a state of its own.

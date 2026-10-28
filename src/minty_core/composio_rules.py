@@ -12,7 +12,7 @@ registered). Class 3 is always asked; class 2 is asked in careful and commits mo
 from __future__ import annotations
 
 import re
-from typing import Callable
+from typing import Callable, Iterable
 
 READ = frozenset({"FETCH", "GET", "LIST", "SEARCH", "FIND", "READ", "RETRIEVE", "LOOKUP", "CHECK", "COUNT", "QUERY", "VIEW", "DESCRIBE"})
 # a word that changes something or reaches someone; a name with one of these is never a read, whatever else it says
@@ -108,3 +108,33 @@ def created_artifacts(arguments, answer: str) -> list[tuple[str, str, str, str]]
         seen.add(ext_id)
         found.append((_KIND[kind_word], ext_id, match.group(0), title))
     return found
+
+
+SEND_KEYS = frozenset({"recipient_email", "subject", "body", "is_html", "include_signature"})
+_SEND_WORDS = re.compile(r"\b(send|email|e-mail|mail|write to|message)\b", re.IGNORECASE)
+_ADDRESS = re.compile(r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,5}")
+_LINK_WORDS = re.compile(r"https?://|www\.|\b[a-z0-9-]+\.(?:com|net|org|io|dev|app|xyz|top|ru|cn|info|biz|co|in|me|ly|sh)\b", re.IGNORECASE)
+
+
+def checked_send(arguments, request: str, sensitive: Iterable[str]) -> bool:
+    """True only for one plain GMAIL_SEND_EMAIL the user asked for: a single recipient whose address is in the user's own words, a short
+    plain note (no link, no other address, no sensitive word, nothing that reads as an order to a model), no cc, bcc, attachment or html."""
+    from minty_core.provenance import looks_like_injection
+
+    steps = _steps(arguments)
+    if steps is None or len(steps) != 1 or steps[0][0].upper() != "GMAIL_SEND_EMAIL":
+        return False
+    args = steps[0][1]
+    if set(args) - SEND_KEYS or args.get("is_html"):
+        return False
+    to, subject, body = args.get("recipient_email"), args.get("subject", ""), args.get("body", "")
+    if not (isinstance(to, str) and isinstance(subject, str) and isinstance(body, str)) or not _ADDRESS.fullmatch(to):
+        return False
+    if to.lower() not in (request or "").lower() or not _SEND_WORDS.search(request or ""):
+        return False
+    if not body.strip() or len(body) > 1200 or len(subject) > 150 or "\n" in subject:
+        return False
+    text = f"{subject}\n{body}"
+    if _LINK_WORDS.search(text) or _ADDRESS.search(text) or looks_like_injection(text):
+        return False
+    return not any(re.search(rf"\b{re.escape(w)}\b", text, re.IGNORECASE) for w in sensitive)

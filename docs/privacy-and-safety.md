@@ -36,7 +36,14 @@ or blocks them. Memory refuses to store passwords, PINs, one-time codes and keys
   counts as your words, and a call whose arguments came from outside, or from content that gave orders, is asked as before. Class 3
   stays asked unless the tool names a cost (research costs credits) and never for money, keys, deletion or people; a deep research
   (about 80 sources) is asked unless you asked for depth. Deny rules and lockdown still win. It is on by default; `safety.mandates`
-  turns it off. Today: `research_start`, `agents_start_task`, `agents_start_project`.
+  turns it off. Today: `research_start`, `agents_start_task`, `agents_start_project` (only when you ask a coding agent to work, not when
+  you merely name it), `artifacts_register`, `prefs_set` and Composio writes into sheets and docs Minty knows. A request that arrived with a
+  forwarded message gets no mandate at all: the forwarded text sits inside your message as a quote, and a stranger's words are never your request.
+- **One mail, if you turn it on.** `safety.mandate_send_mail` (off by default) lets Minty send **one** short plain mail through Composio
+  without asking when you asked for it ("email sam@example.com that the meeting moved to 3pm"): the address must be written in your own words,
+  there is one recipient and no cc, bcc, attachment or html, the note has no link, no other address, no sensitive word (bank, salary, invoice,
+  contract ...) and nothing that reads as an order to a model, nothing the call uses came from outside, and at most five a day (counted per
+  run). Anything else that reaches a person is asked as before.
 - Web pages, files, e-mails and tool results are **data**. If one tells Minty to do something, Minty shows you the text and asks.
 - The browser stops at CAPTCHAs and waits for you; it does not try to solve them or to hide that it is automated.
 - Only Telegram chats paired with a one-time code are answered. The local API and the panel listen on `127.0.0.1` only.

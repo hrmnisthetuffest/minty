@@ -31,6 +31,7 @@ LABELS = {
     "gmail_watch.lookup_senders": "Search once per new sender to see whether you have written to them",
     "notify.phone": "Send important and urgent notices to your phone too",
     "notify.urgent_bypass_quiet": "Let an urgent notice break the quiet hours",
+    "safety.mandate_send_mail": "Send a short plain mail without asking when you named the address in your own words (five a day)",
     "safety.mandates": "Do not ask again about what you just asked for (never for money, keys, deletion or people)",
     "safety.honeytokens": "Plant a decoy key file to catch anything hunting for keys",
     "safety.mask_pii_in_traces": "Mask e-mails, phones, cards and ID numbers in traces",

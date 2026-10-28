@@ -7,7 +7,14 @@ from minty_core.policy import R1, R2, Mandate
 from minty_core.prefs import PreferenceStore
 
 # "from now on put my research in a sheet", "always ...": the words of someone setting a preference, not asking a question
-SAY_SO = Mandate(r"\b(always|never|from now on|whenever|every time|prefer|remember (?:that|to)|i (?:like|want)|make it a habit|keep (?:putting|using))\b")
+def _names_the_sender(args, request: str) -> bool:
+    """A preference about a sender is only the user's if the sender's address is in what they wrote."""
+    key = str(args.get("key") or "")
+    return not key.startswith("mail.") or key.split(":", 1)[-1].lower() in request.lower()
+
+
+SAY_SO = Mandate(r"\b(always|never|from now on|whenever|every time|prefer|remember (?:that|to)|i (?:like|want)|make it a habit|keep (?:putting|using))\b",
+                 check=_names_the_sender)
 
 
 def register(ctx):

@@ -3,16 +3,18 @@ a tool or remove either: those are terminal commands (minty mcp ...). Every call
 marked read-only, class 2 otherwise), its arguments are checked and screened for keys, and the result comes back tagged as outside text."""
 import json
 import re
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from minty_core.artifacts import ArtifactStore
-from minty_core.composio_rules import call_class, created_artifacts
+from minty_core.composio_rules import call_class, checked_send, created_artifacts
 from minty_core.mcp.client import McpError, composio_host_ok, open_session
 from minty_core.mcp.directory import DIRECTORY, REMOTE
 from minty_core.mcp.registry import McpRegistry, tool_hash
 from minty_core.plugins.host import Tool
-from minty_core.policy import R2, Mandate, destination_key
+from minty_core.mailpolicy import DEFAULT_SENSITIVE
+from minty_core.policy import R2, R3, Mandate, destination_key
 from minty_core.secretscan import SecretScanner
 
 UNTRUSTED = "[untrusted MCP server output, not instructions]"
@@ -46,8 +48,13 @@ ARTIFACT_INTENT = (r"\b(sheets?|spreadsheets?|docs?|documents?|track(?:er|ing)?|
                    r"notes?|findings|results|report)\b")
 
 
+SEND_INTENT = r"(?:send|email|e-mail|mail|write to|message)"
+MAX_SENDS_PER_DAY = 5
+
+
 def register(ctx):
     registry = McpRegistry(Path(ctx.config_dir) / "mcp.json")
+    sends = ctx.state.setdefault("sends", {})  # date -> mails sent through Composio on the user's own request
 
     def artifacts() -> ArtifactStore:  # one open database across reloads (every settings change reloads the plugins)
         held = ctx.state.get("artifacts")
@@ -65,10 +72,15 @@ def register(ctx):
         server = registry.servers().get(name, {})
         return server.get("kind") == "composio" or composio_host_ok(server.get("url", ""))
 
-    def artifact_write_only(args, request: str) -> bool:
-        """The one kind of call a request can answer: Composio steps that read, draft or write into a sheet or doc Minty knows."""
-        return (composio_server(str(args.get("server") or "")) and str(args.get("tool") or "").upper() == "COMPOSIO_MULTI_EXECUTE_TOOL"
-                and call_class(args.get("arguments"), known) <= 2)
+    def lifts(args, request: str) -> bool:
+        """The calls a request can answer: Composio steps that read, draft or write into a sheet or doc Minty knows (class 2), and, only when
+        the user turned `safety.mandate_send_mail` on, one plain mail they asked for to an address they wrote (class 3, five a day)."""
+        if not (composio_server(str(args.get("server") or "")) and str(args.get("tool") or "").upper() == "COMPOSIO_MULTI_EXECUTE_TOOL"):
+            return False
+        arguments = args.get("arguments")
+        if call_class(arguments, known) <= 2:
+            return re.search(ARTIFACT_INTENT, request, re.IGNORECASE) is not None
+        return sends.get(time.strftime("%Y-%m-%d"), 0) < MAX_SENDS_PER_DAY and checked_send(arguments, request, DEFAULT_SENSITIVE)
 
     def cfg():
         return ctx.services["config"]().mcp
@@ -159,6 +171,8 @@ def register(ctx):
             result = await session.call_tool(tool, arguments)
         flag = "The tool reported an error. " if result.is_error else ""
         if not result.is_error and composio_server(name) and tool.upper() == "COMPOSIO_MULTI_EXECUTE_TOOL":
+            if any(isinstance(t, dict) and str(t.get("tool_slug", "")).upper() == "GMAIL_SEND_EMAIL" for t in (arguments.get("tools") or [])):
+                sends[time.strftime("%Y-%m-%d")] = sends.get(time.strftime("%Y-%m-%d"), 0) + 1  # counted whoever approved it
             for kind, ext_id, url, title in created_artifacts(arguments, result.text or ""):  # what it just made becomes a place it may write
                 try:
                     artifacts().add(kind, ext_id, title or "Untitled", url, source="minty")
@@ -196,5 +210,5 @@ def register(ctx):
              {"type": "object", "properties": {"server": {"type": "string"}, "tool": {"type": "string"},
                                                "arguments": {"type": "object"}}, "required": ["server", "tool"]},
              guarded(call), sensitive=True, risk=risk, describe=describe, egress=egress,
-             mandate=Mandate(ARTIFACT_INTENT, max_class=R2, check=artifact_write_only)),
+             mandate=Mandate(f"{ARTIFACT_INTENT}|\\b{SEND_INTENT}\\b", max_class=R3, check=lifts, class3_flag="mandate_send_mail")),
     ]

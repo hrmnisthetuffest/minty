@@ -51,7 +51,9 @@ def configured_check(settings: dict) -> list[str] | None:
 
 
 # a coding agent the user named ("have Claude Code fix it") is not asked about again
-AGENT_MANDATE = Mandate(r"\b(claude|hermes|openclaw|coding agent|code agent)\b")
+_AGENT = r"(?:claude(?: code)?|hermes|openclaw|(?:the |a )?(?:coding|code) agent)"
+_VERBS = r"(?:fix|build|implement|write|refactor|debug|review|add|change|update|make|do|handle|create|run|test|set up|work on|look at)"
+AGENT_MANDATE = Mandate(rf"\b(?:have|let|ask|get|use|using|run|start)\b[^.?!]{{0,40}}\b{_AGENT}\b|\b{_AGENT}\b[^.?!]{{0,40}}\b{_VERBS}\b")  # asking it to work, not naming it
 
 
 def register(ctx):

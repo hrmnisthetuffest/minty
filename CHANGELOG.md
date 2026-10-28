@@ -770,4 +770,10 @@ when it is good enough.
   sheet"; `notices_feedback` (useful or noise) teaches the Gmail watcher about a sender, and accepted `mail.vip`/`mail.mute` habits change its scoring (a
   muted sender is silent unless urgent). `urgent` mail now needs something due very soon, not just a deadline. docs/autonomy.md maps the whole overhaul and
   lists what is not built. Tests: `test_workflow*`, `test_prefs*`, `test_gmail_wiring`.
+- Autonomy 5 (review fixes and the one send). **Fixed a hole found in review:** text inside a forwarded Telegram message sits inside the user's message as
+  a quote, so "research the competitors of acme" in a forwarded message could have satisfied a mandate; a request that carried forwarded text now gets no
+  mandate. The coding-agent mandate needs a request to work ("have Claude fix the tests"), not a mention ("what is Claude"). A preference about a sender
+  needs that sender's address in your words. New, **off by default**: `safety.mandate_send_mail` lets one short plain mail go through Composio without a
+  question when you asked for it and wrote the address yourself (single recipient; no cc, bcc, attachment, html, link, other address or sensitive word;
+  nothing from outside; five a day; `policy.Mandate.class3_flag`). Tests: `tests/test_policy_mandate.py`, `tests/test_mcp_remote.py`.
 
