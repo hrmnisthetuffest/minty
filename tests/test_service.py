@@ -40,3 +40,14 @@ def test_the_service_finds_tools_installed_in_the_home_folder():
 def test_the_service_limits_memory_arenas_for_small_machines():
     text = unit_text(Path("/opt/minty"))
     assert "Environment=MALLOC_ARENA_MAX=2" in text  # glibc keeps one memory arena per core by default: wasteful on 4 GB
+
+
+def test_the_unit_uses_only_the_systemd_options_that_leave_the_sandbox_audio_and_sudo_working():
+    text = unit_text(Path("/home/me/Minty"))
+    for safe in ("LockPersonality=yes", "SystemCallArchitectures=native", "ProtectKernelModules=yes", "ProtectControlGroups=yes"):
+        assert safe in text, safe
+    # each of these was tried: RestrictSUIDSGID and ProtectKernelLogs stop bubblewrap (the coding-agent sandbox) from starting;
+    # NoNewPrivileges would stop a sudo command you approve; the namespace options would stop bubblewrap too
+    lines = [ln for ln in text.splitlines() if not ln.startswith("#")]
+    for broken in ("NoNewPrivileges", "RestrictSUIDSGID", "ProtectKernelLogs", "RestrictNamespaces", "PrivateTmp", "ProtectHome", "ProtectSystem"):
+        assert not any(ln.startswith(broken + "=") for ln in lines), broken

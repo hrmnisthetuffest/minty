@@ -65,5 +65,5 @@ The image runs as an ordinary user, not root; it holds no keys (they are added t
 API is not published; and `.dockerignore` keeps `.git`, key files and your own notes out of the build. The compose file also drops every
 Linux capability, forbids gaining privileges, and makes the container's program read-only (only the `/data` volume and `/tmp` are writable).
 Checked by running the core image that way: all capabilities empty, `NoNewPrivs` on, the program read-only, `/data` writable and the panel
-answering. The voice variant inherits these settings and was not run with them: if sound misbehaves, remove the `read_only` and `tmpfs`
-lines first.
+answering. The voice variant was run the same way (the panel answered and its voice libraries import); a microphone and speaker passed through to it
+were not tried: if sound misbehaves, remove the `read_only` and `tmpfs` lines first.

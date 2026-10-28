@@ -35,6 +35,13 @@ TimeoutStopSec=20
 KillMode=mixed
 Nice=5
 MemoryHigh={memory_high_mb}M
+# Only the systemd sandbox options that were tried with Minty's own bubblewrap sandbox, audio and ffmpeg and left them working.
+# Not used on purpose: NoNewPrivileges (stops a sudo command you approve), RestrictSUIDSGID and ProtectKernelLogs (each stops bubblewrap,
+# the coding-agent sandbox, from starting), and the namespace/filesystem options (bubblewrap needs namespaces).
+LockPersonality=yes
+SystemCallArchitectures=native
+ProtectKernelModules=yes
+ProtectControlGroups=yes
 
 [Install]
 WantedBy=default.target

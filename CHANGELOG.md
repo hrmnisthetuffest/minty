@@ -676,10 +676,9 @@ when it is good enough.
   or slow connection or with reduced motion (a picture and a Play button); everything stops when the tab is hidden or the page is left;
   a clip that cannot be played shows why and can be skipped. The core serves clips with byte ranges and small poster frames (made once),
   only for clips that are in the catalogue and inside the library folder; the panel streams them by number, for logged-in sessions only,
-  kept a day in a private cache. Tests: `test_studio_player_api.py`, `test_panel_media.py`, `test_panel_studio_static.py`. Checked in a browser against a real core: first frame
-  19-36 ms on localhost, the switch to the clip loaded ahead 0 ms (the old element released), the failure message with "Skip this clip", data
-  saving (a picture and a Play button), the backdrop on and off. Frames advancing could not be seen: the browser pane that was available
-  keeps its page hidden, which pauses all video.
+  kept a day in a private cache. Tests: `test_studio_player_api.py`, `test_panel_media.py`, `test_panel_studio_static.py`. Checked in a real Chrome against a real core (repeatable: `tests/test_panel_studio_browser.py`): frames advance, first frame 19-36 ms on
+  localhost, the switch to the clip loaded ahead 0 ms with the old element released, the failure message with "Skip this clip", data saving
+  (a picture and a Play button), the dimmed backdrop playing, and every video let go when the page is left.
 - Security: the Docker Compose file drops every Linux capability, sets `no-new-privileges`, and makes the container's program read-only
   (`/data` and `/tmp` stay writable). Run on the core image: capabilities empty, `NoNewPrivs` on, panel answering. The voice variant inherits it
   and was not run. Test: `tests/test_docker_files.py`.
@@ -689,3 +688,8 @@ when it is good enough.
 - Fix: a busy clip was kept bigger than it needed to be (a real 25 MB, 34 s Pexels download became 29 MB). Backgrounds are now capped at about
   2.5 Mbit/s: the same clip is kept as 10.9 MB. Verified by downloading a real Pexels file link (no key is needed for the file itself) through
   the guarded fetcher: `videos.pexels.com` answers directly with no redirect, so the host allowlist and the no-cross-host-redirect rule fit it.
+- Security: the systemd unit gains `LockPersonality`, `SystemCallArchitectures=native`, `ProtectKernelModules` and `ProtectControlGroups`: the
+  ones that were tried with Minty's own sandbox, audio and ffmpeg and left them working (trying them showed that `RestrictSUIDSGID` and
+  `ProtectKernelLogs` each stop bubblewrap from starting, so they are not used). The voice container image was also run with the hardened
+  settings (panel answers, the voice libraries import). Measured on the running app in a container: the panel answers 1.1 s after start,
+  idle CPU 0.53 % of one core, 83 MB. Tests: `tests/test_service.py`.

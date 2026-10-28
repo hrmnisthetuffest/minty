@@ -48,20 +48,22 @@ secrets files at 0600 in a 0700 folder, injection tagging and the approval class
 | A plain question: system prompt + tools (`scripts/perf.py` tokens) | 2 979 | 2 736 (-8.2 %) |
 | A real NASA background clip | 55.0 MB downloaded | 4.48 MB kept (60 s, 720x1280, no sound), 10 s to fetch and prepare |
 | Import time / memory after import | 364 ms / 172 MB | 359 ms / 172 MB (no change) |
+| The running app (core image, hardened container, no voice): panel answering after start / idle CPU / memory | not measured before | 1.1 s / 0.53 % of one core over 60 s / 83 MB |
+| A real 34 s Pexels clip, kept as a background | 29.5 MB (bigger than the 25.0 MB download) | 10.9 MB (capped at about 2.5 Mbit/s) |
 | Full test suite | 5 566 collected, green | 5 700+ |
 
 The size budgets in `scripts/perf_budget.toml` had been exceeded since before the agentic overhaul (a plain question was 2 597 tokens
 against a limit of 1 500) and nothing enforced them. They are re-baselined just above the measured values and
 `tests/test_request_size_gate.py` fails when a change makes a request bigger. About 25 background loops wake every 30 to 600 seconds;
-that was read from the code, not profiled on a running instance (a full run would open the microphone).
+that was read from the code; the running app was measured in a container without a microphone (see the table).
 
 ## Video
 
 There is no panel background video in Minty; "background video" is the footage behind a reel in the studio. See
 [studio.md](studio.md#background-styles-a-different-look-on-different-days) for the catalogue, the daily rotation and the providers' terms.
 Verified: real retrieval from NASA's library; rotation, repetition, thin and empty catalogues, exclusions, favourites, restarts, expiry,
-timeouts, rate limits, hostile addresses and bytes, size limits (with scripted providers). Not verified: Pexels and Pixabay against the real
-services (no keys), the download hosts they use, and whether a caption credit without a link satisfies Pexels' API attribution wording.
+timeouts, rate limits, hostile addresses and bytes, size limits (with scripted providers). Verified for real: a Pexels file link (they need no key) downloads straight from `videos.pexels.com` with no redirect, through the guarded fetcher.
+Not verified: the Pexels and Pixabay search APIs (no keys), Pixabay's download host, and whether a caption credit without a link satisfies Pexels' API attribution wording.
 
 ### Playback in the panel
 
@@ -70,8 +72,9 @@ and not a flash; a clip that cannot be played says why and can be skipped; nothi
 with reduced motion (a picture and a Play button); everything is released when the tab is hidden or the page is left. Clips are streamed by
 the panel from the core by number, for a logged-in session only, with byte ranges, kept a day in a private cache; the core serves only clips
 that are in the catalogue and inside the library folder, and poster frames (about 15 KB each) are made once. Measured against a real core on
-localhost: first frame 19-36 ms, a switch to the clip loaded ahead 0 ms. Not observed: frames advancing (the browser pane available here keeps
-its page hidden, which pauses video), and anything over a real network or on a phone.
+localhost, in a real Chrome (`tests/test_panel_studio_browser.py` repeats it): frames advance, first frame 19-36 ms, a switch to the clip loaded
+ahead 0 ms with the old element released, the dimmed backdrop plays, and leaving the page leaves no video element. Not observed: anything over a
+real network or on a phone.
 
 ## Still open
 
@@ -80,9 +83,12 @@ its page hidden, which pauses video), and anything over a real network or on a p
 - Hermes and OpenClaw jobs are not sandboxed (their needs are unknown); they do get the cleaned environment, so a key they need must be named
   in `agents.agent_env`.
 - The panel speaks plain HTTP on your network by design; put it behind HTTPS if you open it beyond your home.
-- `NoNewPrivileges` and similar are not in the systemd unit: they would break `sudo` commands you approve and a setuid `bwrap`.
-- The Docker Compose file now drops every capability, forbids gaining privileges and makes the program read-only; that was run on the core
-  image (capabilities empty, `NoNewPrivs` on, `/data` writable, panel answering). The voice variant inherits it and was not run.
+- The systemd unit has only the options that were tried with Minty's own sandbox, audio and ffmpeg and left them working (`LockPersonality`,
+  `SystemCallArchitectures=native`, `ProtectKernelModules`, `ProtectControlGroups`). `RestrictSUIDSGID` and `ProtectKernelLogs` each stop
+  bubblewrap from starting (found by trying them), and `NoNewPrivileges` would stop a `sudo` command you approve, so they are not used.
+- The Docker Compose file drops every capability, forbids gaining privileges and makes the program read-only; run on the core image and on the
+  voice image (capabilities empty, `NoNewPrivs` on, `/data` writable, panel answering, the voice libraries import). A microphone and speaker
+  passed through to the container were not tried.
 - The Kokoro digests trust the copy downloaded on 2026-10-10.
 - NASA items with third-party content are filtered by words in their description (a heuristic); the Pixabay and Pexels clips are the
   providers' word for their licence.
