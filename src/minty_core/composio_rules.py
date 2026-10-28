@@ -130,8 +130,8 @@ def checked_send(arguments, request: str, sensitive: Iterable[str]) -> bool:
     to, subject, body = args.get("recipient_email"), args.get("subject", ""), args.get("body", "")
     if not (isinstance(to, str) and isinstance(subject, str) and isinstance(body, str)) or not _ADDRESS.fullmatch(to):
         return False
-    if to.lower() not in (request or "").lower() or not _SEND_WORDS.search(request or ""):
-        return False
+    if not re.search(rf"(?<![A-Za-z0-9._%+-]){re.escape(to)}(?![A-Za-z0-9._%+-])", request or "", re.IGNORECASE) or not _SEND_WORDS.search(request or ""):
+        return False  # the address as its own word: "pam@x.test" does not make "am@x.test" the user's
     if not body.strip() or len(body) > 1200 or len(subject) > 150 or "\n" in subject:
         return False
     text = f"{subject}\n{body}"

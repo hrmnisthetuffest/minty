@@ -181,3 +181,20 @@ async def test_a_preference_about_a_sender_needs_that_sender_in_the_users_words(
     assert asked and not d.allowed
     d, asked = await run(t, {"key": "research->sheet", "scope": "research"}, "from now on put my research in a sheet")
     assert d.allowed and asked == []
+
+
+async def test_a_mission_never_lifts_a_class_3_question_on_a_goal_the_model_wrote(tmp_path):
+    mail = Mandate(r"\b(send|email)\b", max_class=R3, class3_flag="mandate_send_mail")
+
+    async def asked_with(user_origin):
+        agent, host, asked = build(tmp_path / str(user_origin), {"mail_send": (3, None)}, [[call("mail_send", {"to": "sam@example.com"})]],
+                                   settings={"safety": {"mandate_send_mail": True}})
+        host.tools["mail_send"].mandate = mail
+        agent.request_is_users = user_origin  # a mission's "request" is the goal that missions_start was given by the model
+        await say(agent, "email sam@example.com the notes")
+        return asked
+
+    (tmp_path / "True").mkdir()
+    (tmp_path / "False").mkdir()
+    assert await asked_with(True) == []  # in a conversation, your words
+    assert await asked_with(False)  # in a mission, the goal is the model's text: asked

@@ -776,4 +776,12 @@ when it is good enough.
   needs that sender's address in your words. New, **off by default**: `safety.mandate_send_mail` lets one short plain mail go through Composio without a
   question when you asked for it and wrote the address yourself (single recipient; no cc, bcc, attachment, html, link, other address or sensitive word;
   nothing from outside; five a day; `policy.Mandate.class3_flag`). Tests: `tests/test_policy_mandate.py`, `tests/test_mcp_remote.py`.
+- Autonomy 6 (second review). **Fixed:** the notifier's digest channel carried the mail snippet, and a held digest is mirrored to Telegram by the push
+  router, so "details stay on the laptop" was false for notable mail (a test with an account number in the snippet failed first); the digest is now title-only.
+  A mission's request is a goal the model wrote through `missions_start`, so inside a mission a class 3 mandate lift (the one mail) is never allowed
+  (`Agent.request_is_users`). A sheet or doc that the workflow brief calls for (comparing, ranking, competitors, leads, or your accepted "research ends in a
+  sheet" habit) is now written without a question even when the goal never says "sheet"; `Mandate` with an empty `intent` leaves the decision to its check.
+  `artifacts_register` grounds on the sheet's own id, not on the site; the mail recipient must be the address as its own word. Checked deterministically against a
+  copy of your real settings: `COMPOSIO_SEARCH_TOOLS` and a `GMAIL_FETCH_EMAILS` step are class 1 and allowed (the 22:41 "critical, asked" case), a send is
+  still asked. Tests: `test_gmail_wiring`, `test_policy_mandate`, `test_mcp_remote`, `test_plugin_artifacts`.
 

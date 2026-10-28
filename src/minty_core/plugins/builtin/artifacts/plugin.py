@@ -7,7 +7,14 @@ from minty_core.plugins.host import Tool
 from minty_core.policy import R1, R2, Mandate
 
 # "use this sheet <link>", "track the leads in <link>": the link must be in the user's own words, or the question is asked
-REGISTER = Mandate(r"\b(use|using|track|put|add|log|update|save|write|keep|sheet|spreadsheet|doc|document|in|into|to)\b", targets=("ref",))
+def _its_own_id_is_in_the_words(args, request: str) -> bool:
+    """The id itself must be in what the user wrote: a link to one sheet on the same site is not permission for another."""
+    ext_id = ArtifactStore.parse_ref(str(args.get("ref") or ""))[1]
+    return bool(ext_id) and ext_id in (request or "")
+
+
+REGISTER = Mandate(r"\b(use|using|track|put|add|log|update|save|write|keep|sheet|spreadsheet|doc|document|in|into|to)\b", targets=("ref",),
+                   check=_its_own_id_is_in_the_words)
 
 
 def register(ctx):

@@ -23,7 +23,7 @@ def build_notifier(path: Path, store, bus, services: dict, *, clock: Callable[[]
 
     channels = [
         Channel("record", lambda event, text: None),  # the notifier keeps its own record
-        Channel("digest", digest),
+        Channel("digest", digest, private=False),  # a held digest is mirrored to the phone by the push router: titles only
         Channel("panel", lambda event, text: bus.publish("notice", message=text)),  # silent: the screen and the panel
         Channel("say", lambda event, text: bus.publish("notify", text=text, local=True), loud=True),  # said and shown here, never mirrored
         Channel("phone", lambda event, text: bus.publish("phone", text=text, urgent=event.severity == "urgent"), loud=True, private=False),

@@ -694,3 +694,35 @@ async def test_no_more_than_five_a_day(tmp_path, monkeypatch):
 
     d = await guard.authorize(spec, "mcp_call", _send(), confirm, request=said, known={"composio.dev"})
     assert seen and not d.allowed  # the sixth is asked
+
+
+async def test_a_sheet_the_brief_calls_for_is_written_without_a_question_even_when_the_goal_never_says_sheet(tmp_path, monkeypatch):
+    from minty_core.artifacts import ArtifactStore
+    from minty_core.policy import Guard
+    from tests.test_policy_mandate import Store
+
+    host = composio_with_execute(tmp_path, monkeypatch)
+    spec = host.get_tool("mcp_call")
+    store = ArtifactStore(tmp_path / "artifacts.db")
+    store.add("sheet", SHEET_ID, "Rivals", source="minty")
+    store.close()
+    create = execute(("GOOGLESHEETS_CREATE_GOOGLE_SHEET1", {"title": "Rivals"}))
+    append = execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": SHEET_ID, "values": [["acme"]]}))
+
+    async def asked_for(args, request):
+        seen = []
+
+        async def confirm(q):
+            seen.append(q)
+            return False
+
+        d = await Guard(Store()).authorize(spec, "mcp_call", args, confirm, request=request, known={"composio.dev"})
+        return d.allowed and not seen
+
+    goal = "research the top 10 competitors of acme and compare them"  # no word like sheet, table, list or report
+    assert await asked_for(create, goal) and await asked_for(append, goal)
+    assert not await asked_for(append, "what is the weather")
+    habit = "research the best standing desks"
+    assert not await asked_for(append, habit)  # nothing in it calls for a sheet ...
+    host._services["prefs"].set_explicit("research->sheet", "research")  # ... until the user said research always ends in one
+    assert await asked_for(append, habit)

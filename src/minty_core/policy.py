@@ -244,7 +244,7 @@ class Guard:
         self._audit = Tracer(audit_dir, secret_values=secret_values, retention_days=366) if audit_dir else None
 
     def assess(self, tool, name: str, args: dict, prompt: str | None = None, *, extra_risk: int = 0, why: str = "",
-               known: set[str] | None = None, request: str = "") -> Assessment:
+               known: set[str] | None = None, request: str = "", user_origin: bool = True) -> Assessment:
         """What would happen to this call, without asking anyone. known: destinations the user has mentioned;
         data sent anywhere else is class 3 (personal data to a new party), so it is always asked."""
         cfg = self._store.config.safety
@@ -278,20 +278,20 @@ class Guard:
             decision = "allow"  # "never ask" still asks for class 3
         lifted = ""
         if decision == "ask":
-            lifted = self._mandated(tool, args, request, risk, extra_risk)
+            lifted = self._mandated(tool, args, request, risk, extra_risk, user_origin)
             if lifted:
                 decision = "allow"
         return Assessment(name, args, risk, decision, question, why, lifted)
 
-    def _mandated(self, tool, args: dict, request: str, risk: int, extra_risk: int) -> str:
+    def _mandated(self, tool, args: dict, request: str, risk: int, extra_risk: int, user_origin: bool = True) -> str:
         """Why the user's own request already answers this question, or ''. Plain checks, so a persuasive page cannot argue with them."""
         mandate = getattr(tool, "mandate", None)
         if mandate is None or not request or extra_risk or risk > mandate.max_class or not getattr(self._store.config.safety, "mandates", True):
             return ""
-        if risk > R2 and mandate.class3_flag and not getattr(self._store.config.safety, mandate.class3_flag, False):
-            return ""
+        if risk > R2 and mandate.class3_flag and not (user_origin and getattr(self._store.config.safety, mandate.class3_flag, False)):
+            return ""  # a class 3 lift needs its switch, and words the user typed (not a goal a model wrote for a mission)
         try:
-            if not re.search(mandate.intent, request, re.IGNORECASE):
+            if mandate.intent and not re.search(mandate.intent, request, re.IGNORECASE):  # an empty intent leaves the whole decision to `check`
                 return ""
         except re.error:
             return ""
@@ -307,8 +307,8 @@ class Guard:
 
     async def authorize(self, tool, name: str, args: dict, confirm: Callable[[str], Awaitable[bool]] | None,
                         prompt: str | None = None, *, extra_risk: int = 0, why: str = "",
-                        known: set[str] | None = None, request: str = "") -> Decision:
-        a = self.assess(tool, name, args, prompt, extra_risk=extra_risk, why=why, known=known, request=request)
+                        known: set[str] | None = None, request: str = "", user_origin: bool = True) -> Decision:
+        a = self.assess(tool, name, args, prompt, extra_risk=extra_risk, why=why, known=known, request=request, user_origin=user_origin)
         if a.decision != "ask":
             return self.settle(a)
         covered = self._standing(a, extra_risk)

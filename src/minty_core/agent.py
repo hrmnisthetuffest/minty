@@ -213,6 +213,7 @@ class Agent:
         self.on_reset: list[Callable[[], None]] = []  # called when the conversation is started over
         # (text) -> a fixed reply or None: asked before any model call (the coach's safety gate); a reply ends the turn
         self.input_gates: list[Callable[[str], str | None]] = []
+        self.request_is_users = True  # false for a mission's helper: its "request" is a goal the model wrote, so no class 3 mandate lift
         self.trusted_destinations: Callable[[], set[str]] | None = None  # places the user set up (an MCP server): as good as named
         self.offline = None  # offline.OfflineHandler: local answers when there is no internet
         # request -> FastAction for simple page commands ("click Store"), or None: run with no model call (fastpath.py)
@@ -476,7 +477,8 @@ class Agent:
                 if advice:
                     prompt = f"{prompt} {advice}"
             decision = await self.guard.authorize(tool, call.name, call.arguments, self.confirm,
-                                                  prompt=prompt, extra_risk=extra, known=known, request=self._request())
+                                                  prompt=prompt, extra_risk=extra, known=known, request=self._request(),
+                                                  user_origin=self.request_is_users)
             approval_id = decision.approval_id
             if not decision.allowed:
                 blocked_by_rule = decision.reason == "blocked by a safety rule" or not decision.asked

@@ -154,3 +154,11 @@ async def test_telling_it_a_notice_was_useful_or_noise_teaches_it_slowly_and_nev
     prefs.set_explicit("mail.mute:sam@acme.test", "mail")
     await host.call("notices_feedback", {"key": "t1", "useful": True})  # you found it useful after all: the mute is lowered
     assert prefs.list(status="active")[0].confidence < 1.0
+
+
+async def test_what_goes_to_the_digest_never_carries_private_detail_because_the_digest_can_reach_the_phone(tmp_path):
+    bus, scheduler = EventBus(), Scheduler()
+    n = build_notifier(tmp_path / "n.db", store(tmp_path), bus, {"scheduler": scheduler}, clock=lambda: 12 * 3600.0, hour_of=lambda t: 12)
+    n.publish(ev("notable", body="Account number 1234 is overdrawn", detail_private=True))
+    assert scheduler.items and all("1234" not in text for text, _ in scheduler.items)  # a held digest is mirrored to Telegram by the push router
+    assert "laptop" in scheduler.items[0][0].lower()

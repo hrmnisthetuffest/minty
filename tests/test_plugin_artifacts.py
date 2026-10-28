@@ -53,3 +53,17 @@ async def test_only_the_users_own_words_can_name_a_sheet_to_write_to(tmp_path):
     assert seen and not d.allowed
     d, seen = await asked_for("")
     assert seen and not d.allowed
+
+
+async def test_a_link_in_your_words_does_not_stand_for_every_sheet_on_the_same_site(tmp_path):
+    spec = make_host(tmp_path).get_tool("artifacts_register")
+    other = "1a2B3c4D5e6F7g8H9i0J1k2L3m4N5o6P7q8R9s0T1u2V"
+    other_link = f"https://docs.google.com/spreadsheets/d/{other}/edit"
+    seen = []
+
+    async def confirm(q):
+        seen.append(q)
+        return False
+
+    d = await Guard(Store()).authorize(spec, "artifacts_register", {"ref": other_link}, confirm, request=f"use this sheet for the leads: {LINK}")
+    assert seen and not d.allowed  # the id the model wants to write to is not the one you gave
