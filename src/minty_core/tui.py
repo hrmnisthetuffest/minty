@@ -1,5 +1,6 @@
 """The terminal face of Minty: keep it open on the laptop. Shows what it is doing, live."""
 import asyncio
+import atexit
 import io
 import logging
 import math
@@ -1060,6 +1061,7 @@ class _KeyReader:
             sys.stdout.write(self.MOUSE_ON)
             sys.stdout.flush()
             self._mouse_on = True
+        atexit.register(self._restore_terminal)  # if Minty dies before the display's own clean-up, the terminal is still put back
         asyncio.get_running_loop().add_reader(self._fd, self._read)
 
     def _read(self) -> None:
@@ -1099,20 +1101,33 @@ class _KeyReader:
         if self.wake is not None:
             self.wake.set()  # redraw at once: the typed letter, or the new colour, shows immediately
 
-    def stop(self) -> None:
+    def _restore_terminal(self) -> None:
+        """Mouse reporting off and the keyboard mode back as it was. Safe to run twice and with no event loop (it is also an exit handler)."""
         import sys
         import termios
 
         if self._mouse_on:
-            sys.stdout.write(self.MOUSE_OFF)
-            sys.stdout.flush()
+            self._mouse_on = False
+            try:
+                sys.stdout.write(self.MOUSE_OFF)
+                sys.stdout.flush()
+            except (OSError, ValueError):
+                pass
+        if self._fd >= 0 and self._old is not None:
+            old, self._old = self._old, None
+            try:
+                termios.tcsetattr(self._fd, termios.TCSADRAIN, old)
+            except (OSError, termios.error, ValueError):
+                pass
+
+    def stop(self) -> None:
         if self._fd >= 0:
             try:
                 asyncio.get_running_loop().remove_reader(self._fd)
             except (RuntimeError, ValueError):
                 pass
-            if self._old is not None:
-                termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
+        self._restore_terminal()
+        atexit.unregister(self._restore_terminal)
 
 
 class TerminalUI:

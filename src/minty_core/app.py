@@ -19,6 +19,7 @@ from minty_core.jobs import interrupted_notice
 from minty_core.safemode import SAFE_PLUGINS, BootLog, is_deliberate_stop, start_in_safe_mode
 from minty_core.supervisor import VoiceSupervisor
 from minty_core.keyimport import extract_keys
+from minty_core import instance
 from minty_core.keystore import SecretsDamaged, SecretsStore
 from minty_core.logredact import install_uvicorn_redaction
 from minty_core.paths import config_dir
@@ -1028,7 +1029,7 @@ def _build_panel_server(directory: Path):
                                       log_level="warning", proxy_headers=False))
 
 
-_restart = {"requested": False, "server": None}
+_restart = {"requested": False, "server": None, "lock": None}  # lock: the descriptor that keeps this the only Minty here
 
 
 def request_restart() -> None:
@@ -1642,9 +1643,17 @@ def main(argv=None) -> None:
         _import_keys(args.path, config_dir())
         return
     try:
+        _restart["lock"] = instance.acquire(config_dir())  # before anything loads: a second Minty says so and stops
+    except instance.AlreadyRunning as e:
+        sys.exit(str(e))
+    try:
         _restart["requested"] = False
-        asyncio.run(_run(config_dir(), with_panel=not getattr(args, "no_panel", False),
-                         safe=getattr(args, "safe", False)))
+        try:
+            asyncio.run(_run(config_dir(), with_panel=not getattr(args, "no_panel", False),
+                             safe=getattr(args, "safe", False)))
+        finally:
+            os.close(_restart["lock"])  # let go before a restart starts the next one (and so a run in this same process can follow)
+            _restart["lock"] = None
         if _restart["requested"]:
             _reexec()
     except ConfigError as e:

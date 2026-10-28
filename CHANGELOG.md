@@ -693,3 +693,10 @@ when it is good enough.
   `ProtectKernelLogs` each stop bubblewrap from starting, so they are not used). The voice container image was also run with the hardened
   settings (panel answers, the voice libraries import). Measured on the running app in a container: the panel answers 1.1 s after start,
   idle CPU 0.53 % of one core, 83 MB. Tests: `tests/test_service.py`.
+- Fix: a second `minty` started while one was running loaded the voice models, started a second Telegram poller on the same bot and opened the
+  microphone, and only then died on the busy port with a traceback. It now takes a lock in the settings folder first (`minty.lock`, held by the
+  kernel for as long as the process lives, so a crash or kill leaves nothing stale and an in-app restart is not blocked) and says "Minty is
+  already running (process N) ... open the panel at http://127.0.0.1:7778" at once. Tests: `tests/test_single_instance.py`.
+- Fix: when Minty died while the full-screen display was open, the terminal was left reporting mouse movements as text
+  (`0;45;8M0;1;1m...` all over the shell) and in single-key mode. Putting it back is now also an exit handler, safe to run twice. Tests:
+  `tests/test_tui_terminal_restore.py`.
