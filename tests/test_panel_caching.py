@@ -21,7 +21,7 @@ def panel(tmp_path):
 
 def test_panel_files_are_kept_but_always_revalidated(tmp_path):
     c = panel(tmp_path)
-    for path in ("/", "/static/app.css", "/static/app.js", "/static/fonts/Antonio.ttf", "/sw.js"):
+    for path in ("/", "/static/app.css", "/static/app.js", "/static/fonts/Antonio.woff2", "/sw.js"):
         r = c.get(path)
         assert r.status_code == 200, path
         assert r.headers["cache-control"] == "no-cache" and r.headers.get("etag"), path

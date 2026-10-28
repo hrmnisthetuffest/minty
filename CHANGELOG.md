@@ -666,3 +666,7 @@ when it is good enough.
   needs a credit is refused when cleaning leaves none; a test that no tool the model can call takes a safeguard setting as a parameter;
   removed clips are not offered again; plugin maintenance (the daily discovery) stops during a lockdown; Pexels files are accepted from
   `videos.pexels.com` and from `player.vimeo.com/external/` (where its own documentation puts them) and nowhere else.
+- Speed: the panel's font is woff2 (74 104 -> 36 688 bytes) and its own text files (page, scripts, styles) are gzip-compressed when the browser
+  accepts it; data answers are never compressed (size can leak a secret). Measured in a browser with no cache: 23 requests, 189 418 -> 83 441
+  bytes (-56 %); with the earlier revalidation, a reload is 6 600. Tests: `tests/test_panel_assets.py`.
+- Tests: discovery with a download cut off part-way, a file that looks like an mp4 but cannot be decoded, and a webm.

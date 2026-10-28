@@ -43,6 +43,7 @@ secrets files at 0600 in a 0700 folder, injection tagging and the approval class
 | What | Before | After |
 |---|---|---|
 | Panel reload (23 requests, in a browser) | 189 418 bytes, 0 answered by 304 | 6 600 bytes, 22 answered by 304 |
+| Panel first load, no cache (woff2 font, gzip for its own text files) | 189 418 bytes | 83 441 bytes (-56 %) |
 | Tool menu sent with every request (`need_toolkit`) | 3 258 characters | 2 287 |
 | A plain question: system prompt + tools (`scripts/perf.py` tokens) | 2 979 | 2 736 (-8.2 %) |
 | A real NASA background clip | 55.0 MB downloaded | 4.48 MB kept (60 s, 720x1280, no sound), 10 s to fetch and prepare |

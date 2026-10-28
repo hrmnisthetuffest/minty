@@ -2,7 +2,7 @@
    While the microphone is muted the accent turns red, as on the terminal display. */
 @font-face {
   font-family: "Antonio"; font-weight: 100 700; font-display: swap;
-  src: url("/static/fonts/Antonio.ttf") format("truetype");
+  src: url("/static/fonts/Antonio.woff2") format("woff2");
 }
 :root {
   --bg: #12111f; --bg2: #19192f; --panel: rgba(255,255,255,.05); --panel2: rgba(255,255,255,.09);

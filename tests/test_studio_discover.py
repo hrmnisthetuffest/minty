@@ -270,3 +270,26 @@ def test_the_hosts_a_provider_may_point_us_at_are_exact():
     assert not ok("pexels", "http://videos.pexels.com/x.mp4") and not ok("pexels", "https://videos.pexels.com.evil.example/x.mp4")
     assert not ok("pexels", "https://user:pw@videos.pexels.com/x.mp4") and not ok("pexels", "https://videos.pexels.com:8443/x.mp4")
     assert not ok("nasa", "https://videos.pexels.com/x.mp4") and ok("nasa", "https://images-assets.nasa.gov/video/a/a~mobile.mp4")
+
+
+async def test_a_download_cut_off_part_way_keeps_nothing_and_does_not_stop_the_rest(world, monkeypatch, many):
+    routes = nasa_routes(many, "Cut", "Fine")
+    routes["https://images-assets.nasa.gov/video/Cut/Cut~medium.mp4"] = FetchFailed("API request failed: could not reach the server")
+    report = await go(world, Net(routes), monkeypatch)
+    assert report.kept == 1 and any("Cut" in s for s in report.skipped)
+    assert [c.external_id for c in world[1].clips("space")] == ["Fine"]
+
+
+async def test_a_file_that_looks_like_an_mp4_but_cannot_be_decoded_is_refused(world, monkeypatch):
+    broken = b"\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom" + b"not really video " * 50
+    report = await go(world, Net(nasa_routes(broken, "Broken")), monkeypatch)
+    assert report.kept == 0 and report.skipped and world[1].clips("space") == []
+    assert not [p for p in (world[0].root / "video").glob("*")] if (world[0].root / "video").exists() else True  # nothing was kept on disk
+
+
+async def test_a_format_other_than_mp4_is_used_when_it_decodes(world, monkeypatch, tmp_path):
+    webm = tmp_path / "c.webm"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=24:duration=4", "-c:v", "libvpx", "-b:v", "300k",
+                    str(webm)], check=True)
+    report = await go(world, Net(nasa_routes(webm.read_bytes(), "Web")), monkeypatch)
+    assert report.kept == 1  # whatever it came as, it is kept as a plain portrait mp4

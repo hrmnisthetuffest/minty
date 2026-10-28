@@ -10,6 +10,7 @@ import httpx
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
 
 from minty_panel.auth import GlobalBudget, LoginThrottle, PasswordStore, SessionStore
@@ -82,6 +83,22 @@ async def relay_events(ws: WebSocket, connect) -> None:
     except Exception:
         with contextlib.suppress(Exception):
             await ws.close(code=1011)
+
+
+class OwnFilesGzip:
+    """Compress the panel's own text files (the page, scripts, styles) and nothing else. Answers that carry data are never compressed:
+    a secret next to text an attacker can influence can be guessed from the size (BREACH). Fonts and pictures are already compressed."""
+
+    SKIP = (".woff2", ".png", ".jpg", ".ico", ".webp")
+
+    def __init__(self, app):
+        self.app, self.gzip = app, GZipMiddleware(app, minimum_size=500)
+
+    async def __call__(self, scope, receive, send):
+        path = scope.get("path", "")
+        own = scope["type"] == "http" and scope.get("method") in ("GET", "HEAD") and (path == "/" or path.startswith("/static/")) \
+            and not path.endswith(self.SKIP)
+        await (self.gzip if own else self.app)(scope, receive, send)
 
 
 def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle: LoginThrottle,
@@ -217,4 +234,5 @@ def create_panel_app(passwords: PasswordStore, sessions: SessionStore, throttle:
         await relay_events(ws, ws_connect or default_connect(core))
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    app.add_middleware(OwnFilesGzip)
     return app
