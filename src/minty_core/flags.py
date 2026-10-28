@@ -29,6 +29,7 @@ LABELS = {
     "safety.block_secret_egress": "Stop tool calls that would send a stored key",
     "gmail_watch.enabled": "Watch your Gmail through Composio and tell you what matters",
     "gmail_watch.lookup_senders": "Search once per new sender to see whether you have written to them",
+    "gmail_watch.reminders": "Remind you the morning before a deadline an important mail names",
     "notify.phone": "Send important and urgent notices to your phone too",
     "notify.urgent_bypass_quiet": "Let an urgent notice break the quiet hours",
     "safety.mandate_send_mail": "Send a short plain mail without asking when you named the address in your own words (five a day)",

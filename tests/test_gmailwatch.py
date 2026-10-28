@@ -288,3 +288,61 @@ async def test_a_tool_you_have_not_allowed_is_said_once_with_the_command_and_not
         r.now += 700
     told = [t for n, s, k, t in r.rec.told if n == "panel"]
     assert len(told) == 1 and "minty mcp allow composio" in told[0] and r.src.calls == []
+
+
+from datetime import date, datetime, time as dtime, timedelta  # noqa: E402
+
+from minty_core.mailscore import deadline_in  # noqa: E402
+
+
+def test_a_deadline_is_found_from_a_date_a_weekday_or_a_word():
+    mon = date(2026, 10, 26)  # a Monday
+    assert deadline_in("invoice due Friday", mon) == date(2026, 10, 30)
+    assert deadline_in("please reply by 30 Oct", mon) == date(2026, 10, 30)
+    assert deadline_in("it is due tomorrow", mon) == date(2026, 10, 27)
+    assert deadline_in("needed today", mon) == mon
+    assert deadline_in("due on monday", mon) == date(2026, 11, 2)  # not today: the next one
+    assert deadline_in("let's talk sometime", mon) is None
+
+
+class Reminders:
+    def __init__(self):
+        self.items = []
+
+    def __call__(self, text, when, key):
+        self.items.append((text, when, key))
+
+
+async def _remind_rig(tmp_path, today, **settings):
+    r = Rig(tmp_path, **settings)
+    r.reminders = Reminders()
+    r.now = datetime.combine(today, dtime(10, 0)).timestamp()
+    r.watcher = GmailWatcher(r.src, r.store, r.rec.notifier, lambda: r.settings, clock=lambda: r.now, remind=r.reminders)
+    await r.watcher.poll_once()
+    return r
+
+
+async def test_an_important_mail_with_a_deadline_a_few_days_off_gets_a_reminder_the_morning_before(tmp_path):
+    r = await _remind_rig(tmp_path, date(2026, 10, 26))  # Monday
+    r.add(msg(1, subject="Report due Friday", snippet="Can you send the report by Friday? Please confirm.", thread="t1"))
+    await r.watcher.poll_once()
+    [(text, when, key)] = r.reminders.items
+    assert when == datetime.combine(date(2026, 10, 29), dtime(9, 0)) and "Report due Friday" in text and "t1" in key and text.startswith("Deadline tomorrow")
+    r.add(msg(2, subject="Invoice due Friday", thread="t2"))  # a sensitive subject stays out of a reminder that may be mirrored to the phone
+    await r.watcher.poll_once()
+    assert "Invoice" not in r.reminders.items[1][0]
+
+
+async def test_no_reminder_when_the_notice_itself_is_the_reminder_or_it_does_not_matter_or_it_is_off(tmp_path):
+    r = await _remind_rig(tmp_path, date(2026, 10, 29))  # Thursday: Friday is tomorrow
+    r.add(msg(1, subject="Report due Friday", snippet="Can you send the report by Friday? Please confirm."))
+    await r.watcher.poll_once()
+    assert r.reminders.items == []
+    r = await _remind_rig(tmp_path / "b", date(2026, 10, 26))
+    r.add(msg(2, subject="Sale ends Friday", snippet="50% off", labels=("INBOX", "CATEGORY_PROMOTIONS")), msg(3, subject="Lunch Friday?", snippet="fancy lunch?"))
+    await r.watcher.poll_once()
+    assert r.reminders.items == []  # promotions are not downloaded, and a lunch invitation is not important
+    r = await _remind_rig(tmp_path / "c", date(2026, 10, 26), reminders=False)
+    r.add(msg(4, subject="Report due Friday", snippet="Can you send the report by Friday? Please confirm."))
+    await r.watcher.poll_once()
+    assert r.reminders.items == []

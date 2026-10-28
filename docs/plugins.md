@@ -464,6 +464,22 @@ Settings: `user`, `smtp_host`, `smtp_port`, `smtp_security`, `auto_reply_to`, `n
 | `outbox_list` | What is in the outbox: drafted, sent (and how), failed or unknown. |  |
 | `outbox_discard` | Throw away an unsent outbox item. | risk 1 |
 
+## playbooks
+
+Reusable ways of doing a kind of work (research, lead lists, weekly reviews): found for a matching goal, adapted to the facts, measured, versioned. An improvement is only a proposal until you accept it, and going back is one step.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `playbooks_list` | The playbooks (reusable ways of doing a kind of work) and how each version has done. |  |
+| `playbooks_create` | Save a playbook the user described: name, triggers (words that say what goals it is for), steps, and optionally context, output, checks, recovery. Only from the user's own words. | risk varies |
+| `playbooks_propose` | Propose an improved version of a playbook. It changes nothing until the user accepts it. | risk varies |
+| `playbooks_accept` | The user accepted a proposed version of a playbook. | risk varies |
+| `playbooks_rollback` | Go back to the version before the active one. | risk varies |
+| `playbooks_remove` | Remove a playbook. | risk varies |
+| `playbooks_stats` | How a playbook's versions have done: runs, how many finished, how long. |  |
+
 ## prefs
 
 What Minty has learned about how you work: told by you, accepted from a suggestion, guessed or for one task. See where each came from, correct it, remove it. Habits are offered and never applied until you accept; none can touch permissions.

@@ -789,4 +789,11 @@ when it is good enough.
   description is now accepted when the tool's name and inputs are exactly what was allowed (`shape_hash`, stored by `allow`) and the new words give no orders
   to a model; anything that asks for something new, and every other server, still switches off until you look again. The five Composio tools were re-allowed
   once so their inputs are pinned. Tests: `tests/test_mcp_remote.py`.
+- Autonomy 7: playbooks and deadline reminders. `playbooks.py` and the `playbooks` plugin: a reusable way of doing a kind of work (context, steps, output, checks,
+  recovery) found for a goal by its trigger words (two or more) and handed to a matching mission as background to adapt; every mission run records how it
+  ended and how long it took per version; an improvement is a proposed version that changes nothing until the user accepts it (asked, with both versions'
+  numbers), rollback is one step and keeps the later version, one failed run changes only the numbers; creating one needs the user's own words; the text is plain
+  (no links, nothing that gives orders to a model). The Gmail watcher now gives an important mail that names a deadline a few days off one reminder the morning
+  before (`gmail_watch.reminders`; written dates, weekdays, "tomorrow"; a sensitive subject stays out of it). `prefs`, `playbooks` and `notices` share one
+  toolkit, `habits`, so the tool menu every request carries stays small. Tests: `test_playbooks*`, `test_gmailwatch`.
 

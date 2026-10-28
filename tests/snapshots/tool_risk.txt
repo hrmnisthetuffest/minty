@@ -170,6 +170,13 @@ outbox_discard                     1 change
 outbox_draft                       0 read
 outbox_list                        0 read
 outbox_send                        3 critical +args sensitive
+playbooks_accept                   2 visible
+playbooks_create                   2 visible
+playbooks_list                     0 read
+playbooks_propose                  1 change
+playbooks_remove                   1 change
+playbooks_rollback                 1 change
+playbooks_stats                    0 read
 prefs_accept                       2 visible
 prefs_correct                      1 change
 prefs_forget                       1 change

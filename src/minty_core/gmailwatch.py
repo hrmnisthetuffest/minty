@@ -17,11 +17,12 @@ import sqlite3
 import threading
 import time
 from dataclasses import dataclass
+from datetime import datetime, time as dtime, timedelta
 from pathlib import Path
 from typing import Callable, Protocol
 
 from minty_core.mailpolicy import DEFAULT_SENSITIVE
-from minty_core.mailscore import LOW_CATEGORIES, Context, Mail, address_of, name_of, score
+from minty_core.mailscore import LOW_CATEGORIES, TIME, Context, Mail, address_of, deadline_in, name_of, score
 from minty_core.notifier import RANK, Event, Notifier
 
 log = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ class WatchSettings:
     min_confidence: float = 0.5  # below this an "important" result is only "notable"
     lookup_senders: bool = True
     max_lookups: int = 5
+    reminders: bool = True  # an important mail with a deadline a few days off gets a reminder the morning before
 
 
 class WatchStore:
@@ -139,8 +141,10 @@ class WatchStore:
 class GmailWatcher:
     def __init__(self, source: MailSource, store: WatchStore, notifier: Notifier, settings: Callable[[], WatchSettings], *,
                  clock: Callable[[], float] = time.time, halted: Callable[[], bool] = lambda: False,
-                 prefs: Callable[[str], str | None] = lambda key: None):
+                 prefs: Callable[[str], str | None] = lambda key: None,
+                 remind: Callable[[str, datetime, str], None] | None = None):
         self._source, self._store, self._notifier, self._settings, self._clock, self._halted = source, store, notifier, settings, clock, halted
+        self._remind = remind  # (text, when, key): the scheduler's own gate decides whether and how it is said
         self._prefs = prefs  # what you accepted or said about senders (mail.vip:, mail.mute:); never anything about permissions
         self._round_wait, self._round_failures = 0.0, 0
 
@@ -254,3 +258,22 @@ class GmailWatcher:
         body = " ".join(x for x in ((mail.subject + ".") if sensitive else "", mail.snippet[:140], f"Why: {why}." if why and severity != "info" else "") if x)
         self._notifier.publish(Event(f"gmail:{alias}", mail.thread_id or mail.id, severity, title, body, ACTIONS.get(verdict.action, ""),
                                      detail_private=True, fingerprint=mail.id))
+        self._deadline(mail, severity, title, settings)
+
+    def _deadline(self, mail: Mail, severity: str, title: str, settings: WatchSettings) -> None:
+        """A mail that matters and says when something is due, a few days away, gets one reminder the morning before: the notice already
+        covers the near ones, and what is not worth a notice is not worth a reminder."""
+        if self._remind is None or not settings.reminders or RANK[severity] < RANK["important"]:
+            return
+        text = f"{mail.subject} {mail.snippet}"
+        if not TIME.search(text):
+            return
+        today = datetime.fromtimestamp(self._clock()).date()
+        due = deadline_in(text, today)
+        if due is None or (due - today).days < 2:
+            return
+        when = datetime.combine(due - timedelta(days=1), dtime(9, 0))
+        try:
+            self._remind(f"Deadline tomorrow: {title}", when, f"mail-deadline:{mail.thread_id or mail.id}:{due.isoformat()}")
+        except Exception:  # noqa: BLE001 — a reminder that cannot be made must not lose the notice
+            log.warning("could not make a deadline reminder", exc_info=True)

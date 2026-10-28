@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from typing import Callable
+
+from minty_core.datewords import find_date
 
 TIME = re.compile(r"\b(today|tonight|tomorrow|by (?:eod|end of (?:day|week)|noon|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|"
                   r"deadline|due|overdue|expires?|expiring|last day|final notice|asap|urgent|immediately|within \d+ (?:hours?|days?))\b", re.I)
@@ -197,3 +200,22 @@ def score(mail: Mail, ctx: Context) -> Verdict:
 
 
 RANK_ORDER = {"info": 0, "notable": 1, "important": 2, "urgent": 3}
+
+
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+
+
+def deadline_in(text: str, today: date) -> date | None:
+    """The date a message says something is due: a written date, today, tomorrow or a weekday (the next one, never today)."""
+    found = find_date(text or "", today)
+    if found:
+        return found
+    low = (text or "").lower()
+    if re.search(r"\b(today|tonight)\b", low):
+        return today
+    if re.search(r"\btomorrow\b", low):
+        return today + timedelta(days=1)
+    day = re.search(r"\b(" + "|".join(WEEKDAYS) + r")\b", low)
+    if day:
+        return today + timedelta(days=(WEEKDAYS.index(day.group(1)) - today.weekday()) % 7 or 7)
+    return None

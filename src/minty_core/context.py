@@ -381,7 +381,9 @@ def build_context(config_dir: Path) -> AppContext:
     services["gmail_watcher"] = build_gmail_watcher(
         store, McpRegistry(config_dir / "mcp.json"), secrets.get, services["notifier"], services["gmail_watch_store"],
         halted=lambda: bool(getattr(services.get("lockdown"), "active", False)) or store.config.safety.privacy_mode,
-        prefs=lambda key: services["prefs"].value(key, ("mail",)) if "prefs" in services else None)
+        prefs=lambda key: services["prefs"].value(key, ("mail",)) if "prefs" in services else None,
+        remind=lambda text, when, key: services["scheduler"].add(text, when, user_set=False, kind="nudge", key=key)
+        if services.get("scheduler") is not None else None)
     def fast_action(text: str):  # simple commands about the open page skip the model (fastpath.py)
         page = services.get("browser_page")
         return fastpath.match(text, page() if page else None, wake_words=tuple(store.config.audio.wake_phrases))

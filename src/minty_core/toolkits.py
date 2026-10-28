@@ -95,10 +95,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "world": (("integrations",), "calendar, Home Assistant, weather alerts, network",
              "calendar agenda schedule event events meeting free busy scene scenes movie night energy electricity "
              "kwh sleep timer fade weather alert storm heat lan network devices router wifi n8n workflow template"),
-    "prefs": (("prefs",), "what Minty learned about how you work",
-             "habit habits preference preferences learned learn suggestion suggestions always never prefer"),
-    "notices": (("notices",), "what Minty told you lately; the Gmail watcher",
-               "notices notice told lately watcher dealt resolve resolved reminded reminders alerted"),
+    "habits": (("prefs", "playbooks", "notices"), "learned habits, playbooks, what Minty told you",
+              "habit habits preference preferences learned learn suggestion suggestions always never prefer playbook playbooks template "
+              "templates procedure standard way workflow version versions rollback notices notice told lately watcher dealt resolve resolved"),
     "apps": (("mcp", "artifacts"), "your connected apps (Gmail, Slack, GitHub) via MCP/Composio",
             "mcp composio server tool gmail google calendar slack github notion drive sheet sheets outlook teams "
             "linear jira trello asana discord twitter figma hubspot salesforce dropbox airtable stripe"),

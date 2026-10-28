@@ -170,7 +170,7 @@ class ComposioGmail:
 
 
 def build_gmail_watcher(store, registry: McpRegistry, secret: Callable[[str], str | None], notifier, watch_store, halted: Callable[[], bool] = lambda: False,
-                        prefs: Callable[[str], str | None] = lambda key: None):
+                        prefs: Callable[[str], str | None] = lambda key: None, remind=None):
     """The watcher as the app uses it: your settings, the Composio server you named, and what you have allowed."""
     from minty_core.gmailwatch import GmailWatcher, WatchSettings
 
@@ -180,6 +180,7 @@ def build_gmail_watcher(store, registry: McpRegistry, secret: Callable[[str], st
     def settings() -> WatchSettings:
         c = store.config.gmail_watch
         return WatchSettings(enabled=c.enabled, accounts=tuple(c.accounts), me=dict(source.emails), interval_s=c.interval_s, vips=tuple(c.vips),
-                             topics=tuple(c.topics), max_per_poll=c.max_per_poll, min_confidence=c.min_confidence, lookup_senders=c.lookup_senders)
+                             topics=tuple(c.topics), max_per_poll=c.max_per_poll, min_confidence=c.min_confidence, lookup_senders=c.lookup_senders,
+                             reminders=c.reminders)
 
-    return GmailWatcher(source, watch_store, notifier, settings, halted=halted, prefs=prefs)
+    return GmailWatcher(source, watch_store, notifier, settings, halted=halted, prefs=prefs, remind=remind)

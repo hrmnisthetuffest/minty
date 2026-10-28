@@ -1,0 +1,3 @@
+name = "playbooks"
+description = "Reusable ways of doing a kind of work (research, lead lists, weekly reviews): found for a matching goal, adapted to the facts, measured, versioned. An improvement is only a proposal until you accept it, and going back is one step."
+default_enabled = true

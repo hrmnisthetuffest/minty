@@ -1,5 +1,6 @@
 import json
 import math
+import time
 
 from minty_core.agentloop import Budget
 from minty_core.jobs import RESUME_FROM, JobOutcome
@@ -72,7 +73,11 @@ def register(ctx):
             is_private = ctx.services.get("is_private")
             known = ctx.services.get("mission_context")
             brief = ctx.services.get("workflow_brief")
-            background = "\n\n".join(x for x in (known(goal) if known is not None else "", brief(goal) if brief is not None else "") if x)
+            playbooks = ctx.services.get("playbooks")
+            playbook = playbooks.match(goal) if playbooks is not None else None  # a way of doing this kind of work that the user keeps
+            background = "\n\n".join(x for x in (known(goal) if known is not None else "", brief(goal) if brief is not None else "",
+                                                 playbook.text() if playbook is not None else "") if x)
+            began = time.monotonic()
             result = await run_mission(
                 router, goal, specs=worker.specs, call_tool=worker.call, progress=job_ctx.progress, save=job_ctx.checkpoint,
                 tracer=ctx.services.get("tracer"), sensitive=(lambda: bool(is_private())) if is_private else (lambda: False),
@@ -81,6 +86,11 @@ def register(ctx):
                 context=background)
             job_ctx.checkpoint({"verified": result.verified, "plan": result.plan_json, "ledger": result.ledger,
                                 "step_mark": len(result.ledger)})
+            if playbook is not None:  # judged on how its runs end and how long they take, never on one run
+                try:
+                    playbooks.record(playbook.name, playbook.version, result.status, time.monotonic() - began)
+                except Exception:  # noqa: BLE001 — keeping score must never lose the result
+                    pass
             if result.status == "done":
                 return JobOutcome("done", result.text)
             if result.status == "blocked":
