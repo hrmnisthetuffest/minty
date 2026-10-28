@@ -328,6 +328,8 @@ async def test_an_important_mail_with_a_deadline_a_few_days_off_gets_a_reminder_
     await r.watcher.poll_once()
     [(text, when, key)] = r.reminders.items
     assert when == datetime.combine(date(2026, 10, 29), dtime(9, 0)) and "Report due Friday" in text and "t1" in key and text.startswith("Deadline tomorrow")
+    told = [t for n, s, k, t in r.rec.told if n == "panel" and k == "t1"][0]
+    assert "Done: I set a reminder for Thursday" in told  # the notice says what Minty already did about it
     r.add(msg(2, subject="Invoice due Friday", thread="t2"))  # a sensitive subject stays out of a reminder that may be mirrored to the phone
     await r.watcher.poll_once()
     assert "Invoice" not in r.reminders.items[1][0]

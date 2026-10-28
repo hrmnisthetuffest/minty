@@ -313,24 +313,26 @@ class GmailWatcher:
         title = f"Mail from {who}" if sensitive else f"Mail from {who}: {mail.subject or '(no subject)'}"
         why = "; ".join(verdict.reasons[:2])
         body = " ".join(x for x in ((mail.subject + ".") if sensitive else "", mail.snippet[:140], f"Why: {why}." if why and severity != "info" else "") if x)
+        taken = self._deadline(mail, severity, title, settings)
         self._notifier.publish(Event(f"gmail:{alias}", mail.thread_id or mail.id, severity, title, body, ACTIONS.get(verdict.action, ""),
-                                     detail_private=True, fingerprint=mail.id))
-        self._deadline(mail, severity, title, settings)
+                                     detail_private=True, fingerprint=mail.id, taken=taken))
 
-    def _deadline(self, mail: Mail, severity: str, title: str, settings: WatchSettings) -> None:
+    def _deadline(self, mail: Mail, severity: str, title: str, settings: WatchSettings) -> str:
         """A mail that matters and says when something is due, a few days away, gets one reminder the morning before: the notice already
         covers the near ones, and what is not worth a notice is not worth a reminder."""
         if self._remind is None or not settings.reminders or RANK[severity] < RANK["important"]:
-            return
+            return ""
         text = f"{mail.subject} {mail.snippet}"
         if not TIME.search(text):
-            return
+            return ""
         today = datetime.fromtimestamp(self._clock()).date()
         due = deadline_in(text, today)
         if due is None or (due - today).days < 2:
-            return
+            return ""
         when = datetime.combine(due - timedelta(days=1), dtime(9, 0))
         try:
             self._remind(f"Deadline tomorrow: {title}", when, f"mail-deadline:{mail.thread_id or mail.id}:{due.isoformat()}")
         except Exception:  # noqa: BLE001 — a reminder that cannot be made must not lose the notice
             log.warning("could not make a deadline reminder", exc_info=True)
+            return ""
+        return f"I set a reminder for {when.strftime('%A')} morning"
