@@ -106,6 +106,8 @@ class Sender:
                 return await self._api.send_photo(chat_id, data, filename, caption, **kw)
             if kind == "voice":
                 return await self._api.send_voice(chat_id, data, caption, **kw)
+            if kind == "video":
+                return await self._api.send_video(chat_id, data, filename, caption, **kw)
             return await self._api.send_document(chat_id, data, filename, caption, **kw)
 
 

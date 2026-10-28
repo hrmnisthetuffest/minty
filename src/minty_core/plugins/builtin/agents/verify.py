@@ -185,7 +185,7 @@ def same_failure(before: CheckResult | None, after: CheckResult | None) -> bool:
 
 
 def judge(mode: str, agent_failed: bool, files: list[str], check: CheckResult | None,
-          before: CheckResult | None = None) -> Verdict:
+          before: CheckResult | None = None, edited_check: list[str] | None = None) -> Verdict:
     if agent_failed:
         return Verdict("failed", False, "The agent reported an error.")
     if mode == "ask":
@@ -194,6 +194,9 @@ def judge(mode: str, agent_failed: bool, files: list[str], check: CheckResult | 
         return Verdict("answered", True, "Answered; nothing was changed.")
     if not files:
         return Verdict("no_changes", False, "It reports it is done, but no files changed.")
+    if edited_check:  # it changed the thing that grades it: a pass says nothing
+        return Verdict("changed_own_check", False, f"{describe_files(files)}, but it also changed the check itself "
+                       f"({', '.join(edited_check)}), so passing it proves nothing.")
     if same_failure(before, check):  # nothing the agent did changed the result: the tests, or the setup, were the problem
         return Verdict("already_failing", False, f"{describe_files(files)}, but the tests were already failing before it started "
                        f"and fail the same way now ({check.summary}), so nothing shows the change works.")

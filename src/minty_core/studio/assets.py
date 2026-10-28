@@ -142,6 +142,24 @@ class AssetLibrary:
             self._db.commit()
             return self.get(cur.lastrowid)
 
+    def register_agent_render(self, path: Path) -> Asset:
+        """A video or picture the user's coding agent made in the studio folder: the user's own, with nothing else recorded behind it."""
+        path = Path(path)
+        sha = _sha(path)
+        with self._lock:
+            known = self._by_sha(sha)
+            if known:
+                return known
+            dest_dir = self.root / "render"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest = dest_dir / f"{sha[:10]}-{path.name}"
+            shutil.copy2(path, dest)
+            cur = self._db.execute(
+                "INSERT INTO assets(path, kind, license, source, attribution, note, sha, added) VALUES (?,?,?,?,?,?,?,?)",
+                (str(dest), "render", "owned", "made by the coding agent in the studio folder", "", "", sha, time.time()))
+            self._db.commit()
+            return self.get(cur.lastrowid)
+
     def list(self, kind: str | None = None) -> list[Asset]:
         with self._lock:
             sql = f"SELECT {_COLS} FROM assets" + (" WHERE kind=?" if kind else "") + " ORDER BY id DESC"

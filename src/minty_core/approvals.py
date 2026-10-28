@@ -120,6 +120,13 @@ class ApprovalStore:
                 (PENDING, str(question)[:300])).fetchone()
         return Approval(*row) if row else None
 
+    def extend(self, ident: int, seconds: float) -> None:
+        """Set how long an open question has from now to be answered (a background job can wait hours; a spoken question cannot)."""
+        with self._lock:
+            self._db.execute("UPDATE approvals SET expires=? WHERE id=? AND status IN (?,?)",
+                             (self._clock() + float(seconds), int(ident), PENDING, APPROVED))
+            self._db.commit()
+
     def attach_job(self, ident: int, job_id: int) -> None:
         with self._lock:
             self._db.execute("UPDATE approvals SET job_id=? WHERE id=? AND job_id IS NULL", (int(job_id), int(ident)))

@@ -138,6 +138,17 @@ async def test_stock_footage_is_fetched_with_its_credit_and_the_key_comes_from_t
     assert "Kept" in out and "pexels" in out.lower() and seen[0] == {"Authorization": "KEY"}
 
 
+async def test_a_post_made_from_stock_footage_can_still_go_automatically(tmp_path, gameplay):
+    host, _, _ = build(tmp_path, post_mode="auto")
+    lib = host._state["studio"]["library"]
+    lib.add(gameplay, "gameplay", "pexels", source="https://www.pexels.com/video/1/", attribution="Video by Ana on Pexels")
+    await host.call("studio_make", {"action": "voice", "text": "Did you know a creeper cannot climb ladders?", "name": "v"})
+    video = path_in(await host.call("studio_make", {"action": "video", "background": "gameplay", "voiceover": "v", "name": "v"}))
+    out = await host.call("studio_draft", {"kind": "reel", "files": [video], "caption": "City lights #night"})
+    assert "Video by Ana on Pexels" in out and "without asking" in out  # the credit is in the caption; it has no link
+    assert host.get_tool("studio_send").risk({"id": 1}) == 1
+
+
 async def test_a_draft_runs_the_checks_and_says_what_the_rules_do_with_it(tmp_path, gameplay):
     host, _, _ = build(tmp_path)
     video = path_in(await make_reel(host, gameplay))
@@ -341,3 +352,34 @@ async def test_too_few_posts_say_nothing_about_what_works(tmp_path):
     store._db.commit()
     await host.call("studio_posts", {"action": "insights"})
     assert host._services["studio_lessons"]() == []
+
+
+async def test_what_claude_code_made_in_the_studio_folder_can_be_queued_with_no_manual_step(tmp_path):
+    project = tmp_path / "minty-studio"
+    events = []
+    host, _, _ = build(tmp_path, post_mode="auto", project_dir=str(project))
+    host._services["publish"] = lambda kind, **kw: events.append((kind, kw))
+    await host.call("studio_make", {"action": "project"})
+    video = project / "out" / "intro.mp4"
+    ff("-f", "lavfi", "-i", "testsrc2=size=1080x1920:rate=30:duration=5", "-f", "lavfi", "-i", "sine=frequency=300:duration=5",
+       "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(video))
+    out = await host.call("studio_draft", {"kind": "reel", "files": [str(video)], "caption": "A kinetic intro #minty", "tags": "intro"})
+    assert "Draft 1" in out and "without asking" in out  # the coding agent's own graphics count as the user's
+    assert host.get_tool("studio_send").risk({"id": 1}) == 1
+    assert events and events[0][0] == "studio_preview" and events[0][1]["path"].endswith(".mp4") and "Draft 1" in events[0][1]["caption"]
+
+
+async def test_only_the_studio_projects_out_folder_is_taken_not_other_places_links_or_junk(tmp_path):
+    project = tmp_path / "minty-studio"
+    host, _, _ = build(tmp_path, project_dir=str(project))
+    await host.call("studio_make", {"action": "project"})
+    elsewhere = tmp_path / "elsewhere.mp4"
+    ff("-f", "lavfi", "-i", "testsrc2=size=1080x1920:rate=30:duration=5", "-f", "lavfi", "-i", "sine=frequency=300:duration=5",
+       "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(elsewhere))
+    (project / "out" / "link.mp4").symlink_to(elsewhere)
+    (project / "out" / "junk.mp4").write_bytes(b"not a video at all")
+    (project / "notes.mp4").write_bytes(elsewhere.read_bytes())  # in the project, but not in out/
+    for path in (elsewhere, project / "out" / "link.mp4", project / "out" / "junk.mp4", project / "notes.mp4"):
+        out = await host.call("studio_draft", {"kind": "reel", "files": [str(path)], "caption": "x #y"})
+        assert out.startswith("Error"), (path.name, out)
+    assert "No posts" in await host.call("studio_posts", {"action": "list"})

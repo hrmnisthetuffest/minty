@@ -136,6 +136,11 @@ class BotAPI:
         return await self.call("sendPhoto", 60.0, {"photo": (filename, data)}, chat_id=chat_id,
                                caption=caption[:1024] or None, disable_notification=True if silent else None)
 
+    async def send_video(self, chat_id: int, data: bytes, filename: str = "video.mp4", caption: str = "",
+                         silent: bool = False) -> dict:
+        return await self.call("sendVideo", 120.0, {"video": (filename, data)}, chat_id=chat_id, supports_streaming=True,
+                               caption=caption[:1024] or None, disable_notification=True if silent else None)
+
     async def send_document(self, chat_id: int, data: bytes, filename: str, caption: str = "",
                             silent: bool = False) -> dict:
         return await self.call("sendDocument", 60.0, {"document": (filename, data)}, chat_id=chat_id,

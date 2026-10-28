@@ -45,3 +45,11 @@ label = "Carousels only: the https address of that folder, for example https://y
 [settings.project_dir]
 type = "string"
 label = "Where Claude Code makes motion graphics (default ~/Documents/project/minty-studio, inside your home folder)"
+
+[settings.preview_to_phone]
+type = "boolean"
+label = "Send each draft video to your paired Telegram chat so you can see what you are asked to approve (default off)"
+
+[settings.ig_api_version]
+type = "string"
+label = "Instagram API version (default v26.0, the one Meta's examples use; older ones are retired after about two years)"

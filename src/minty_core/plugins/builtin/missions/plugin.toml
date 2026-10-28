@@ -13,3 +13,7 @@ label = "Max seconds per mission (default 1800)"
 [settings.max_steps]
 type = "number"
 label = "Max tool-using steps per mission (default 40)"
+
+[settings.approval_wait_s]
+type = "number"
+label = "How long a mission waits for your yes to a risky step, in seconds (default 21600, six hours)"

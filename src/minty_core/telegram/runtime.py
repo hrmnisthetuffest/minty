@@ -138,6 +138,10 @@ def build_runtime(ctx, *, client: httpx.AsyncClient | None = None, offer_every_s
     from minty_core.telegram.cards import CardRelay
 
     cards = CardRelay(gateway, root=lambda: directory / "cards")
+    from minty_core.telegram.previews import PreviewRelay
+
+    previews = PreviewRelay(gateway, root=lambda: directory / "studio",
+                            enabled=lambda: (store.config.plugins.get("studio") or {}).get("preview_to_phone") is True)
     workspace = lambda: Path(str((store.config.plugins.get("browser") or {}).get("folder") or "~/Minty-Workspace"))
     Relay(gateway, directory / "telegram-relay", scanner, send_roots=lambda: [workspace()]).install()
     health_hub = services.get("health")
@@ -205,7 +209,7 @@ def build_runtime(ctx, *, client: httpx.AsyncClient | None = None, offer_every_s
         gateway.suspended = bool(lockdown.active)
         lockdown.on_engage.append(lambda: setattr(gateway, "suspended", True))
         lockdown.on_release.append(lambda: setattr(gateway, "suspended", False))
-    return TelegramRuntime(gateway, bridge, push, menu, offer_every_s, [lambda: shots.run(ctx.bus), lambda: cards.run(ctx.bus), *background_extra])
+    return TelegramRuntime(gateway, bridge, push, menu, offer_every_s, [lambda: shots.run(ctx.bus), lambda: cards.run(ctx.bus), lambda: previews.run(ctx.bus), *background_extra])
 
 
 async def pairing_instructions(directory: Path, secrets, *, client: httpx.AsyncClient | None = None) -> str:

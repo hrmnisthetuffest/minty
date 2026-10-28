@@ -385,7 +385,7 @@ On by default: yes.
 Hand Minty a goal: it plans, works in the background with your tools, checks each step against what really happened, and reports what is done, stuck or needs you.
 
 On by default: yes.
-Settings: `max_concurrent`, `max_runtime_s`, `max_steps`.
+Settings: `max_concurrent`, `max_runtime_s`, `max_steps`, `approval_wait_s`.
 
 | Tool | What it does | Flags |
 |---|---|---|
@@ -602,7 +602,7 @@ Settings: `player`, `playlist`.
 Make short videos (voiceover, music, captions, a background clip) and queue them for Instagram. The tools are local; posting needs your own Instagram professional account and token, and by default asks before every post.
 
 On by default: yes.
-Settings: `ig_user_id`, `ig_host`, `ig_token_expires`, `post_mode`, `max_posts_per_day`, `min_gap_hours`, `blocked_words`, `voice`, `public_dir`, `public_base_url`, `project_dir`.
+Settings: `ig_user_id`, `ig_host`, `ig_token_expires`, `post_mode`, `max_posts_per_day`, `min_gap_hours`, `blocked_words`, `voice`, `public_dir`, `public_base_url`, `project_dir`, `preview_to_phone`, `ig_api_version`.
 
 | Tool | What it does | Flags |
 |---|---|---|

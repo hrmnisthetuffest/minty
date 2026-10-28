@@ -101,7 +101,7 @@ class FakeTelegram:
             if entry is None:
                 return httpx.Response(400, json={"ok": False, "error_code": 400, "description": "Bad Request: wrong file_id"})
             return self._ok({"file_id": params["file_id"], "file_path": entry[0], "file_size": len(entry[1])})
-        if method in ("sendVoice", "sendPhoto", "sendDocument"):
+        if method in ("sendVoice", "sendPhoto", "sendDocument", "sendVideo"):
             name, (filename, data) = next(iter(files.items()))
             self.media.append({"method": method, "chat_id": params.get("chat_id"), "filename": filename, "data": data,
                                "caption": params.get("caption"), "field": name})

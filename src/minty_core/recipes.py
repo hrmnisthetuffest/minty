@@ -172,8 +172,9 @@ class Recipes:
         rows = self._db.execute(f"SELECT {_RUN} FROM runs WHERE recipe=? AND day=? ORDER BY id", (name, day)).fetchall()
         return [self._run(r) for r in rows]
 
-    def tick(self, now: datetime | None = None) -> list[Run]:
-        """Start what is due. Returns the runs started."""
+    def tick(self, now: datetime | None = None, halted: bool = False) -> list[Run]:
+        """Start what is due. Returns the runs started. While `halted` (a lockdown) nothing starts; a run still missed once the
+        catch-up window has gone is skipped, and says why."""
         now = now or datetime.now()
         day = now.strftime("%Y-%m-%d")
         started: list[Run] = []
@@ -191,7 +192,10 @@ class Recipes:
                 if sum(r.status != "skipped" for r in today) >= recipe.max_runs_per_day or any(r.status == "skipped" for r in today):
                     continue
                 if not today and (now - due).total_seconds() > self._catch_up * 60:
-                    self._insert(recipe.name, day, "scheduled", "skipped", f"the computer was off at {recipe.at}; skipped, not made up late")
+                    why = "Minty was in lockdown" if halted else "the computer was off"
+                    self._insert(recipe.name, day, "scheduled", "skipped", f"{why} at {recipe.at}; skipped, not made up late")
+                    continue
+                if halted:
                     continue
             started.append(self._begin(recipe, day, "scheduled"))
         return [r for r in started if r is not None]

@@ -241,6 +241,7 @@ class JobContext:
 
     def __init__(self, runner: "JobRunner", job: Job):
         self._runner, self.job = runner, job
+        self.last_approval = ""  # how the last question ended: approved, denied or expired
 
     def progress(self, text: str) -> None:
         self.job.progress = (self.job.progress + [short(text, 160)])[-PROGRESS_KEEP:]
@@ -269,7 +270,7 @@ class JobContext:
         """The checkpoint this run continues from; empty on a first run."""
         return dict(self.job.checkpoint) if self.job.resumed else {}
 
-    async def wait_on_open_approval(self, question: str, *, poll_s: float = 0.5) -> bool | None:
+    async def wait_on_open_approval(self, question: str, *, poll_s: float = 0.5, ttl_s: float = 6 * 3600.0) -> bool | None:
         """Wait for the user's answer to a question the safety gate has already put to them, instead of asking a second time.
         True for a yes, False for a no or an expiry, None when the gate opened no such question. The gate itself uses up the
         yes, so this only watches it."""
@@ -278,6 +279,8 @@ class JobContext:
         if record is None:
             return None
         approvals.attach_job(record.id, self.job.id)
+        approvals.extend(record.id, ttl_s)
+        self.last_approval = ""
         self.job.status, self.job.approval_id, self.job.question = "waiting_approval", record.id, question
         self._runner._persist(self.job)
         self._runner._say(f"{self.job.label().capitalize()} needs your approval: {question}")
@@ -285,8 +288,10 @@ class JobContext:
             while True:
                 current = approvals.get(record.id)
                 if current is None or current.status not in ("pending", "approved"):
+                    self.last_approval = "expired" if current is not None and current.status == "expired" else "denied"
                     return False
                 if current.status == "approved":
+                    self.last_approval = "approved"
                     return True
                 await asyncio.sleep(poll_s)
         finally:

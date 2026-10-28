@@ -215,3 +215,17 @@ async def test_a_post_with_no_numbers_yet_is_an_empty_result_not_an_error():
 
     api = Instagram("1784", "T", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
     assert await api.insights("1790") == {}
+
+
+async def test_the_api_version_is_the_one_in_metas_examples_and_can_be_set():
+    from minty_core.studio.instagram import DEFAULT_VERSION
+    assert DEFAULT_VERSION == "v26.0"
+    meta = Meta()
+    await (await ig(meta)).publish_carousel(["https://pics.example.com/1.jpg", "https://pics.example.com/2.jpg"], "c")
+    assert all("/v26.0/" in u for _, u, _, _ in meta.requests)
+    with pytest.raises(ValueError, match="version"):
+        Instagram("1784", "T", version="latest")
+    meta2 = Meta()
+    api = Instagram("1784", "T", version="v30.0", client=client(meta2), poll_s=0)
+    await api.publish_carousel(["https://pics.example.com/1.jpg", "https://pics.example.com/2.jpg"], "c")
+    assert all("/v30.0/" in u for _, u, _, _ in meta2.requests)

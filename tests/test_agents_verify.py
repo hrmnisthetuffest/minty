@@ -179,3 +179,10 @@ def test_a_project_can_name_its_own_check_in_a_file(tmp_path):
     (tmp_path / ".minty" / "check").write_text("")
     assert verify.project_check(tmp_path) is None
     assert verify.project_check(tmp_path / "nowhere") is None
+
+
+def test_an_agent_that_changed_its_own_check_gets_no_credit_for_passing_it():
+    passing = verify.CheckResult(True, True, "OK")
+    out = verify.judge("work", False, ["a.txt", "check_video.py"], passing, edited_check=["check_video.py"])
+    assert (out.verdict, out.ok) == ("changed_own_check", False) and "check_video.py" in out.sentence and "proves nothing" in out.sentence
+    assert verify.judge("work", False, ["a.txt"], passing, edited_check=[]).verdict == "verified"

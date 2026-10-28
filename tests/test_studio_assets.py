@@ -118,7 +118,8 @@ async def test_a_stock_clip_is_downloaded_checked_and_kept_with_its_credit(lib, 
                   else fetched(real, "video/mp4"))
     monkeypatch.setattr(fetch, "safe_fetch", net)
     asset = await fetch.fetch_stock(lib, "city night", "KEY")
-    assert asset.license == "pexels" and "Ana Videographer" in asset.attribution and "pexels.com" in asset.attribution.lower()
+    assert asset.license == "pexels" and asset.attribution == "Video by Ana Videographer on Pexels"
+    assert "https://www.pexels.com/video/7/" in asset.source  # the link stays in the record, not in the caption
     assert Path(asset.path).is_file()
 
 

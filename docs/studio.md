@@ -32,8 +32,11 @@ state (`owned`, `cc0`, `cc-by` with a credit, `permission`).
 
 `studio_make project` sets up a folder (default `~/Documents/project/minty-studio`) with a brief for Claude Code, the rules
 (1080x1920, with sound, never post anything, only material that is yours to use), and a check script it has to pass. Then ask:
-"have Claude Code make a kinetic-text intro about X". Minty runs it through the coding-agent jobs: it is asked first, and the job
-counts as done only when `check_video.py` passes on what it made, not when Claude says so. Claude Code can run ffmpeg, ffprobe and
+"have Claude Code make a kinetic-text intro about X". Minty runs it through the coding-agent jobs: it is asked first (unless you set the agents
+setting `auto_start`, which a daily unattended recipe needs), and the job counts as done only when `check_video.py` passes on what it
+made, not when Claude says so. The check is the one the job started with: a job that edits `check_video.py` or `.minty/check` is
+reported as failed, because passing a check it rewrote proves nothing. When it is done, `studio_draft` takes the file straight from the
+project's `out/` folder and treats it as yours. Claude Code can run ffmpeg, ffprobe and
 the other tools in its default list; for more (for example `Bash(npx:*)` for Remotion) add them in the agents setting
 `claude_extra_tools` (a blanket allow, `rm`, `sudo`, `curl` and `wget` are never added).
 
@@ -73,6 +76,13 @@ comments, shares, saves). Tag each draft (`tags`, for example `parkour,facts`) a
 side, `missions_review` says which kind reaches at least 1.5 times as many people, as evidence and a suggestion. The metric
 names follow Meta's current documentation, which I could not read in full, so a metric Instagram does not offer is simply left out.
 
+**Seeing what you approve.** The approval question shows the caption and why it is being asked. To also see the video, set
+`studio.preview_to_phone` (default off): each draft is then sent to your paired Telegram chat (only from the studio folder, only a
+real video or picture, not on a private day). **Unattended approvals.** A mission waiting for your yes (for example a daily recipe
+that reached `studio_send`) waits `missions.approval_wait_s`, six hours by default, instead of the usual five minutes; if nobody
+answers, the step is recorded as "no answer came in time", not as a no. During a lockdown no recipe starts, and a run missed to it
+says so.
+
 Every post is recorded and never goes out twice: drafted, posted (with its link, and whether automatically or after your yes),
 failed, or **unknown** if the connection dropped after the post was requested (check the account; it is not repeated).
 
@@ -94,7 +104,8 @@ spending with the agents setting `claude_max_budget_usd` and `max_runs_per_day` 
 
 - Tested for real: the ffmpeg tools (on small generated clips), the checks, the offline voice, the licence ledger, the queue, the
   policy, the standalone check script, the recipes clock, and the plugin wiring.
-- Tested only against pretend servers: Pexels and the Instagram Graph API (the steps follow Meta's documentation; some details,
+- Tested only against pretend servers: Pexels and the Instagram Graph API (the steps follow Meta's documentation, version v26.0 by
+  default and a setting; some details,
   such as the reel size limits and how long tokens last, are not stated on the pages I read, so the check uses common Instagram
   limits). **Nothing has been published to a real account.** Expect the first real post to need a fix or two; keep posting set to ask.
 - Tested for real, once: a Claude Code job in a studio folder made a 4-second vertical video with animated text, ran the check, and

@@ -830,8 +830,9 @@ async def _recipes_loop(ctx, *, every_s: float = 60.0, rounds: int | None = None
         n += 1
         recipes = ctx.services.get("recipes")
         if recipes is not None:
+            lock = ctx.services.get("lockdown")
             try:
-                recipes.tick()
+                recipes.tick(halted=bool(getattr(lock, "active", False)))
             except Exception:  # noqa: BLE001 — a failing look is tried again next minute
                 log.warning("recipe check failed", exc_info=True)
         await asyncio.sleep(every_s)

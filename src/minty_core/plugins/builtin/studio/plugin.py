@@ -14,7 +14,7 @@ from minty_core.studio import assets as assets_mod
 from minty_core.studio import fetch, media, posts as posts_mod, voice as voice_mod
 from minty_core.studio.assets import AssetError, AssetLibrary
 from minty_core.studio.captions import chunk_text
-from minty_core.studio.instagram import Instagram, InstagramError
+from minty_core.studio.instagram import DEFAULT_VERSION, Instagram, InstagramError
 from minty_core.studio.postpolicy import PostFacts, PostPolicy, decide
 from minty_core.studio.posts import DuplicatePost, PostStore
 from minty_core.worklessons import Lesson
@@ -52,6 +52,7 @@ Run `python3 check_video.py out`. It must print OK; if it lists problems, fix th
   after the user has seen it.
 - Use only material that is yours to use: what you generate here, files in this folder, or clips Minty gives you with a licence. No
   music or footage taken from other people.
+- Never edit `check_video.py` or `.minty/check`: they are how your work is judged, and a job that changes them is reported as failed.
 - Do not delete files you did not make.
 - Finish with exactly three short lines: Changed: (files), Tests: (what check_video.py printed), Left: (anything not done, or nothing).
 """
@@ -83,6 +84,7 @@ def register(ctx):
         store = ctx.state["posts"] = PostStore(root / "posts.sqlite")
     user_id = str(settings.get("ig_user_id") or "").strip()
     host = str(settings.get("ig_host") or "graph.instagram.com").strip()
+    api_version = str(settings.get("ig_api_version") or "").strip() or DEFAULT_VERSION
     voice_name = str(settings.get("voice") or "am_michael").strip()
     public_dir, public_url = str(settings.get("public_dir") or "").strip(), str(settings.get("public_base_url") or "").strip().rstrip("/")
     mode = str(settings.get("post_mode") or "ask").strip().lower()
@@ -260,11 +262,24 @@ def register(ctx):
     def verdict_text(d) -> str:
         return "Your rules let me post this without asking." if d.mode == "auto" else "I will ask you first: " + "; ".join(d.reasons) + "."
 
+    def resolve_for_post(value: str) -> Path | None:
+        """A file for a post: something in the studio, or something the coding agent made in the project's out/ folder (which is
+        brought into the library as the user's own)."""
+        if not value.startswith("/"):
+            return ref(value)
+        path = Path(value)
+        if inside(path) and path.is_file():
+            return path
+        out_dir = (project_dir / "out").resolve() if project_dir.exists() else None
+        if (out_dir is not None and not path.is_symlink() and path.is_file() and path.suffix.lower() in (".mp4", ".png", ".jpg", ".jpeg")
+                and out_dir in path.resolve().parents):
+            return Path(lib.register_agent_render(path).path)
+        return None
+
     async def draft(args):
         kind = str(args.get("kind") or "reel")
         raw = args.get("files") if isinstance(args.get("files"), list) else [args.get("file")]
-        files = [ref(str(f)) if not str(f).startswith("/") else (Path(str(f)) if inside(Path(str(f))) and Path(str(f)).is_file() else None)
-                 for f in raw if f]
+        files = [resolve_for_post(str(f)) for f in raw if f]
         if kind not in ("reel", "carousel") or not files or any(f is None for f in files):
             return "Error: give a reel (one video) or a carousel (2 to 20 pictures), as files inside the studio."
         if (kind == "reel") != (len(files) == 1) or (kind == "carousel" and not 2 <= len(files) <= 20):
@@ -295,6 +310,9 @@ def register(ctx):
         except DuplicatePost as e:
             return f"Error: {e}."
         note = f" ({'; '.join(licence_problems)})" if licence_problems else ""
+        publish = ctx.services.get("publish")
+        if publish is not None:  # so the phone can show what it is being asked about (only if the user switched that on)
+            publish("studio_preview", path=str(files[0]), caption=f"Draft {p.id}: {p.caption[:120]}")
         return f"Draft {p.id} ready: {p.kind}, caption: {p.caption[:200]}{note}\n{verdict_text(d)} Nothing is posted until studio_send {p.id}."
 
     # ---- sending ----------------------------------------------------------------------------------
@@ -324,7 +342,7 @@ def register(ctx):
 
     def client():
         factory = ctx.services.get("studio_instagram")
-        return factory(user_id, ctx.secret("ig_token"), host) if factory else Instagram(user_id, ctx.secret("ig_token"), host=host)
+        return factory(user_id, ctx.secret("ig_token"), host) if factory else Instagram(user_id, ctx.secret("ig_token"), host=host, version=api_version)
 
     async def host_pictures(p) -> list[str]:
         """Copies the pictures into the public folder as JPEG and checks each address answers, before anything is created."""

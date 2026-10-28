@@ -129,7 +129,7 @@ async def run_mission(router, goal: str, *, specs: list[ToolSpec], call_tool: Ca
             result, ok = f"Error: {name} is not a tool you have in this job.", False
         else:
             result = str(await call_tool(name, args))  # StopJob (the user declined) passes through, and is not an action
-            ok = not result.startswith(("Error", "The user declined", "Blocked by", "The user did not allow"))
+            ok = not result.startswith(("Error", "The user declined", "Blocked by", "The user did not allow", "No answer came in time"))
         ledger.add(name, args, result, ok)
         snapshot()  # at once: an action taken in the middle of a step must survive a crash, or a resume could repeat it
         return result

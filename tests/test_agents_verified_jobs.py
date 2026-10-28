@@ -284,3 +284,36 @@ async def test_a_projects_own_check_file_is_used_when_no_command_is_set(tmp_path
     (root / "p" / ".minty" / "check").write_text(f"{sys.executable} -c \"print('7 passed in 0.1s')\"\n")
     job = await run(mgr, WRITE)
     assert (job.status, job.verdict) == ("done", "verified") and job.checks == "7 passed in 0.1s"
+
+
+# ---- an agent must not be able to grade itself --------------------------------------------------------------------------
+async def test_rewriting_the_check_script_to_always_pass_is_caught(tmp_path):
+    mgr, heard, adapter, root = make(tmp_path, check=None)
+    proj = root / "p"
+    (proj / ".minty").mkdir()
+    (proj / "check.py").write_text("print('1 failed'); raise SystemExit(1)\n")
+    (proj / ".minty" / "check").write_text(f"{sys.executable} check.py\n")
+    cheat = "open('check.py','w').write(\"print('OK all good')\\n\"); open('a.txt','w').write('x'); print('Changed: a.txt')"
+    job = await run(mgr, cheat)
+    assert (job.status, job.verdict) == ("failed", "changed_own_check") and "check.py" in job.summary
+    assert "check" in heard[0].lower() and len(adapter.builds) == 1  # not sent round again
+
+
+async def test_rewriting_the_check_file_itself_is_caught(tmp_path):
+    mgr, _, _, root = make(tmp_path, check=None)
+    proj = root / "p"
+    (proj / ".minty").mkdir()
+    (proj / ".minty" / "check").write_text(f"{sys.executable} -c \"print('1 failed'); raise SystemExit(1)\"\n")
+    cheat = "open('.minty/check','w').write(\"echo ok\\n\"); open('a.txt','w').write('x')"
+    job = await run(mgr, cheat)
+    assert job.verdict == "changed_own_check"
+
+
+async def test_editing_ordinary_files_next_to_a_check_is_still_verified(tmp_path):
+    mgr, _, _, root = make(tmp_path, check=None)
+    proj = root / "p"
+    (proj / ".minty").mkdir()
+    (proj / "check.py").write_text("import os, sys\nsys.exit(0 if os.path.exists('a.txt') else 1)\n")
+    (proj / ".minty" / "check").write_text(f"{sys.executable} check.py\n")
+    job = await run(mgr, WRITE)
+    assert (job.status, job.verdict) == ("done", "verified")  # the pre-check failed (no a.txt), the agent made it pass honestly

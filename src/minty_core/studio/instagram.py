@@ -19,6 +19,7 @@ import httpx
 HOSTS = ("graph.instagram.com", "graph.facebook.com")
 UPLOAD_HOST = "rupload.facebook.com"
 DONE, BAD = "FINISHED", ("ERROR", "EXPIRED")
+DEFAULT_VERSION = "v26.0"  # the version Meta's current publishing examples use; a setting can change it (an old one is retired after about two years)
 
 
 class InstagramError(Exception):
@@ -36,12 +37,14 @@ class Published:
 
 
 class Instagram:
-    def __init__(self, user_id: str, token: str, *, host: str = "graph.instagram.com", version: str = "v21.0",
+    def __init__(self, user_id: str, token: str, *, host: str = "graph.instagram.com", version: str = DEFAULT_VERSION,
                  client: httpx.AsyncClient | None = None, poll_s: float = 3.0, timeout_s: float = 300.0):
         if host not in HOSTS:
             raise ValueError(f"host must be one of {', '.join(HOSTS)}: the token is only ever sent to Meta")
         if not re.fullmatch(r"\d{3,30}", str(user_id)):
             raise ValueError("the Instagram account id is a number")
+        if not re.fullmatch(r"v\d{1,2}\.\d", str(version)):
+            raise ValueError("the API version looks like v26.0")
         self._id, self._token, self._host, self._v = str(user_id), token, host, version
         self._client = client or httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=15.0))
         self._poll_s, self._timeout_s = poll_s, timeout_s

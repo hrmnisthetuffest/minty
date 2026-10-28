@@ -18,7 +18,8 @@ metadata:
    music is a plain generated bed. For a real song, the user adds a track they have the right to use, with its licence.
 4. **Motion graphics.** For animated text, charts or title cards, do it with Claude Code: `studio_make action project` once to set up
    the folder, then `agents_start_task` there with the brief (the look, the length, the words). Its job is checked with the
-   folder's own `check_video.py`, not by what it says.
+   folder's own `check_video.py`, not by what it says. Then queue what it made: `studio_draft` takes the file straight from the
+   project's `out/` folder (no need to bring it in by hand), and treats it as the user's own.
 5. **Check and queue.** `studio_draft` checks the video (shape, audio, not black, length), the licences and the caption, adds required
    credits, and says whether the user's rules post it without asking. Write a caption with a few relevant hashtags and no links,
    no @mentions, no "follow for follow". It is labelled as AI-made unless it is real footage with a human voice.

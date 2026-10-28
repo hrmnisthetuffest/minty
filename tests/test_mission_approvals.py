@@ -50,3 +50,22 @@ async def test_a_no_stops_the_step_and_is_not_recorded_as_a_success(ctx):
     step = next(e for e in job.checkpoint["ledger"] if e["tool"] == "files_delete")
     assert step["result"] == "The user declined." and step["ok"] is False
     assert approvals.pending() == []
+
+
+async def test_a_question_nobody_answers_is_recorded_as_no_answer_not_as_a_no(ctx):
+    data = ctx.store.config.model_dump(mode="json")
+    data["plugins"]["missions"] = {"approval_wait_s": 1}
+    ctx.store.update(data)  # the plugins reload with the shorter wait
+    job, approvals, jobs = await start_and_wait_for_the_question(ctx)
+    await asyncio.wait_for(jobs.wait(job.id), 30)  # nobody answers; the question expires
+    step = next(e for e in job.checkpoint["ledger"] if e["tool"] == "files_delete")
+    assert step["result"] == "No answer came in time, so this step was not done." and step["ok"] is False
+    assert "declined" not in step["result"].lower() and approvals.pending() == []
+
+
+async def test_a_background_question_is_given_hours_to_be_answered(ctx):
+    job, approvals, jobs = await start_and_wait_for_the_question(ctx)
+    record = approvals.pending()[0]
+    assert record.expires - __import__("time").time() > 5 * 3600  # the gate's five minutes were extended for a job nobody is watching
+    approvals.decide(record.id, True, via="test")
+    await jobs.wait(job.id)

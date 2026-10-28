@@ -101,7 +101,7 @@ async def fetch_stock(lib: AssetLibrary, query: str, key: str, kind: str = "vide
         try:
             data = await _download(c.link, ("video/",))
             return await _keep(lib, data, Path(urlsplit(c.link).path).name or "clip.mp4", kind, "pexels",
-                               source=c.page, attribution=f"Video by {c.photographer} on Pexels ({c.page})")
+                               source=c.page, attribution=f"Video by {c.photographer} on Pexels")  # no link: a link in a caption makes every post ask first
         except AssetError as e:
             last = e
     raise last or AssetError("could not download a clip")

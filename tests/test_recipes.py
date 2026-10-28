@@ -151,3 +151,16 @@ def test_a_start_that_raises_is_a_failed_run_not_a_crash(tmp_path):
     rec.create("r", "do it", "18:00")
     rec.tick(at(18, 1))
     assert rec.runs("r")[0].status == "failed" and "no model" in rec.runs("r")[0].summary
+
+
+def test_nothing_starts_during_a_lockdown_and_a_run_missed_to_it_says_so(tmp_path):
+    rec, start = make(tmp_path, catch_up_minutes=120)
+    rec.create("r", "do it", "18:00")
+    assert rec.tick(at(18, 5), halted=True) == [] and start.started == []  # locked down: not started, and not given up on yet
+    assert rec.runs("r") == []
+    assert len(rec.tick(at(18, 40))) == 1  # the lockdown ended inside the catch-up window: it runs now
+    rec2, start2 = make(tmp_path / "two", catch_up_minutes=120)
+    rec2.create("r", "do it", "18:00")
+    assert rec2.tick(at(21, 0), halted=True) == []
+    (run,) = rec2.runs("r")
+    assert run.status == "skipped" and "lockdown" in run.summary and "off" not in run.summary
