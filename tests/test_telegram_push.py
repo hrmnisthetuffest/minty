@@ -67,3 +67,13 @@ async def test_nothing_is_pushed_when_nobody_is_paired_or_after_lockdown(tmp_pat
     gw, fake, router, _ = setup(tmp_path, quiet=False)
     gw.suspended = True
     assert await router.push("anything") is False and fake.sent == []
+
+
+async def test_a_phone_event_from_the_notifier_goes_out_even_in_quiet_hours_and_a_local_notice_never_does(tmp_path):
+    gw, fake, router, _ = setup(tmp_path, quiet=True)
+    item = router.from_event({"type": "phone", "text": "Mail from Alex: invoice due Friday", "urgent": True})
+    assert item == {"text": "Mail from Alex: invoice due Friday", "silent": False, "force": True}  # the notifier already weighed the quiet hours
+    await router.push(item["text"], item["silent"], force=item["force"])
+    assert fake.texts(OWNER) == ["[laptop] Mail from Alex: invoice due Friday"]
+    assert router.from_event({"type": "notify", "text": "Alex: the details", "local": True}) is None  # said aloud here, not sent to a phone
+    assert router.from_event({"type": "notify", "text": "Your timer is done."}) == {"text": "Your timer is done.", "silent": False}

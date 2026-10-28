@@ -1,0 +1,3 @@
+name = "notices"
+description = "What Minty told you on its own lately (mail that mattered, failed jobs, deadlines), marking one as dealt with so it stops reminding you, and how the Gmail watcher is doing."
+default_enabled = true

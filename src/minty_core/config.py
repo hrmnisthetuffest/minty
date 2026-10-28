@@ -685,6 +685,30 @@ class IntegrationsConfig(BaseModel):
     timezone: str = "Asia/Kolkata"  # how calendar times are shown
 
 
+class GmailWatchConfig(BaseModel):
+    """Notices what matters in your Gmail through the Composio server you set up, and tells you. Off until you turn it on: it reads your mail
+    (sender, subject and a short snippet; never the whole message), only reads, and polls with a growing wait if anything fails."""
+    enabled: bool = False
+    server: str = "composio"  # the MCP server (minty mcp composio / add-remote) that has your Gmail connected
+    accounts: list[str] = Field(default_factory=list)  # aliases of the Gmail accounts to watch; empty: every connected one
+    interval_s: float = Field(600.0, ge=300.0, le=86400.0)
+    vips: list[str] = Field(default_factory=list)  # addresses or @domains that always matter
+    topics: list[str] = Field(default_factory=list)  # words and phrases about what you are working on
+    max_per_poll: int = Field(20, ge=1, le=100)
+    min_confidence: float = Field(0.5, ge=0.0, le=1.0)  # below this, "important" is only "notable"
+    lookup_senders: bool = True  # one search per new sender, to know whether you have written to them before
+
+
+class NotifyConfig(BaseModel):
+    """Who is told what, when: the one layer every proactive notice goes through (severity, no repeats, quiet hours, retries)."""
+    phone: bool = True  # important and urgent notices also go to your paired Telegram chat (the title only for private ones)
+    urgent_bypass_quiet: bool = False  # only an urgent notice may break the quiet hours, and only if this is on
+    max_important_per_hour: int = Field(4, ge=1, le=60)
+    max_urgent_per_hour: int = Field(10, ge=1, le=60)
+    remind_after_h: float = Field(4.0, ge=0.5, le=48.0)  # an urgent notice nobody dealt with is said again after this long
+    max_reminders: int = Field(2, ge=0, le=10)
+
+
 class ProactiveConfig(BaseModel):
     """What Minty may start by itself. Everything has an off switch."""
     enabled: bool = True
@@ -848,6 +872,8 @@ class Config(BaseModel):
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     safety: SafetyConfig = Field(default_factory=SafetyConfig)
     proactive: ProactiveConfig = Field(default_factory=ProactiveConfig)
+    gmail_watch: GmailWatchConfig = Field(default_factory=GmailWatchConfig)
+    notify: NotifyConfig = Field(default_factory=NotifyConfig)
     router: RouterConfig = Field(default_factory=RouterConfig)
     turn: TurnConfig = Field(default_factory=TurnConfig)
     frugal: FrugalConfig = Field(default_factory=FrugalConfig)

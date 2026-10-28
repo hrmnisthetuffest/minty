@@ -750,4 +750,14 @@ when it is good enough.
   (sqlite, 0600) and the `artifacts` plugin (`artifacts_list/register/forget/tag`); Minty remembers a sheet or doc it creates from the link in
   Composio's answer, and only your own words can name one to write to. Tests: `tests/test_composio_rules.py`, `tests/test_artifacts.py`,
   `tests/test_plugin_artifacts.py`, `tests/test_mcp_remote.py`. **Not run against a live create** (the link pattern in Composio's answer is untested).
+- Autonomy 3: Gmail that tells you what matters, and one notification layer. New: `notifier.py` (severity, no repeats with new facts or a higher
+  severity counting as news, quiet hours, an hourly cap, private detail kept off the phone, retries, reminders for an urgent notice nobody dealt
+  with, links stripped; sqlite 0600), `mailscore.py` (named signals; who it is from only amplifies; failed sender checks cap it; borderline is said),
+  `gmailwatch.py` (incremental history, once per message, bounded per round, backoff, reads only, first look never announces old mail),
+  `composio_gmail.py` (read-only steps over the Composio server you set up, only if you allowed `COMPOSIO_MULTI_EXECUTE_TOOL` and its description is
+  unchanged; response shapes taken from live read-only answers), `notifier_wiring.py` (screen, voice, phone, digest), the `notices` plugin
+  (`notices_recent/resolve/status`), `gmail_watch` and `notify` settings, and a loop in the app. `call_tool(max_chars=)` for code that parses an
+  answer. The phone gets `phone` events (never held by the push router, since the notifier weighed the quiet hours) and `local` notices are not
+  mirrored. Off by default (`gmail_watch.enabled`); no phone-call channel exists and none is faked. See docs/proactive-mail.md. Tests: `test_notifier`,
+  `test_mailscore`, `test_gmailwatch`, `test_composio_gmail`, `test_gmail_wiring`, `test_telegram_push`. **Not run unattended against a real mailbox.**
 

@@ -162,6 +162,9 @@ n8n_get_workflow                   0 read
 n8n_list_executions                0 read
 n8n_list_workflows                 0 read
 n8n_trigger_webhook                2 visible
+notices_recent                     0 read
+notices_resolve                    1 change
+notices_status                     0 read
 outbox_discard                     1 change
 outbox_draft                       0 read
 outbox_list                        0 read

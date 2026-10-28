@@ -825,6 +825,30 @@ async def _attention_loop(ctx, *, first_s: float = 120.0, every_s: float = 600.0
         await asyncio.sleep(every_s)
 
 
+async def _gmail_loop(ctx, *, first_s: float = 180.0, rounds: int | None = None, sleep=asyncio.sleep) -> None:
+    """When you turned it on, look for what is new in Gmail every few minutes (the watcher reads only what changed). Always keep the notifier
+    moving: retry a delivery that failed, say an urgent notice nobody dealt with once more. A failing round is waited out inside the watcher."""
+    await sleep(first_s)
+    n = 0
+    while rounds is None or n < rounds:
+        n += 1
+        cfg = ctx.store.config.gmail_watch
+        watcher = ctx.services.get("gmail_watcher")
+        if cfg.enabled and watcher is not None:
+            try:
+                await watcher.poll_once()
+            except Exception:  # noqa: BLE001 — the watcher never raises; this is the last net
+                log.warning("gmail check failed", exc_info=True)
+        notifier = ctx.services.get("notifier")
+        if notifier is not None:
+            try:
+                notifier.retry_due()
+                notifier.remind_due()
+            except Exception:  # noqa: BLE001
+                log.warning("notifier upkeep failed", exc_info=True)
+        await sleep(cfg.interval_s if cfg.enabled else 300.0)
+
+
 async def _recipes_loop(ctx, *, every_s: float = 60.0, rounds: int | None = None) -> None:
     """Every minute, start the recipes whose time has come (each is a mission with all its checks). On the loop, like the
     attention check, because it reads the job table."""
@@ -1276,6 +1300,8 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
     heart_task.add_done_callback(lambda t: _log_task_failure(t, "heartbeat"))
     attention_task = asyncio.create_task(_attention_loop(ctx))
     attention_task.add_done_callback(lambda t: _log_task_failure(t, "attention"))
+    gmail_task = asyncio.create_task(_gmail_loop(ctx))
+    gmail_task.add_done_callback(lambda t: _log_task_failure(t, "gmail"))
     recipes_task = asyncio.create_task(_recipes_loop(ctx))
     recipes_task.add_done_callback(lambda t: _log_task_failure(t, "recipes"))
     maintain_task = asyncio.create_task(_maintenance_loop(ctx, directory))
@@ -1336,6 +1362,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         maintain_task.cancel()
         heart_task.cancel()
         attention_task.cancel()
+        gmail_task.cancel()
         recipes_task.cancel()
         power_task.cancel()
         leak_task.cancel()
@@ -1343,7 +1370,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         loop_task.cancel()
         checks_task.cancel()
         await asyncio.gather(compact_task, telegram_task, health_task, coach_task, finance_task, life_task,
-                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, recipes_task, power_task, leak_task, schedule_task,
+                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, gmail_task, recipes_task, power_task, leak_task, schedule_task,
                              loop_task, checks_task, return_exceptions=True)
         if tui_task is not None:
             tui_task.cancel()

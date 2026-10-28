@@ -48,15 +48,15 @@ class _Calls:
                 break
         return tools[:200]
 
-    async def call_tool(self, name: str, arguments: dict) -> ToolResult:
+    async def call_tool(self, name: str, arguments: dict, max_chars: int = MAX_TEXT) -> ToolResult:
         res = await self.request("tools/call", {"name": name, "arguments": arguments})
         parts = []
         for c in res.get("content", []):
             kind = c.get("type") if isinstance(c, dict) else None
             parts.append(str(c.get("text", "")) if kind == "text" else f"[{kind or 'content'} omitted]")
         text = "\n".join(parts)
-        if len(text) > MAX_TEXT:
-            text = text[:MAX_TEXT - 6] + "\n[cut]"
+        if len(text) > max_chars:  # the model gets MAX_TEXT; code that parses the answer asks for more
+            text = text[:max_chars - 6] + "\n[cut]"
         return ToolResult(text, bool(res.get("isError")))
 
 

@@ -26,7 +26,7 @@ class PushRouter:
         self.gw, self.bus, self._quiet, self._clock = gateway, bus, quiet, clock
         self.state_path = Path(state_path)
         self._held: list[dict] = self._load()
-        self._queue = bus.subscribe({"notify", "job"})
+        self._queue = bus.subscribe({"notify", "job", "phone"})
         self._seen_jobs: dict[int, str] = {}
 
     # ---- the held list survives a restart ----------------------------------------------------------
@@ -44,7 +44,11 @@ class PushRouter:
 
     # ---- turning bus events into pushes -------------------------------------------------------------
     def from_event(self, event: dict) -> dict | None:
+        if event.get("type") == "phone":  # the notifier decided this one goes to the phone (it weighed the quiet hours itself)
+            return {"text": str(event.get("text") or ""), "silent": False, "force": True}
         if event.get("type") == "notify":
+            if event.get("local"):  # said and shown here only: it may carry detail that should not leave the laptop
+                return None
             return {"text": str(event.get("text") or ""), "silent": False}
         if event.get("type") == "job":
             status, ident = event.get("status"), event.get("id")
@@ -66,11 +70,11 @@ class PushRouter:
     def is_quiet(self) -> bool:
         return bool(self._quiet(self._clock()))
 
-    async def push(self, text: str, silent: bool = False) -> bool:
-        """Send now, or hold during quiet hours. True when it went out."""
+    async def push(self, text: str, silent: bool = False, force: bool = False) -> bool:
+        """Send now, or hold during quiet hours (unless forced by the notifier). True when it went out."""
         if not text.strip() or not self.gw.allowed or self.gw.suspended:
             return False
-        if self._quiet(self._clock()):
+        if self._quiet(self._clock()) and not force:
             if not any(h["text"] == text for h in self._held):
                 self._held.append({"text": text, "silent": silent})
                 self._save()
@@ -109,7 +113,7 @@ class PushRouter:
             item = self.from_event(event)
             if item is not None:
                 try:
-                    await self.push(item["text"], item["silent"])
+                    await self.push(item["text"], item["silent"], force=bool(item.get("force")))
                 except Exception:  # noqa: BLE001
                     log.warning("push failed", exc_info=True)
             await self.release()

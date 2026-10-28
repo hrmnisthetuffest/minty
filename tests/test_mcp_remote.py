@@ -578,6 +578,14 @@ async def test_the_users_request_answers_the_question_for_a_sheet_write_but_neve
     assert seen and not d.allowed  # a sheet nobody registered
 
 
+async def test_a_long_answer_is_cut_for_the_model_but_whole_for_code_that_asks_for_it(monkeypatch):
+    server = Server()
+    async with await session(server, monkeypatch) as s:
+        await s.initialize()
+        assert (await s.call_tool("echo", {"text": "x" * 9000})).text.endswith("[cut]")
+        assert len((await s.call_tool("echo", {"text": "x" * 9000}, max_chars=20000)).text) == 9006
+
+
 def test_the_model_still_has_no_tool_to_add_a_server_allow_a_tool_or_hold_a_key(tmp_path, monkeypatch):
     host = plugin_host(tmp_path, monkeypatch, Server())
     names = {s.name for s in host.tool_specs() if s.name.startswith("mcp_")}

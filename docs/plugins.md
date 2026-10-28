@@ -437,6 +437,18 @@ Settings: `base_url`.
 | `n8n_list_executions` | Recent workflow runs and whether they succeeded. |  |
 | `n8n_trigger_webhook` | Run a workflow that starts with a Webhook node, sending an optional JSON payload. | asks first |
 
+## notices
+
+What Minty told you on its own lately (mail that mattered, failed jobs, deadlines), marking one as dealt with so it stops reminding you, and how the Gmail watcher is doing.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `notices_recent` | What Minty told the user on its own lately (mail that mattered, failed jobs ...), with a key for each. |  |
+| `notices_resolve` | The user dealt with a notice: stop reminding them about it (its key from notices_recent). | risk varies |
+| `notices_status` | Is the Gmail watcher on and working, per account. |  |
+
 ## outbox
 
 Writes and sends e-mail for you under rules you set: replies to people you list go by themselves, everything else asks you with the whole message shown. Every message is recorded.

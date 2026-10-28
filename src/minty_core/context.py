@@ -371,6 +371,16 @@ def build_context(config_dir: Path) -> AppContext:
         tracer=tracer, live=live_sessions, diet=lambda: store.config.turn.request_diet)
     agent.trusted_destinations = lambda: services["trusted_destinations"]() if "trusted_destinations" in services else set()
     agent.turn_extras.append(lambda request: services["mcp_hint"](request) if "mcp_hint" in services else "")
+    from minty_core.composio_gmail import build_gmail_watcher
+    from minty_core.gmailwatch import WatchStore
+    from minty_core.mcp.registry import McpRegistry
+    from minty_core.notifier_wiring import build_notifier
+
+    services["notifier"] = build_notifier(config_dir / "notifier.db", store, bus, services)  # severity, no repeats, quiet hours, retries
+    services["gmail_watch_store"] = WatchStore(config_dir / "gmailwatch.db")
+    services["gmail_watcher"] = build_gmail_watcher(
+        store, McpRegistry(config_dir / "mcp.json"), secrets.get, services["notifier"], services["gmail_watch_store"],
+        halted=lambda: bool(getattr(services.get("lockdown"), "active", False)) or store.config.safety.privacy_mode)
     def fast_action(text: str):  # simple commands about the open page skip the model (fastpath.py)
         page = services.get("browser_page")
         return fastpath.match(text, page() if page else None, wake_words=tuple(store.config.audio.wake_phrases))

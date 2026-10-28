@@ -17,7 +17,7 @@ frame_vad_us = 1500             # speech-detector check of one 80 ms frame (quie
 browser_followup_chars = 7600  # 'click store' after three page readings, window open (19 630 before the W0-12 diet, 7 940 before the S-1 page budget)
 browser_followup_tools = 22    # tools offered on that follow-up (was 31; 9 of them browser essentials)
 tool_chars_core = 3000         # tool schemas sent with every request (was 2 557 before W0-29)
-tool_chars_all = 66000         # every tool with every plugin on (was 24 757 before W0-29)
+tool_chars_all = 67000         # every tool with every plugin on (was 24 757 before W0-29; +4 artifacts, +3 notices tools in the autonomy work, offered only when asked)
 
 # Re-baselined 2026-10-28. The five size limits above (prompt_tokens_*, browser_followup_chars, tool_chars_*) had been exceeded since
 # before the agentic overhaul (e.g. prompt_tokens_plain was 2 597 against 1 500) and nothing enforced them. They now sit just above
