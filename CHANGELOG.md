@@ -683,3 +683,6 @@ when it is good enough.
 - Security: the Docker Compose file drops every Linux capability, sets `no-new-privileges`, and makes the container's program read-only
   (`/data` and `/tmp` stay writable). Run on the core image: capabilities empty, `NoNewPrivs` on, panel answering. The voice variant inherits it
   and was not run. Test: `tests/test_docker_files.py`.
+- Security: `requirements.lock` pins the core dependencies to exact versions with SHA-256 hashes (24 packages, no known advisories by
+  `pip-audit` today; a fresh hash-checked install into a clean environment imported the app). `docs/getting-started.md` says how to install from
+  it and how to remake it; `tests/test_requirements_lock.py` fails if a direct dependency is missing from it or pinned below its floor.

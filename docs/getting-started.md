@@ -20,6 +20,14 @@ python3 -m venv .venv
 bin/minty onboard
 ```
 
+To install exactly the dependency versions that were audited (Python 3.12; every file is checked against a hash):
+
+```bash
+.venv/bin/pip install --require-hashes -r requirements.lock && .venv/bin/pip install --no-deps -e .
+```
+`requirements.lock` is made with `uv pip compile pyproject.toml --generate-hashes --python-version 3.12 --no-header -o requirements.lock`;
+remake it when `pyproject.toml` changes (a test fails if a dependency is missing from it). Optional extras (voice, browser ...) are not in it.
+
 ## 2. The guided setup
 
 `minty onboard` has eight short steps (see the table in the [README](../README.md)). Rules it follows:

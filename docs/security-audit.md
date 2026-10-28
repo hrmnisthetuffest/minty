@@ -86,4 +86,5 @@ its page hidden, which pauses video), and anything over a real network or on a p
 - The Kokoro digests trust the copy downloaded on 2026-10-10.
 - NASA items with third-party content are filtered by words in their description (a heuristic); the Pixabay and Pexels clips are the
   providers' word for their licence.
+- `requirements.lock` covers the core dependencies for Python 3.12 only (not the optional extras); the default install is still unpinned.
 - `bandit` and `pip-audit` only see what they are given: one environment, no optional extras that are not installed.
