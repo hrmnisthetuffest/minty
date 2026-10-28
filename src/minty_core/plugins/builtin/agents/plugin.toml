@@ -45,3 +45,11 @@ label = "Check the files and tests after every job (default on). Off: trust the 
 [settings.claude_extra_tools]
 type = "string"
 label = "More tools Claude Code may run, e.g. Bash(npx:*) Bash(ffprobe:*) for video work. Never a blanket allow, rm, sudo, curl or wget"
+
+[settings.sandbox]
+type = "string"
+label = "Run coding agents (and the tests they wrote) in a bubblewrap sandbox with your keys and home folder out of reach: auto (default; says so when it cannot), required (never run without it) or off"
+
+[settings.agent_env]
+type = "string"
+label = "Extra environment variable names to pass to coding agents, e.g. AWS_PROFILE. Provider keys and tokens are never passed unless you list them here"

@@ -13,7 +13,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 SAFE_PATH = "/usr/local/bin:/usr/bin:/bin"
 
@@ -58,7 +58,7 @@ class Sandbox:
 
     # ---- building and running ------------------------------------------------------------------
     def command(self, argv: Sequence[str], *, network: bool = False, ro: Sequence[Path] = (),
-                rw: Sequence[Path] = (), cwd: Path | None = None) -> list[str]:
+                rw: Sequence[Path] = (), cwd: Path | None = None, env: Mapping[str, str] | None = None) -> list[str]:
         exe = shutil.which(self._bwrap) or self._bwrap
         args = [exe, "--die-with-parent", "--unshare-all", "--new-session"]
         if network:
@@ -69,7 +69,12 @@ class Sandbox:
             args += ["--ro-bind", str(path), str(path)]
         for path in rw:
             args += ["--bind", str(path), str(path)]
-        args += ["--setenv", "HOME", "/tmp", "--clearenv", "--setenv", "PATH", SAFE_PATH, "--setenv", "LANG", "C.UTF-8"]
+        if env is None:
+            args += ["--clearenv", "--setenv", "HOME", "/tmp", "--setenv", "PATH", SAFE_PATH, "--setenv", "LANG", "C.UTF-8"]  # clear first: a --setenv before it is wiped
+        else:  # exactly these variables and no others (a program that must find its own settings via HOME and a login variable)
+            args.append("--clearenv")
+            for key, value in env.items():
+                args += ["--setenv", str(key), str(value)]
         if cwd is not None:
             args += ["--chdir", str(cwd)]
         return [*args, "--", *argv]

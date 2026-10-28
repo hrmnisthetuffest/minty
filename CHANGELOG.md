@@ -603,3 +603,11 @@ when it is good enough.
   `WebSocket /events?token=...` to the console, journal and `minty.log`; a filter now hides secret-looking query values on its loggers
   too, and `minty.log` is private (0600, also after a rollover). A closed events socket is now noticed at once instead of at the next
   event, so it no longer keeps its place on the event bus or holds up shutdown. `websockets>=14`. Tests: `tests/test_security_ws_logs.py`.
+- Security: a Claude Code job no longer inherits Minty's environment (provider keys, bot tokens, SSH agent): it gets an allowlist
+  (`PATH`, `HOME`, locale, proxy and CA variables, `ANTHROPIC_*`, `CLAUDE_*`) plus any names listed in the new `agents.agent_env`
+  setting. It also runs inside bubblewrap (`agents.sandbox`: `auto` by default, `required`, `off`) with only its project folder,
+  its own sign-in folder and the network it needs; the project's tests that run its code get the folder and no network. Minty's
+  settings, `~/.ssh` and browser profiles are not there; the result says whether it ran sandboxed. Deny rules keep its Read/Edit
+  tools away from those places too. Fixed on the way: the sandbox's `HOME` was cleared by `--clearenv` (now set after it).
+  Tests: `tests/test_security_agents_env.py`, `tests/test_security_agents_isolation.py` (real bubblewrap: keys hidden, project
+  writable, no network for tests). A real Claude Code job ran this way and came back `verified`.

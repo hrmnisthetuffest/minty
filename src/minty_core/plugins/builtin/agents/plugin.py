@@ -3,7 +3,9 @@ import logging
 from dataclasses import asdict
 from pathlib import Path
 
-from minty_core.plugins.builtin.agents.adapters import ClaudeCodeAdapter, HermesAdapter, OpenClawAdapter, extra_tools
+from minty_core.plugins.builtin.agents.adapters import (ClaudeCodeAdapter, HermesAdapter, OpenClawAdapter, extra_tools,
+                                                        secret_path_rules)
+from minty_core.plugins.builtin.agents.isolation import Isolation
 from minty_core.plugins.builtin.agents.jobs import MODES, JobManager
 from minty_core.plugins.builtin.agents.verify import parse_check
 from minty_core.plugins.host import Tool
@@ -14,7 +16,7 @@ log = logging.getLogger(__name__)
 PERMISSION_MODES = {"default", "acceptEdits", "plan"}
 
 
-def build_adapters(settings: dict) -> dict:
+def build_adapters(settings: dict, config_dir: Path | None = None) -> dict:
     mode = str(settings.get("claude_permission_mode") or "acceptEdits")
     if mode not in PERMISSION_MODES:
         log.warning("Ignoring unsafe claude_permission_mode %r; using acceptEdits", mode)
@@ -25,7 +27,8 @@ def build_adapters(settings: dict) -> dict:
         log.warning("Ignoring claude_extra_tools %s: a blanket allow or a program that can delete, escalate or download is never added", refused)
     adapters = [
         ClaudeCodeAdapter(permission_mode=mode, max_budget_usd=float(budget) if isinstance(budget, (int, float))
-                          and not isinstance(budget, bool) else None, extra=extra),
+                          and not isinstance(budget, bool) else None, extra=extra,
+                          secret_rules=secret_path_rules(Path.home(), config_dir) if config_dir is not None else None),
         HermesAdapter(),
         OpenClawAdapter(agent_id=str(settings.get("openclaw_agent") or "main")),
     ]
@@ -52,7 +55,7 @@ def register(ctx):
     settings = ctx.settings
     manager = JobManager(
         Path(str(settings.get("root") or "~/Documents/project")).expanduser(),
-        build_adapters(settings),
+        build_adapters(settings, ctx.config_dir),
         ctx.notify,
         state=ctx.state,
         log_dir=ctx.config_dir / "jobs",
@@ -63,6 +66,8 @@ def register(ctx):
         max_rounds=int(settings.get("max_rounds") or 2),
         verify_work=settings.get("verify") is not False,
         store_path=ctx.config_dir / "agent_jobs.json",
+        isolation=Isolation(str(settings.get("sandbox") or "auto").strip().lower()),
+        env_extra=str(settings.get("agent_env") or ""),
     )
     if notice := manager.interrupted_notice():  # a restart cut a coding job short: say so, once, instead of staying silent
         ctx.notify(notice)

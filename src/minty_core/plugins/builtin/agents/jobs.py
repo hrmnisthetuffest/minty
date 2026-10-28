@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import Callable
 
 from minty_core.fsutil import atomic_write_text
+from minty_core.plugins.builtin.agents import adapters as agent_adapters
 from minty_core.plugins.builtin.agents import verify
+from minty_core.sandbox import SandboxUnavailable
 from minty_core.tasks import cancel_and_wait
 
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,60}")
@@ -66,13 +68,15 @@ class Job:
     edited_check: list = field(default_factory=list)  # check files the agent changed (it cannot grade itself)
     progress: list = field(default_factory=list)  # what was seen on disk while it ran
     note: str = ""  # the agent's own closing report (a claim, kept for reading, never trusted)
+    sandboxed: bool = False  # ran inside the sandbox (the home folder out of reach)
 
 
 class JobManager:
     def __init__(self, root: Path, adapters: dict, notify: Callable[[str], None], *, state: dict,
                  log_dir: Path, sessions_path: Path, max_concurrent: int = 2, max_runtime_s: float = 1800,
                  check: list[str] | None = None, max_rounds: int = 2, check_timeout_s: float = 300.0,
-                 watch_s: float = 15.0, store_path: Path | None = None, verify_work: bool = True):
+                 watch_s: float = 15.0, store_path: Path | None = None, verify_work: bool = True,
+                 isolation=None, env_extra: str = ""):
         self._root = Path(root).expanduser()
         resolved = self._root.resolve()
         if resolved == Path(resolved.anchor) or resolved == Path.home().resolve():
@@ -95,6 +99,9 @@ class JobManager:
         self._store = Path(store_path) if store_path else None
         self.interrupted: list[Job] = []
         self._argv: dict[int, list[str]] = {}  # the check each job was started with: what runs after is what ran before
+        self._iso = isolation  # None: no sandbox and nothing said about one
+        self._env_extra = env_extra
+        self._boxed: dict[int, bool] = {}  # jobs whose agent runs in the sandbox, so their tests do too
         if self._store is not None and not state.get("loaded"):  # once per process, not on every plugin reload
             state["loaded"] = True
             self._load()
@@ -195,10 +202,18 @@ class JobManager:
         """Rounds: run the agent, look at the disk, run the project's tests; if they fail and a round is left, send the
         agent back with the failure. The job's status comes from that evidence, not from what the agent says."""
         deadline = time.monotonic() + self._max_runtime_s
-        output, resumed = "", False
+        output, resumed, why_not = "", False, ""
         try:
             if job.status == "stopped":  # stop() ran before the process existed
                 return
+            if self._iso is not None and getattr(adapter, "sandboxable", False):
+                try:
+                    job.sandboxed, why_not = self._iso.prepare()
+                except SandboxUnavailable as e:
+                    job.status = "failed"
+                    job.summary = f"The agent was not run: the sandbox is required in the settings but cannot be built here ({e})."
+                    return
+                self._boxed[job.id] = job.sandboxed
             pre = await self._precheck(job, path)
             before = await asyncio.to_thread(verify.fingerprint, path)  # after the pre-check, so its leftovers are not "changes"
             prompt, session = job.prompt, self._sessions().get(f"{job.agent}:{job.project}")
@@ -236,11 +251,28 @@ class JobManager:
         finally:
             job.finished = time.time()
             self._procs.pop(job.id, None)
+            self._boxed.pop(job.id, None)
+            if job.status != "stopped" and "not run" not in job.summary:
+                extra = self._sandbox_sentence(job, adapter, why_not)
+                if extra and job.summary and job.summary[-1] not in ".!?":
+                    extra = "." + extra
+                job.summary = (job.summary + extra).strip()
             if job.status == "failed" and resumed:
                 self._forget_session(job.agent, job.project)
             self._write_log(job, output)
             self._save()
             self._announce(job)
+
+    def _boxed_check(self, job: Job, argv: list[str], path: Path) -> list[str]:
+        """The project's tests run the agent's code: inside the sandbox they get the folder and no network."""
+        return self._iso.check_command(argv, path) if self._boxed.get(job.id) else argv
+
+    def _sandbox_sentence(self, job: Job, adapter, why: str) -> str:
+        if self._iso is None or not getattr(adapter, "sandboxable", False):
+            return ""
+        if job.sandboxed:
+            return " Ran in a sandbox: your keys, SSH folder and Minty's settings were out of reach."
+        return f" Not sandboxed ({why or 'unavailable'})."
 
     async def _precheck(self, job: Job, path: Path) -> "verify.CheckResult | None":
         """Run the project's tests on the untouched folder, so a failure that was there first is not blamed on the agent."""
@@ -251,7 +283,7 @@ class JobManager:
             return None
         self._argv[job.id] = argv
         job.progress = (job.progress + ["checking the project's tests before starting"])[-WATCH_KEEP:]
-        check = await self._run_check(path, argv, self._check_timeout_s)
+        check = await self._run_check(path, self._boxed_check(job, argv, path), self._check_timeout_s)
         job.checks_before = check.summary if check.ran else ""
         return check
 
@@ -268,15 +300,19 @@ class JobManager:
         if argv is None:
             return None
         job.progress = (job.progress + ["running the project's tests"])[-WATCH_KEEP:]
-        check = await self._run_check(path, argv, self._check_timeout_s)
+        check = await self._run_check(path, self._boxed_check(job, argv, path), self._check_timeout_s)
         job.checks = check.summary
         return check
 
     async def _round(self, job: Job, adapter, invocation, before, path: Path, deadline: float):
+        env = agent_adapters.job_env(extra=self._env_extra)  # not Minty's provider keys, bot tokens or SSH agent
+        argv = invocation.argv
+        if self._boxed.get(job.id):
+            argv = self._iso.agent_command(argv, invocation.cwd, adapter, env)
         proc = await asyncio.create_subprocess_exec(
-            *invocation.argv, cwd=invocation.cwd, stdin=asyncio.subprocess.DEVNULL,
+            *argv, cwd=invocation.cwd, stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
-            start_new_session=True,
+            start_new_session=True, env=env,
         )
         self._procs[job.id] = proc
         if job.status == "stopped":  # stop() landed while the process was spawning
