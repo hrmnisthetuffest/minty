@@ -43,6 +43,14 @@ def register(ctx):
     def cfg():
         return ctx.services["config"]().mcp
 
+    def ready() -> bool:  # a server is set up and MCP is on: its tools stay offered, so "open it with compose" needs no app name
+        try:
+            return bool(cfg().enabled and registry.servers())
+        except Exception:  # noqa: BLE001 — a damaged mcp.json must not break the choice of tools
+            return False
+
+    ctx.services.setdefault("live_sessions", {})["apps"] = ready
+
     def guarded(fn):
         async def run(args):
             if not cfg().enabled:

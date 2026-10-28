@@ -721,4 +721,8 @@ when it is good enough.
   (routed by composio, mcp, gmail, calendar, slack, github, notion, drive, sheets ... and 20 other app names), and `mcp_call` says to use it
   for a connected app instead of opening a browser. Tests: `tests/test_toolkits.py` (28). **Whether the model then picks Composio over the
   browser has not been run against a live model**; MCP must also be switched on (`[mcp] enabled`, the Switches page) and Minty restarted.
+- Fix: even with the `apps` toolkit, "open it using compose you Minty" (no app name, and speech wrote "compose") still went to Chrome:
+  the toolkit was only chosen by keywords. When MCP is switched on and a server is set up, the MCP tools are now offered on every request
+  (the plugin registers `apps` as a live toolkit, about three small tools). With no server, or MCP off, nothing changes. Tests:
+  `tests/test_mcp_remote.py` (51).
 

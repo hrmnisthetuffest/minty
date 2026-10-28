@@ -410,6 +410,25 @@ def test_composios_skill_and_connection_managers_are_always_asked(tmp_path, monk
     assert spec.risk({"server": "composio", "tool": "COMPOSIO_SEARCH_SKILLS"}) == 1 and spec.risk({"server": "composio", "tool": "COMPOSIO_SUBMIT_FEEDBACK"}) == 2
 
 
+def test_a_set_up_and_switched_on_mcp_server_keeps_the_apps_toolkit_offered_even_for_a_vague_request(tmp_path):
+    from minty_core.toolkits import ToolkitRouter
+
+    services = {}
+    host = make_host(tmp_path, services=services)
+    live = services["live_sessions"]["apps"]
+    assert live() is False  # nothing added: no reason to spend tokens on these tools
+    McpRegistry(tmp_path / "mcp.json").add_remote("composio", "https://connect.composio.dev/mcp", {"x-consumer-api-key": "COMPOSIO_CONSUMER_KEY"})
+    assert live() is False  # added, but MCP is switched off
+    data = host._store.config.model_dump(mode="json")
+    data["mcp"]["enabled"] = True
+    host._store.update(data)
+    assert live() is True
+    router = ToolkitRouter(lambda: {p["name"]: p["tools"] for p in host.list_plugins() if p["enabled"] and not p["error"]},
+                           live=lambda: {kit for kit, is_open in services["live_sessions"].items() if is_open()})
+    for words in ("open it using compose you Minty", "check my inbox", "tell me a joke"):  # no app name in any of them
+        assert "mcp_call" in router.tool_names(words)
+
+
 def test_the_model_still_has_no_tool_to_add_a_server_allow_a_tool_or_hold_a_key(tmp_path, monkeypatch):
     host = plugin_host(tmp_path, monkeypatch, Server())
     names = {s.name for s in host.tool_specs() if s.name.startswith("mcp_")}
