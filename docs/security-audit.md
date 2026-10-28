@@ -63,6 +63,16 @@ Verified: real retrieval from NASA's library; rotation, repetition, thin and emp
 timeouts, rate limits, hostile addresses and bytes, size limits (with scripted providers). Not verified: Pexels and Pixabay against the real
 services (no keys), the download hosts they use, and whether a caption credit without a link satisfies Pexels' API attribution wording.
 
+### Playback in the panel
+
+The studio page (`#studio`) plays today's clip. One clip plays and at most one more is loaded ahead in a hidden element, so a switch is a fade
+and not a flash; a clip that cannot be played says why and can be skipped; nothing loads by itself on a data-saving or slow connection or
+with reduced motion (a picture and a Play button); everything is released when the tab is hidden or the page is left. Clips are streamed by
+the panel from the core by number, for a logged-in session only, with byte ranges, kept a day in a private cache; the core serves only clips
+that are in the catalogue and inside the library folder, and poster frames (about 15 KB each) are made once. Measured against a real core on
+localhost: first frame 19-36 ms, a switch to the clip loaded ahead 0 ms. Not observed: frames advancing (the browser pane available here keeps
+its page hidden, which pauses video), and anything over a real network or on a phone.
+
 ## Still open
 
 - A sandboxed Claude Code job still has the network (it needs it to reach its model) and its own sign-in folder, so something it was

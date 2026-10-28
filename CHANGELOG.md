@@ -676,4 +676,7 @@ when it is good enough.
   or slow connection or with reduced motion (a picture and a Play button); everything stops when the tab is hidden or the page is left;
   a clip that cannot be played shows why and can be skipped. The core serves clips with byte ranges and small poster frames (made once),
   only for clips that are in the catalogue and inside the library folder; the panel streams them by number, for logged-in sessions only,
-  kept a day in a private cache. Tests: `test_studio_player_api.py`, `test_panel_media.py`. NOT yet checked in a real browser (see the ledger).
+  kept a day in a private cache. Tests: `test_studio_player_api.py`, `test_panel_media.py`, `test_panel_studio_static.py`. Checked in a browser against a real core: first frame
+  19-36 ms on localhost, the switch to the clip loaded ahead 0 ms (the old element released), the failure message with "Skip this clip", data
+  saving (a picture and a Play button), the backdrop on and off. Frames advancing could not be seen: the browser pane that was available
+  keeps its page hidden, which pauses all video.
