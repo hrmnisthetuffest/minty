@@ -113,7 +113,7 @@ async def test_a_message_already_handled_is_never_fetched_or_told_again(tmp_path
 
 
 async def test_what_gmail_itself_filed_as_promotions_is_never_downloaded(tmp_path):
-    r = Rig(tmp_path)
+    r = Rig(tmp_path, follow_up_days=0)  # (with following on, sent mail is looked at to see whether it asked something)
     await r.watcher.poll_once()
     r.add(msg(1, labels=("INBOX", "CATEGORY_PROMOTIONS")), msg(2, labels=("SENT",)), msg(3, labels=("SPAM",)), msg(4, labels=("DRAFT",)))
     await r.watcher.poll_once()
@@ -346,3 +346,48 @@ async def test_no_reminder_when_the_notice_itself_is_the_reminder_or_it_does_not
     r.add(msg(4, subject="Report due Friday", snippet="Can you send the report by Friday? Please confirm."))
     await r.watcher.poll_once()
     assert r.reminders.items == []
+
+
+def sent(i, subject="Question about the quote", snippet="Can you send the revised quote by Friday?", thread=None, to=("alex@acme.test",)):
+    return Mail(id=f"s{i}", thread_id=thread or f"t{i}", sender=ME, subject=subject, snippet=snippet, to=tuple(to), labels=("SENT",))
+
+
+async def _chase_rig(tmp_path, **settings):
+    r = Rig(tmp_path, **settings)
+    await r.watcher.poll_once()
+    return r
+
+
+async def test_a_mail_you_sent_that_asks_something_is_followed_and_chased_once_if_nobody_answers(tmp_path):
+    r = await _chase_rig(tmp_path, follow_up_days=3)
+    r.add(sent(1))
+    await r.watcher.poll_once()
+    r.now += 2 * 86400
+    await r.watcher.poll_once()
+    assert r.rec.said() == []  # not yet
+    r.now += 2 * 86400
+    await r.watcher.poll_once()
+    assert r.rec.said() == []  # a notable: the screen and the digest, not the voice
+    panel = [t for n, s, k, t in r.rec.told if n == "panel" and "No reply yet" in t]
+    assert len(panel) == 1 and "alex" in panel[0].lower() and "quote" in panel[0].lower()
+    r.now += 5 * 86400
+    await r.watcher.poll_once()
+    assert len([1 for n, s, k, t in r.rec.told if n == "panel" and "No reply yet" in t]) == 1  # said once, not nagged
+
+
+async def test_an_answer_ends_the_wait_and_a_mail_that_asks_nothing_is_not_followed(tmp_path):
+    r = await _chase_rig(tmp_path, follow_up_days=3)
+    r.add(sent(1, thread="t1"), sent(2, subject="Thanks", snippet="Got it, thanks a lot.", thread="t2"))
+    await r.watcher.poll_once()
+    r.add(msg(9, subject="Re: Question about the quote", snippet="Here is the quote.", thread="t1", labels=("INBOX", "UNREAD")))
+    await r.watcher.poll_once()
+    r.now += 10 * 86400
+    await r.watcher.poll_once()
+    assert [t for n, s, k, t in r.rec.told if "No reply yet" in t] == []
+
+
+async def test_following_up_can_be_switched_off_and_never_downloads_sent_mail_then(tmp_path):
+    r = await _chase_rig(tmp_path, follow_up_days=0)
+    r.add(sent(1))
+    await r.watcher.poll_once()
+    assert not any(c[0] == "metadata" for c in r.src.calls)

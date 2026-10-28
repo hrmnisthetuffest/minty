@@ -181,6 +181,6 @@ def build_gmail_watcher(store, registry: McpRegistry, secret: Callable[[str], st
         c = store.config.gmail_watch
         return WatchSettings(enabled=c.enabled, accounts=tuple(c.accounts), me=dict(source.emails), interval_s=c.interval_s, vips=tuple(c.vips),
                              topics=tuple(c.topics), max_per_poll=c.max_per_poll, min_confidence=c.min_confidence, lookup_senders=c.lookup_senders,
-                             reminders=c.reminders)
+                             reminders=c.reminders, follow_up_days=c.follow_up_days)
 
     return GmailWatcher(source, watch_store, notifier, settings, halted=halted, prefs=prefs, remind=remind)

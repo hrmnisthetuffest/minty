@@ -19,7 +19,10 @@ messages that matter before you remember to look. It is **off until you turn it 
 
 - Per account it asks Gmail only for **what changed since the last look** (a history position it remembers), not the mailbox. The first
   look only notes where the mailbox is, so old mail is never announced.
-- Mail Gmail itself filed as promotions, social, forums, spam, drafts or sent is not downloaded. For the rest it fetches the **headers
+- Mail Gmail itself filed as promotions, social, forums, spam or drafts is not downloaded. Mail **you sent** is looked at (headers and a snippet,
+  at most five a round) only to see whether it asked something; if it did and nobody has answered in `gmail_watch.follow_up_days` days (3), you
+  are told once, quietly ("no reply yet from X about Y"), and an answer in that thread ends the wait. `follow_up_days = 0` turns it off and
+  sent mail is then never downloaded. For the rest it fetches the **headers
   and a short snippet** (sender, subject, labels, a few headers), at most 20 per round; any beyond that wait for the next round.
 - Every message is handled once. A new sender is looked up once (a search for mail you sent them, remembered for 30 days).
 - If Composio or Gmail fails it waits longer each time and, after three failures, says so once.

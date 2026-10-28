@@ -701,6 +701,7 @@ class GmailWatchConfig(BaseModel):
     min_confidence: float = Field(0.5, ge=0.0, le=1.0)  # below this, "important" is only "notable"
     lookup_senders: bool = True  # one search per new sender, to know whether you have written to them before
     reminders: bool = True  # an important mail with a deadline a few days off gets one reminder the morning before
+    follow_up_days: int = Field(3, ge=0, le=30)  # a mail you sent that asks something and got no answer in this many days is said once (0 = off)
 
 
 class NotifyConfig(BaseModel):

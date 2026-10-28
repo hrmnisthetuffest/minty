@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Callable, Protocol
 
 from minty_core.mailpolicy import DEFAULT_SENSITIVE
-from minty_core.mailscore import LOW_CATEGORIES, TIME, Context, Mail, address_of, deadline_in, name_of, score
+from minty_core.mailscore import LOW_CATEGORIES, REQUEST, TIME, Context, Mail, address_of, deadline_in, name_of, score
 from minty_core.notifier import RANK, Event, Notifier
 
 log = logging.getLogger(__name__)
@@ -58,6 +58,7 @@ class WatchSettings:
     lookup_senders: bool = True
     max_lookups: int = 5
     reminders: bool = True  # an important mail with a deadline a few days off gets a reminder the morning before
+    follow_up_days: int = 3  # a mail you sent that asks something and got no answer in this many days is said once (0 = off)
 
 
 class WatchStore:
@@ -74,7 +75,9 @@ class WatchStore:
             "CREATE TABLE IF NOT EXISTS seen (account TEXT NOT NULL, message_id TEXT NOT NULL, ts REAL NOT NULL, PRIMARY KEY (account, message_id));"
             "CREATE TABLE IF NOT EXISTS senders (account TEXT NOT NULL, address TEXT NOT NULL, known INTEGER NOT NULL, ts REAL NOT NULL, "
             "PRIMARY KEY (account, address));"
-            "CREATE TABLE IF NOT EXISTS threads (thread_id TEXT PRIMARY KEY, sender TEXT NOT NULL, ts REAL NOT NULL);")
+            "CREATE TABLE IF NOT EXISTS threads (thread_id TEXT PRIMARY KEY, sender TEXT NOT NULL, ts REAL NOT NULL);"
+            "CREATE TABLE IF NOT EXISTS awaiting (thread_id TEXT PRIMARY KEY, account TEXT NOT NULL, who TEXT NOT NULL, subject TEXT NOT NULL, "
+            "ts REAL NOT NULL, chased INTEGER NOT NULL DEFAULT 0);")
         self._db.commit()
 
     def account(self, alias: str) -> dict:
@@ -100,6 +103,29 @@ class WatchStore:
                              (self._clock() + wait_s, error[:120], alias))
             self._db.commit()
             return self._db.execute("SELECT failures FROM accounts WHERE alias = ?", (alias,)).fetchone()[0]
+
+    def await_reply(self, account: str, thread_id: str, who: str, subject: str) -> None:
+        with self._lock:
+            self._db.execute("INSERT OR IGNORE INTO awaiting (thread_id, account, who, subject, ts) VALUES (?,?,?,?,?)",
+                             (thread_id, account, who[:120], subject[:150], self._clock()))
+            self._db.execute("DELETE FROM awaiting WHERE ts < ?", (self._clock() - 60 * 86400,))
+            self._db.commit()
+
+    def got_reply(self, thread_id: str) -> None:
+        with self._lock:
+            self._db.execute("DELETE FROM awaiting WHERE thread_id = ?", (thread_id,))
+            self._db.commit()
+
+    def overdue(self, account: str, days: int) -> list[tuple[str, str, str]]:
+        """(thread, who, subject) of mail you sent that nobody has answered in `days` days and that was not chased yet."""
+        rows = self._db.execute("SELECT thread_id, who, subject FROM awaiting WHERE account = ? AND chased = 0 AND ts <= ?",
+                                (account, self._clock() - days * 86400)).fetchall()
+        return [tuple(r) for r in rows]
+
+    def chased(self, thread_id: str) -> None:
+        with self._lock:
+            self._db.execute("UPDATE awaiting SET chased = 1 WHERE thread_id = ?", (thread_id,))
+            self._db.commit()
 
     def note_thread(self, thread_id: str, sender: str) -> None:
         """Who a thread's notice was about, so "that one mattered" or "that was noise" can be taken as a hint about the sender."""
@@ -207,12 +233,17 @@ class GmailWatcher:
         except HistoryExpired:
             items = await self._source.recent_messages(alias, 180)
             new_history = await self._source.baseline(alias)
-        picked, ids = [], set()
+        picked, ids, sent_ids = [], set(), []
         for item in items:
             mid, labels = str(item.get("id") or ""), set(item.get("labels") or [])
             if not mid or mid in ids or self._store.seen(alias, mid):
                 continue
             ids.add(mid)
+            if "INBOX" in labels:
+                self._store.got_reply(str(item.get("thread") or mid))  # somebody wrote in that thread: whatever you were waiting for is answered
+            if "SENT" in labels and "DRAFT" not in labels and settings.follow_up_days > 0:
+                sent_ids.append((mid, str(item.get("thread") or mid)))
+                continue
             if "INBOX" not in labels or labels & SKIP_LABELS or labels & set(LOW_CATEGORIES) - {"CATEGORY_UPDATES"}:
                 self._store.mark_seen(alias, mid)  # never downloaded: Gmail already said what it is
                 continue
@@ -223,9 +254,35 @@ class GmailWatcher:
             mail = await self._source.metadata(alias, mid)
             self._tell(alias, mail, await self._context(alias, mail, settings, lookups), settings)
             self._store.mark_seen(alias, mid)
+        await self._follow_sent(alias, sent_ids[:5], settings)  # a few at a time: sent mail is looked at only to see whether it asked something
+        for mid, _thread in sent_ids[:5]:
+            self._store.mark_seen(alias, mid)
+        for mid, _thread in sent_ids[5:]:
+            self._store.mark_seen(alias, mid)  # beyond that it is simply not followed
+        self._chase(alias, settings)
         if len(picked) <= settings.max_per_poll:  # otherwise the rest are looked at next time, from the same position
             self._store.set_history(alias, new_history)
         return len(batch)
+
+    async def _follow_sent(self, alias: str, sent_ids: list[tuple[str, str]], settings: WatchSettings) -> None:
+        for mid, thread in sent_ids:
+            try:
+                mail = await self._source.metadata(alias, mid)
+            except Exception:  # noqa: BLE001 — not following one mail is allowed
+                continue
+            if REQUEST.search(f"{mail.subject} {mail.snippet}") and mail.to:
+                self._store.await_reply(alias, thread, mail.to[0], mail.subject)
+
+    def _chase(self, alias: str, settings: WatchSettings) -> None:
+        """Said once, quietly (the screen and the digest): "no reply yet from X about Y". Never nagged, and an answer ends it."""
+        if settings.follow_up_days <= 0:
+            return
+        for thread, who, subject in self._store.overdue(alias, settings.follow_up_days):
+            sensitive = any(re.search(rf"\b{re.escape(w)}\b", subject, re.IGNORECASE) for w in DEFAULT_SENSITIVE)
+            self._store.chased(thread)
+            self._notifier.publish(Event(f"gmail:{alias}", f"chase:{thread}", "notable", f"No reply yet from {who}" + ("" if sensitive else f": {subject}"),
+                                         "You asked something and nobody has answered." if not sensitive else "", "follow up, or let it go", detail_private=True,
+                                         fingerprint="chase"))
 
     async def _context(self, alias: str, mail: Mail, settings: WatchSettings, lookups: list[int]) -> Context:
         address = address_of(mail.sender)

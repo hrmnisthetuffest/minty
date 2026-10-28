@@ -796,4 +796,7 @@ when it is good enough.
   (no links, nothing that gives orders to a model). The Gmail watcher now gives an important mail that names a deadline a few days off one reminder the morning
   before (`gmail_watch.reminders`; written dates, weekdays, "tomorrow"; a sensitive subject stays out of it). `prefs`, `playbooks` and `notices` share one
   toolkit, `habits`, so the tool menu every request carries stays small. Tests: `test_playbooks*`, `test_gmailwatch`.
+- Autonomy 8: a promised answer that has not arrived. The Gmail watcher looks (headers and a snippet, at most five a round) at mail you sent only to see whether it
+  asked something; if it did and nobody has answered in `gmail_watch.follow_up_days` days (default 3, 0 = off) you are told once, quietly (the screen and the digest):
+  "no reply yet from X about Y", with the subject left out when it holds a sensitive word. Any message in that thread ends the wait. Tests: `test_gmailwatch`.
 
