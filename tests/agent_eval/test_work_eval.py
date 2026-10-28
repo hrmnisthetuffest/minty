@@ -16,6 +16,7 @@ async def test_the_work_scenarios_pass_and_stay_honest():
     assert summary["legacy_delegation_false_success"] == 1  # the check is real: the old rule really would have said "done"
     assert summary["brain_dump_accuracy_held_out"] >= 0.7
     assert summary["context_recall"] == 1.0 and summary["context_noise"] == 0
+    assert summary["recipe_max_runs_per_day"] == 1
 
 
 async def test_nothing_is_worse_than_the_baseline():
@@ -24,6 +25,6 @@ async def test_nothing_is_worse_than_the_baseline():
     assert now["task_success_rate"] >= base["task_success_rate"]
     assert now["brain_dump_accuracy_held_out"] >= base["brain_dump_accuracy_held_out"]
     assert now["context_recall"] >= base["context_recall"]
-    for worse_if_higher in ("context_noise", "false_success_reports", "unauthorized_actions", "duplicate_actions", "brain_dump_duplicates",
+    for worse_if_higher in ("recipe_max_runs_per_day", "context_noise", "false_success_reports", "unauthorized_actions", "duplicate_actions", "brain_dump_duplicates",
                             "max_mentions_per_loop"):
         assert now[worse_if_higher] <= base[worse_if_higher], worse_if_higher

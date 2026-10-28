@@ -103,3 +103,14 @@ async def test_a_recipe_that_paused_itself_reaches_the_attention_list(tmp_path):
     host = make_host(tmp_path, plugins={"attention": {"enabled": True}, "recipes": {"enabled": False}},
                      services={"recipe_loops": lambda: [loop]})
     assert "daily-reel paused itself" in await host.call("attention_review", {})
+
+
+async def test_studio_trouble_reaches_the_attention_list_and_earned_independence_reaches_the_review(tmp_path):
+    from minty_core.attention import Loop
+    from minty_core.worklessons import Lesson
+    loop = Loop("studio:3:unknown", "studio", "Post 3 may or may not be on Instagram.", 1.0, "today")
+    host = make_host(tmp_path, plugins={"attention": {"enabled": True}, "studio": {"enabled": False}, "missions": {"enabled": True}},
+                     services={"studio_attention": lambda: [loop],
+                               "studio_lessons": lambda: [Lesson("studio:autopost", "You said yes to 5 posts", "set post_mode to auto yourself", "confirmed", 5)]})
+    assert "Post 3 may or may not" in await host.call("attention_review", {})
+    assert "post_mode" in await host.call("missions_review", {})

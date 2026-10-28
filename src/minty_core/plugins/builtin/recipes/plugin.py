@@ -22,8 +22,12 @@ def register(ctx):
             raise RuntimeError("missions are unavailable")
         return starter(goal, extra)
 
-    recipes = Recipes(ctx.config_dir / "recipes.sqlite", start=start,
-                      catch_up_minutes=_minutes((ctx.settings or {}).get("catch_up_minutes"), 120))
+    catch_up = _minutes((ctx.settings or {}).get("catch_up_minutes"), 120)
+    recipes = ctx.state.get("recipes")  # one open database across reloads
+    if recipes is None:
+        recipes = ctx.state["recipes"] = Recipes(ctx.config_dir / "recipes.sqlite", start=start, catch_up_minutes=catch_up)
+    else:
+        recipes.rebind(start, catch_up)
     ctx.services["recipes"] = recipes
     ctx.services["recipe_loops"] = recipes.loops
 

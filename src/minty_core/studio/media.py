@@ -259,3 +259,16 @@ async def music_bed(out: Path, seconds: float, mood: str = "calm") -> Path:
         return out
     finally:
         part.unlink(missing_ok=True)
+
+
+async def to_jpeg(src: Path, dst: Path, width: int = 1080) -> Path:
+    """A picture as the JPEG Instagram requires (it takes no other format), no wider than `width`."""
+    dst = Path(dst)
+    part = dst.with_name(dst.stem + ".part" + dst.suffix)
+    try:
+        await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", "-i", str(src), "-vf",
+                    f"scale='min({width},iw)':-2", "-frames:v", "1", "-q:v", "2", "-pix_fmt", "yuvj420p", str(part)])
+        part.replace(dst)
+        return dst
+    finally:
+        part.unlink(missing_ok=True)

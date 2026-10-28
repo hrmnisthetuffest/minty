@@ -44,7 +44,7 @@ def test_the_starter_skills_are_valid_and_match_their_requests():
     index = SkillIndex([BUILTIN_SKILLS_DIR])
     assert set(index.skills()) == {"shop-search", "youtube-find-and-play", "compare-products", "fill-form-from-profile",
                                    "health-intake", "explain-three-levels", "verified-tutor", "mood-music",
-                                   "handle-my-email", "delegate-coding-job", "hand-over-a-goal"}
+                                   "handle-my-email", "delegate-coding-job", "hand-over-a-goal", "make-a-reel", "set-up-an-automation"}
     assert index.problems == []
     for request, name in [("find me the cheapest desk lamp", "shop-search"),
                           ("play the avengers trailer on youtube", "youtube-find-and-play"),
@@ -56,7 +56,9 @@ def test_the_starter_skills_are_valid_and_match_their_requests():
                           ("play something calm to help me study", "mood-music"),
                           ("handle my emails that need attention today", "handle-my-email"),
                           ("have claude code fix the failing tests in my project", "delegate-coding-job"),
-                          ("work on this in the background and tell me when it is done", "hand-over-a-goal")]:
+                          ("work on this in the background and tell me when it is done", "hand-over-a-goal"),
+                          ("make a minecraft parkour video with a voiceover and captions for instagram", "make-a-reel"),
+                          ("set up an automation that posts a reel to instagram every day", "set-up-an-automation")]:
         assert index.match(request).name == name
     for request in ("what time is it", "play some music", "turn off the light", "tell me a joke"):
         assert index.match(request) is None
@@ -64,9 +66,9 @@ def test_the_starter_skills_are_valid_and_match_their_requests():
 
 def test_the_workflow_skills_only_name_tools_that_exist_and_say_where_the_user_decides(tmp_path):
     from tests.plugin_helpers import make_host
-    host = make_host(tmp_path, plugins={"outbox": {"enabled": True}, "mail": {"enabled": True}})
+    host = make_host(tmp_path, plugins={"outbox": {"enabled": True}, "mail": {"enabled": True}, "studio": {"enabled": True}})
     index = SkillIndex([BUILTIN_SKILLS_DIR])
-    for name in ("handle-my-email", "delegate-coding-job", "hand-over-a-goal"):
+    for name in ("handle-my-email", "delegate-coding-job", "hand-over-a-goal", "make-a-reel", "set-up-an-automation"):
         skill = index.skills()[name]
         assert skill.allowed_tools and all(host.get_tool(t) is not None for t in skill.allowed_tools), (name, skill.allowed_tools)
     email = index.skills()["handle-my-email"].body
@@ -127,3 +129,10 @@ def test_a_new_skill_is_noticed_within_the_rescan_window_not_on_every_call(tmp_p
     assert index.skills() == {}  # not looked at again yet: a directory scan per request is waste
     clock[0] += 2.0
     assert "late-skill" in index.skills()
+
+
+def test_the_reel_skill_keeps_to_licensed_material_and_leaves_posting_to_the_users_rules():
+    body = SkillIndex([BUILTIN_SKILLS_DIR]).skills()["make-a-reel"].body.lower()
+    for must in ("licence", "studio_draft", "never", "claude code", "own footage", "no growth tricks"):
+        assert must in body, must
+    assert "yt-dlp" not in body and "rip" in body  # it says not to rip songs or clips

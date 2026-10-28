@@ -61,6 +61,10 @@ class Attention:
         self._db.execute("CREATE TABLE IF NOT EXISTS nudge_log (at REAL NOT NULL)")
         self._db.commit()
 
+    def rebind(self, sources: dict[str, Callable[[], list[Loop]]], nudge: Callable[[str], object]) -> None:
+        """After a plugin reload: the same open store, pointed at the new sources and the new way to speak."""
+        self._sources, self._nudge = sources, nudge
+
     # ---- looking ---------------------------------------------------------------------------------
     def _gather(self) -> list[Loop]:
         found: dict[str, Loop] = {}

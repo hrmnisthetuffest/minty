@@ -98,6 +98,10 @@ class Recipes:
                          " WHERE status='started'", (self._clock(),))
         self._db.commit()
 
+    def rebind(self, start: Callable[[str, dict], int | None], catch_up_minutes: int) -> None:
+        """After a plugin reload: the same open store, with the new starter and settings."""
+        self._start, self._catch_up = start, int(catch_up_minutes)
+
     # ---- the recipes ------------------------------------------------------------------------------
     def create(self, name: str, goal: str, at: str, days: str = "daily", max_runs_per_day: int = 1,
                max_failures: int = 3) -> Recipe:

@@ -143,3 +143,14 @@ def test_claude_spending_can_be_capped(tmp_path):
     assert inv.argv[inv.argv.index("--max-budget-usd") + 1] == "2.5"
     for none in (None, 0, -1):
         assert "--max-budget-usd" not in ClaudeCodeAdapter(max_budget_usd=none).build(tmp_path, "x", None).argv
+
+
+def test_extra_tools_can_be_added_but_never_a_blanket_or_dangerous_one(tmp_path, caplog):
+    from minty_core.plugins.builtin.agents.plugin import build_adapters
+    adapter = build_adapters({"claude_extra_tools": "Bash(ffprobe:*), Bash(npx:*) Bash(*) Bash(rm:*) Bash(sudo:*) Bash(curl:*) Read(~/x)"})["claude_code"]
+    argv = adapter.build(tmp_path, "x", None).argv
+    allowed = argv[argv.index("--allowedTools") + 1:]
+    assert "Bash(npx:*)" in allowed and "Bash(ffprobe:*)" in allowed and "Bash(ffmpeg:*)" in allowed
+    for bad in ("Bash(*)", "Bash(rm:*)", "Bash(sudo:*)", "Bash(curl:*)"):
+        assert bad not in allowed
+    assert "Bash(*)" in caplog.text

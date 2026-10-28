@@ -50,7 +50,9 @@ def register(ctx):
         require_authenticated=settings.get("auto_require_authenticated") is not False)
     signature = DEFAULT_SIGNATURE if settings.get("auto_signature") is None else str(settings.get("auto_signature")).strip()
 
-    store = OutboxStore(ctx.config_dir / "outbox.sqlite")
+    store = ctx.state.get("store")  # one open database across reloads (every settings change reloads the plugins)
+    if store is None:
+        store = ctx.state["store"] = OutboxStore(ctx.config_dir / "outbox.sqlite")
     scanner = ctx.services.get("scanner") or SecretScanner()
     gate_mode: dict[int, str] = {}  # what the safety gate was told about each item when it last asked
 

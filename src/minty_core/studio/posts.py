@@ -16,7 +16,7 @@ from typing import Callable
 
 DRAFTED, PUBLISHING, POSTED, FAILED, UNKNOWN, DISCARDED = "drafted", "publishing", "posted", "failed", "unknown", "discarded"
 DAY_S = 86400
-_COLS = ("id, created, kind, files, caption, status, how, content_hash, problems, licensed, media_id, permalink, error, updated")
+_COLS = ("id, created, kind, files, caption, status, how, content_hash, problems, licensed, media_id, permalink, error, updated, ai")
 
 
 class DuplicatePost(Exception):
@@ -39,6 +39,7 @@ class Post:
     permalink: str
     error: str
     updated: float
+    ai: bool = True  # labelled as AI-generated when published
 
 
 class PostStore:
@@ -53,16 +54,18 @@ class PostStore:
             " files TEXT NOT NULL, caption TEXT NOT NULL, status TEXT NOT NULL, how TEXT NOT NULL DEFAULT '',"
             " content_hash TEXT NOT NULL, problems TEXT NOT NULL DEFAULT '[]', licensed INTEGER NOT NULL DEFAULT 0,"
             " media_id TEXT NOT NULL DEFAULT '', permalink TEXT NOT NULL DEFAULT '', error TEXT NOT NULL DEFAULT '',"
-            " updated REAL NOT NULL)")
+            " updated REAL NOT NULL, ai INTEGER NOT NULL DEFAULT 1)")
         self._db.execute("UPDATE posts SET status=?, error=?, updated=? WHERE status=?",
                          (UNKNOWN, "the program stopped while this was being published", self._clock(), PUBLISHING))
         self._db.commit()
 
     @staticmethod
     def _post(r) -> Post:
-        return Post(r[0], r[1], r[2], json.loads(r[3]), r[4], r[5], r[6], r[7], json.loads(r[8]), bool(r[9]), r[10], r[11], r[12], r[13])
+        return Post(r[0], r[1], r[2], json.loads(r[3]), r[4], r[5], r[6], r[7], json.loads(r[8]), bool(r[9]), r[10], r[11], r[12], r[13],
+                    bool(r[14]))
 
-    def add(self, *, kind: str, files: list[str], caption: str, content_hash: str, problems: list[str], licensed: bool) -> Post:
+    def add(self, *, kind: str, files: list[str], caption: str, content_hash: str, problems: list[str], licensed: bool,
+            ai: bool = True) -> Post:
         now = self._clock()
         with self._lock:
             row = self._db.execute("SELECT id FROM posts WHERE content_hash=? AND status NOT IN (?, ?)",
@@ -70,9 +73,9 @@ class PostStore:
             if row:
                 raise DuplicatePost(f"this is already queued or posted as post {row[0]}")
             cur = self._db.execute(
-                "INSERT INTO posts(created, kind, files, caption, status, content_hash, problems, licensed, updated)"
-                " VALUES (?,?,?,?,?,?,?,?,?)", (now, kind, json.dumps(files), caption, DRAFTED, content_hash,
-                                                json.dumps(problems), int(licensed), now))
+                "INSERT INTO posts(created, kind, files, caption, status, content_hash, problems, licensed, updated, ai)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)", (now, kind, json.dumps(files), caption, DRAFTED, content_hash,
+                                                  json.dumps(problems), int(licensed), now, int(ai)))
             self._db.commit()
         return self.get(cur.lastrowid)
 

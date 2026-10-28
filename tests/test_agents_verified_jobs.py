@@ -276,3 +276,11 @@ async def test_the_check_run_before_the_job_does_not_count_as_the_agents_change(
     mgr, _, _, _ = make(tmp_path, check=litter)
     job = await run(mgr, "print('did nothing')")
     assert job.verdict == "no_changes" and job.changed == []
+
+
+async def test_a_projects_own_check_file_is_used_when_no_command_is_set(tmp_path):
+    mgr, _, _, root = make(tmp_path, check=None)
+    (root / "p" / ".minty").mkdir()
+    (root / "p" / ".minty" / "check").write_text(f"{sys.executable} -c \"print('7 passed in 0.1s')\"\n")
+    job = await run(mgr, WRITE)
+    assert (job.status, job.verdict) == ("done", "verified") and job.checks == "7 passed in 0.1s"

@@ -1,0 +1,47 @@
+name = "studio"
+description = "Make short videos (voiceover, music, captions, a background clip) and queue them for Instagram. The tools are local; posting needs your own Instagram professional account and token, and by default asks before every post."
+default_enabled = true
+
+[settings.ig_user_id]
+type = "string"
+label = "Instagram account id (the number from the Graph API, for your professional account)"
+
+[settings.ig_host]
+type = "string"
+label = "graph.instagram.com (default, Instagram login) or graph.facebook.com (Facebook login)"
+
+[settings.ig_token_expires]
+type = "string"
+label = "When the Instagram token runs out (YYYY-MM-DD), so Minty can warn you a week before"
+
+[settings.post_mode]
+type = "string"
+label = "ask (default: every post is shown to you first) or auto (clean posts go by themselves, within the limits below)"
+
+[settings.max_posts_per_day]
+type = "number"
+label = "Most automatic posts a day (default 1)"
+
+[settings.min_gap_hours]
+type = "number"
+label = "Fewest hours between automatic posts (default 6)"
+
+[settings.blocked_words]
+type = "string"
+label = "Words that make a caption ask first, comma separated (default: password, bank, giveaway ...)"
+
+[settings.voice]
+type = "string"
+label = "Voice for voiceovers (default am_michael; others like af_heart, bf_emma)"
+
+[settings.public_dir]
+type = "string"
+label = "Carousels only: a folder that is served on the internet (Instagram fetches pictures by address)"
+
+[settings.public_base_url]
+type = "string"
+label = "Carousels only: the https address of that folder, for example https://you.github.io/pics"
+
+[settings.project_dir]
+type = "string"
+label = "Where Claude Code makes motion graphics (default ~/Documents/project/minty-studio, inside your home folder)"

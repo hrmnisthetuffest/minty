@@ -80,3 +80,10 @@ step that needs your yes waits for it and no answer is a no; coding agents run i
 or rewrite history, and are judged by the files and tests; e-mail is sent only under rules in settings that no tool can change, a
 reply goes only to the person who wrote, every send is recorded, and what may not have been sent is reported as unknown rather
 than sent.
+
+## The studio and automations
+
+[studio.md](studio.md) in short: video tools are local; files are used only with a licence on record; posting goes through Meta's
+official API, asks before every post unless you switch on automatic posting yourself, is limited to clean posts under a daily cap,
+and is recorded; the token is sent only to Meta's hosts; a post is never sent twice; and a recipe (something that runs by itself)
+holds no permissions of its own and pauses itself when it keeps failing.

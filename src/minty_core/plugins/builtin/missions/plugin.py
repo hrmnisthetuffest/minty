@@ -173,9 +173,13 @@ def register(ctx):
         jobs = runner()
         missions = [{"id": j.id, "status": j.status, "result": j.result, "checkpoint": j.checkpoint}
                     for j in (jobs.select(kinds={"mission"}) if jobs is not None else [])]
-        coding, earned = ctx.services.get("coding_jobs"), ctx.services.get("outbox_lessons")
-        return render(mission_lessons(missions) + tool_lessons(missions) + delegation_lessons(coding() if coding else [])
-                      + (earned() if earned else []))
+        coding = ctx.services.get("coding_jobs")
+        earned = []
+        for name in ("outbox_lessons", "studio_lessons"):
+            offer = ctx.services.get(name)
+            if offer is not None:
+                earned += offer()
+        return render(mission_lessons(missions) + tool_lessons(missions) + delegation_lessons(coding() if coding else []) + earned)
 
     s = {"type": "string"}
     jid = {"type": "integer"}

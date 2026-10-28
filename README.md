@@ -79,6 +79,9 @@ No installer? Everything it does is `python -m venv .venv && .venv/bin/pip insta
 - **Takes goals, not just commands.** Hand it an outcome and it works in the background, checks each step against what its tools
   really returned, and reports done, failed or blocked on a question; coding agents are checked by the files and tests, e-mail goes
   out only under rules you write, and it tells you what needs you. See [docs/work.md](docs/work.md).
+- **Makes videos and runs content automations.** Voiceover, music, captions and your own gameplay footage become short videos, Claude
+  Code makes the motion graphics, posts go to Instagram through the official API (asked first by default), and any goal can be
+  put on a daily schedule by just asking. See [docs/studio.md](docs/studio.md).
 - **Does things.** More than forty built-in tool groups: a browser agent, files, notes and memory, reminders and timers, Spotify,
   weather, web research with sources, smart-home and n8n hooks, MCP servers, and coding agents (Claude Code, Hermes, OpenClaw) it can
   start and watch for you. See [docs/plugins.md](docs/plugins.md).

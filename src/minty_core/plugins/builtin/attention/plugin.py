@@ -20,12 +20,18 @@ def register(ctx):
         source = ctx.services.get("outbox_attention")
         return source() if source is not None else []
 
-    attention = Attention(ctx.config_dir / "attention.sqlite", {
+    sources = {
         "missions": lambda: mission_loops(ctx.services.get("jobs")),
         "butler": lambda: butler_loops(ctx.services.get("butler")),
         "outbox": outbox,
         "recipes": lambda: (ctx.services.get("recipe_loops") or (lambda: []))(),
-    }, nudge=nudge)
+        "studio": lambda: (ctx.services.get("studio_attention") or (lambda: []))(),
+    }
+    attention = ctx.state.get("attention")  # one open database across reloads (every settings change reloads the plugins)
+    if attention is None:
+        attention = ctx.state["attention"] = Attention(ctx.config_dir / "attention.sqlite", sources, nudge=nudge)
+    else:
+        attention.rebind(sources, nudge)
     ctx.services["attention"] = attention
 
     async def review(args):

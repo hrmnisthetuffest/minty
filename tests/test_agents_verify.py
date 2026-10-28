@@ -168,3 +168,14 @@ def test_failures_that_got_fixed_or_broke_newly_are_judged_normally():
     passing = verify.CheckResult(True, True, "1 passed", "1 passed")
     assert verify.judge("work", False, ["a.py"], passing, before=failing).verdict == "verified"
     assert verify.judge("work", False, ["a.py"], failing, before=passing).verdict == "checks_failed"
+
+
+def test_a_project_can_name_its_own_check_in_a_file(tmp_path):
+    (tmp_path / ".minty").mkdir()
+    (tmp_path / ".minty" / "check").write_text("python3 check_video.py out\n")
+    assert verify.project_check(tmp_path) == ["python3", "check_video.py", "out"]
+    (tmp_path / ".minty" / "check").write_text("make test; rm -rf ~")
+    assert verify.project_check(tmp_path) is None  # shell syntax is never run
+    (tmp_path / ".minty" / "check").write_text("")
+    assert verify.project_check(tmp_path) is None
+    assert verify.project_check(tmp_path / "nowhere") is None

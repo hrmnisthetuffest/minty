@@ -457,7 +457,7 @@ def build_context(config_dir: Path) -> AppContext:
         return bool(getattr(agent, "force_private", False) or any(m.private for m in agent.history))
 
     def make_subagent(tier: str = "fast") -> Agent:
-        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "agents", "installer", "missions", "outbox", "recipes")), store,
+        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "agents", "installer", "missions", "outbox", "recipes", "studio")), store,
                        personalities, memory, _deny, max_rounds=8, tier=tier)
         helper.guard = guard  # same rules and audit trail as the main conversation
         return helper

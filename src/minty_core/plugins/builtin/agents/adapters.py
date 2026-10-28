@@ -8,12 +8,33 @@ from typing import Protocol
 log = logging.getLogger(__name__)
 _AGENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 DEFAULT_TOOLS = ["Read", "Edit", "Write", "Glob", "Grep", "Bash(git:*)", "Bash(python:*)", "Bash(python3:*)",
-                 "Bash(pip:*)", "Bash(pytest:*)", "Bash(npm:*)", "Bash(node:*)", "Bash(ls:*)", "Bash(mkdir:*)"]
+                 "Bash(pip:*)", "Bash(pytest:*)", "Bash(npm:*)", "Bash(node:*)", "Bash(ls:*)", "Bash(mkdir:*)",
+                 "Bash(ffmpeg:*)", "Bash(ffprobe:*)"]  # ffmpeg so a coding agent can render and check video
 # a deny rule beats an allow rule: the job brief says "never push or rewrite history"; these make the tool say it too.
 # (Guard rails for an honest agent, not a sandbox: `python` can still do anything a script can.)
 DENIED_TOOLS = ["Bash(git push:*)", "Bash(git reset:*)", "Bash(git clean:*)", "Bash(git rebase:*)",
                 "Bash(git remote:*)", "Bash(git config:*)", "Bash(git filter-branch:*)"]
 READ_ONLY_TOOLS = ["Read", "Glob", "Grep"]
+# programs that are never added through the extra-tools setting, and the shapes that would allow everything
+NEVER_EXTRA = ("rm", "sudo", "su", "doas", "dd", "mkfs", "chmod", "chown", "curl", "wget", "ssh", "scp", "nc", "ncat", "eval", "bash", "sh")
+_TOOL_NAME = re.compile(r"^[A-Za-z]+(?:\([A-Za-z0-9_.:*/~ -]{1,60}\))?$")
+
+
+def extra_tools(text) -> tuple[list[str], list[str]]:
+    """(accepted, refused) from a setting like "Bash(npx:*) Bash(ffprobe:*)". A blanket allow, or a program that can delete,
+    escalate or fetch from the network, is refused."""
+    accepted, refused = [], []
+    for item in re.split(r"[,\s]+(?![^()]*\))", str(text or "")):
+        item = item.strip()
+        if not item:
+            continue
+        program = re.match(r"^Bash\(([A-Za-z0-9_.-]*)", item)
+        blanket = item == "Bash" or item.startswith(("Bash(*", "Bash(:")) or (program is not None and not program.group(1))
+        if not _TOOL_NAME.match(item) or blanket or (program and program.group(1) in NEVER_EXTRA):
+            refused.append(item)
+        elif item not in accepted:
+            accepted.append(item)
+    return accepted, refused
 
 
 @dataclass
@@ -73,9 +94,9 @@ class ClaudeCodeAdapter:
     readonly_capable = True
 
     def __init__(self, permission_mode: str = "acceptEdits", allowed_tools: list[str] | None = None,
-                 max_budget_usd: float | None = None):
+                 max_budget_usd: float | None = None, extra: list[str] | None = None):
         self._mode = permission_mode
-        self._tools = list(DEFAULT_TOOLS if allowed_tools is None else allowed_tools)
+        self._tools = list(DEFAULT_TOOLS if allowed_tools is None else allowed_tools) + [t for t in (extra or []) if t not in (allowed_tools or DEFAULT_TOOLS)]
         self._budget = max_budget_usd if max_budget_usd and max_budget_usd > 0 else None
 
     def build(self, project: Path, prompt: str, session_id: str | None, readonly: bool = False) -> Invocation:

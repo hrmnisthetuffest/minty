@@ -41,3 +41,7 @@ label = "Spending cap in dollars for one Claude Code run (empty: none)"
 [settings.verify]
 type = "boolean"
 label = "Check the files and tests after every job (default on). Off: trust the agent's own report"
+
+[settings.claude_extra_tools]
+type = "string"
+label = "More tools Claude Code may run, e.g. Bash(npx:*) Bash(ffprobe:*) for video work. Never a blanket allow, rm, sudo, curl or wget"

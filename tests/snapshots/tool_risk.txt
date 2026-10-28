@@ -217,6 +217,10 @@ spotify_previous                   0 read
 spotify_resume                     0 read
 spotify_shuffle                    0 read
 spotify_volume                     0 read
+studio_draft                       0 read
+studio_make                        0 read     +args
+studio_posts                       0 read     +args
+studio_send                        3 critical +args sensitive
 study_cards                        0 read     +args
 study_check                        0 read
 study_class_bag                    0 read

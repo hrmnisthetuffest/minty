@@ -38,6 +38,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "recipes": (("recipes",), "automations that run by themselves on a schedule: set one up, list, run, pause, resume, delete",
                 "automation automations automate recipe recipes schedule scheduled every daily weekly weekdays nightly morning "
                 "evening routine routines recurring regularly automatically post posting upload"),
+    "studio": (("studio",), "make short videos (voiceover, music, captions, stock or gameplay clips) and queue or post them to Instagram",
+               "video videos reel reels clip clips voiceover voice music captions caption instagram insta post posting upload "
+               "carousel slides minecraft parkour gameplay stock footage edit render short shorts tiktok motion graphics"),
     "terminal": (("shell",), "run a command in the terminal (always asked first, except a few read-only ones)",
                  "terminal shell command commands run execute bash cli console script ls pwd git status log diff "
                  "directory uptime disk whoami hostname uname"),

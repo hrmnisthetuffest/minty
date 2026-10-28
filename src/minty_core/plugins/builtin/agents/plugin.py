@@ -3,7 +3,7 @@ import logging
 from dataclasses import asdict
 from pathlib import Path
 
-from minty_core.plugins.builtin.agents.adapters import ClaudeCodeAdapter, HermesAdapter, OpenClawAdapter
+from minty_core.plugins.builtin.agents.adapters import ClaudeCodeAdapter, HermesAdapter, OpenClawAdapter, extra_tools
 from minty_core.plugins.builtin.agents.jobs import MODES, JobManager
 from minty_core.plugins.builtin.agents.verify import parse_check
 from minty_core.plugins.host import Tool
@@ -20,9 +20,12 @@ def build_adapters(settings: dict) -> dict:
         log.warning("Ignoring unsafe claude_permission_mode %r; using acceptEdits", mode)
         mode = "acceptEdits"
     budget = settings.get("claude_max_budget_usd")
+    extra, refused = extra_tools(settings.get("claude_extra_tools"))
+    if refused:
+        log.warning("Ignoring claude_extra_tools %s: a blanket allow or a program that can delete, escalate or download is never added", refused)
     adapters = [
         ClaudeCodeAdapter(permission_mode=mode, max_budget_usd=float(budget) if isinstance(budget, (int, float))
-                          and not isinstance(budget, bool) else None),
+                          and not isinstance(budget, bool) else None, extra=extra),
         HermesAdapter(),
         OpenClawAdapter(agent_id=str(settings.get("openclaw_agent") or "main")),
     ]

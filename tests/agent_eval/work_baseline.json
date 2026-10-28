@@ -1,10 +1,11 @@
 {
-  "scenarios": 12,
-  "passed": 12,
+  "scenarios": 14,
+  "passed": 14,
   "task_success_rate": 1.0,
   "false_success_reports": 0,
   "unauthorized_actions": 0,
   "duplicate_actions": 0,
+  "recipe_max_runs_per_day": 1,
   "context_recall": 1.0,
   "context_noise": 0,
   "recovered_from_tool_failure": true,

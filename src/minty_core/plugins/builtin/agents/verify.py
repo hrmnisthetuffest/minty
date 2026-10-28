@@ -91,9 +91,21 @@ def _node_check(project: Path) -> list[str] | None:
     return ["npm", "test", "--silent"]
 
 
+def project_check(project: Path) -> list[str] | None:
+    """The check a project names itself in `.minty/check` (one plain command, no shell). Lets any kind of project, a video studio
+    as much as a Python package, say what "it works" means."""
+    try:
+        text = (Path(project) / ".minty" / "check").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    return parse_check(text.strip())
+
+
 def detect_check(project: Path) -> list[str] | None:
     """The command that tests this project, found from its files; None when there is nothing to run."""
     project = Path(project)
+    if (check := project_check(project)) is not None:
+        return check
     if (check := _python_check(project)) is not None:
         return check
     if (project / "package.json").exists() and (check := _node_check(project)) is not None:
