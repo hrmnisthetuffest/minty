@@ -293,7 +293,8 @@ async def make_background(src: Path, dst: Path, *, max_seconds: float = 60.0, si
     try:
         await _run(["ffmpeg", "-y", "-hide_banner", "-nostats", "-loglevel", "error", "-ss", f"{start:.2f}", "-t", f"{max_seconds:.2f}", *FILE_ONLY,
                     "-i", str(src), "-an", "-vf", f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1,fps={fps}",
-                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(part)], timeout=600.0)
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "27", "-maxrate", "2500k", "-bufsize", "5000k", "-pix_fmt", "yuv420p",
+                    "-movflags", "+faststart", str(part)], timeout=600.0)  # a background does not need more than about 2.5 Mbit/s
         part.replace(dst)
         return dst
     finally:

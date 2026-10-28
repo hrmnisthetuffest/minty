@@ -686,3 +686,6 @@ when it is good enough.
 - Security: `requirements.lock` pins the core dependencies to exact versions with SHA-256 hashes (24 packages, no known advisories by
   `pip-audit` today; a fresh hash-checked install into a clean environment imported the app). `docs/getting-started.md` says how to install from
   it and how to remake it; `tests/test_requirements_lock.py` fails if a direct dependency is missing from it or pinned below its floor.
+- Fix: a busy clip was kept bigger than it needed to be (a real 25 MB, 34 s Pexels download became 29 MB). Backgrounds are now capped at about
+  2.5 Mbit/s: the same clip is kept as 10.9 MB. Verified by downloading a real Pexels file link (no key is needed for the file itself) through
+  the guarded fetcher: `videos.pexels.com` answers directly with no redirect, so the host allowlist and the no-cross-host-redirect rule fit it.

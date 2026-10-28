@@ -248,3 +248,17 @@ def test_a_poster_frame_can_be_made_for_a_clip(tmp_path):
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=720x1280:rate=24:duration=3", "-pix_fmt", "yuv420p", str(src)], check=True)
     out = asyncio.run(media.poster(src, tmp_path / "t.jpg", width=240))
     assert out.read_bytes()[:3] == b"\xff\xd8\xff" and out.stat().st_size < 30_000
+
+
+async def test_a_busy_clip_is_kept_at_a_bitrate_a_background_needs(tmp_path):
+    """A real 25 MB, 34 s Pexels clip became 29 MB when kept: a background does not need that many bits, and the library has a size limit."""
+    from minty_core.studio import media
+
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg is not installed")
+    src = tmp_path / "busy.mp4"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:duration=8,noise=alls=40:allf=t",
+                    "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p", str(src)], check=True)
+    out = await media.make_background(src, tmp_path / "bg.mp4", max_seconds=60)
+    info = await media.probe(out)
+    assert out.stat().st_size * 8 / info.duration <= 2_750_000, out.stat().st_size * 8 / info.duration  # at most about 2.5 Mbit/s
