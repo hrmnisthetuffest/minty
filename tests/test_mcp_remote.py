@@ -23,7 +23,7 @@ TOOL = {"name": "echo", "description": "Echo the text back.", "inputSchema": {"t
 
 @pytest.fixture(autouse=True)
 def dns(monkeypatch):
-    table = {"mcp.example.com": [PUBLIC], "backend.composio.dev": [PUBLIC], "mcp.composio.dev": [PUBLIC], "other.example.com": [PUBLIC],
+    table = {"mcp.example.com": [PUBLIC], "backend.composio.dev": [PUBLIC], "mcp.composio.dev": [PUBLIC], "connect.composio.dev": [PUBLIC], "other.example.com": [PUBLIC],
              "internal.example.com": ["10.1.2.3"]}
 
     def fake(host, port, *a, **kw):
@@ -488,6 +488,94 @@ def test_the_model_is_told_which_mcp_tools_it_may_just_call(tmp_path, monkeypatc
 def test_mcp_call_does_not_tell_the_model_to_ask_first(tmp_path, monkeypatch):
     spec = plugin_host(tmp_path, monkeypatch, Server()).get_tool("mcp_call")
     assert "Asks first" not in spec.description and "directly" in spec.description  # Minty asks the user itself, when it must
+
+
+SHEET_ID = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+OTHER_ID = "1a2B3c4D5e6F7g8H9i0J1k2L3m4N5o6P7q8R9s0T1u2V"
+EXECUTE = {"name": "COMPOSIO_MULTI_EXECUTE_TOOL", "description": "d", "inputSchema": {"type": "object"}}
+
+
+def composio_with_execute(tmp_path, monkeypatch, server=None):
+    from minty_core.mcp.registry import tool_hash
+
+    r = McpRegistry(tmp_path / "mcp.json")
+    r.add_remote("composio", "https://connect.composio.dev/mcp", {"x-consumer-api-key": "COMPOSIO_API_KEY"})  # the key plugin_host stores
+    r.record_tools("composio", [EXECUTE])
+    r.allow("composio", "COMPOSIO_MULTI_EXECUTE_TOOL", tool_hash(EXECUTE), readonly=False)
+    return plugin_host(tmp_path, monkeypatch, server or Server(tools=(EXECUTE,)))
+
+
+def execute(*pairs):
+    return {"server": "composio", "tool": "COMPOSIO_MULTI_EXECUTE_TOOL",
+            "arguments": {"tools": [{"tool_slug": slug, "arguments": args} for slug, args in pairs]}}
+
+
+def test_writing_into_a_sheet_minty_knows_is_class_2_and_into_any_other_is_class_3(tmp_path, monkeypatch):
+    from minty_core.artifacts import ArtifactStore
+
+    host = composio_with_execute(tmp_path, monkeypatch)
+    spec = host.get_tool("mcp_call")
+    append = lambda sheet: execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": sheet, "values": [["a"]]}))  # noqa: E731
+    assert spec.risk(append(SHEET_ID)) == 3  # nobody registered it
+    store = ArtifactStore(tmp_path / "artifacts.db")
+    store.add("sheet", SHEET_ID, "Leads", source="minty")
+    store.close()
+    assert spec.risk(append(SHEET_ID)) == 2 and spec.risk(append(OTHER_ID)) == 3
+    assert spec.risk(execute(("GMAIL_SEND_EMAIL", {}))) == 3 and spec.risk(execute(("GMAIL_CREATE_EMAIL_DRAFT", {}))) == 1
+
+
+async def test_what_composio_creates_is_remembered_and_becomes_a_place_minty_may_write(tmp_path, monkeypatch):
+    class Creates(Server):
+        def __call__(self, request):
+            body = json.loads(request.content) if request.content else None
+            if body and body.get("method") == "tools/call":
+                link = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit"
+                return self.reply(body["id"], {"content": [{"type": "text", "text": '{"successful":true,"data":{"spreadsheetUrl":"%s"}}' % link}]})
+            return super().__call__(request)
+
+    host = composio_with_execute(tmp_path, monkeypatch, Creates(tools=(EXECUTE,)))
+    spec = host.get_tool("mcp_call")
+    append = execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": SHEET_ID}))
+    assert spec.risk(append) == 3
+    out = await host.call("mcp_call", execute(("GOOGLESHEETS_CREATE_GOOGLE_SHEET1", {"title": "Leads"})))
+    assert out.startswith("[untrusted MCP server output") and SHEET_ID in out
+    assert spec.risk(append) == 2  # it made the sheet, so it may write to it
+    from minty_core.artifacts import ArtifactStore
+    store = ArtifactStore(tmp_path / "artifacts.db")
+    assert store.get(SHEET_ID).title == "Leads" and store.get(SHEET_ID).source == "minty"
+    store.close()
+
+
+async def test_the_users_request_answers_the_question_for_a_sheet_write_but_never_for_sending(tmp_path, monkeypatch):
+    from minty_core.artifacts import ArtifactStore
+    from minty_core.policy import Guard
+    from tests.test_policy_mandate import Store
+
+    host = composio_with_execute(tmp_path, monkeypatch)
+    spec = host.get_tool("mcp_call")
+    store = ArtifactStore(tmp_path / "artifacts.db")
+    store.add("sheet", SHEET_ID, "Leads", source="minty")
+    store.close()
+    append = execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": SHEET_ID, "values": [["acme"]]}))
+
+    async def asked_for(args, request):
+        seen = []
+
+        async def confirm(q):
+            seen.append(q)
+            return False
+
+        d = await Guard(Store()).authorize(spec, "mcp_call", args, confirm, request=request, known={"composio.dev"})
+        return d, seen
+
+    d, seen = await asked_for(append, "research the competitors and organize the findings in my leads sheet")
+    assert d.allowed and not seen
+    d, seen = await asked_for(append, "what is the weather")  # nothing in the request asks for it
+    assert seen and not d.allowed
+    d, seen = await asked_for(execute(("GMAIL_SEND_EMAIL", {"recipient_email": "a@b.co"})), "send a@b.co the sheet")
+    assert seen and not d.allowed  # people are never lifted
+    d, seen = await asked_for(execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": OTHER_ID})), "put it in the sheet")
+    assert seen and not d.allowed  # a sheet nobody registered
 
 
 def test_the_model_still_has_no_tool_to_add_a_server_allow_a_tool_or_hold_a_key(tmp_path, monkeypatch):

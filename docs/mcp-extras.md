@@ -55,6 +55,13 @@ What that means for you:
 - `COMPOSIO_MULTI_EXECUTE_TOOL` can act on **every** account you connected (send mail, post, delete). It, the workbench, the bash tool and
   the connection and skill managers are class 3: always asked, with the actual arguments shown (recipient, subject ...), however you set the asking mode.
   Mail sent this way does not go through Minty's outbox rules, so allow it only if that is what you want.
+- **Sheets and docs.** A Composio call is judged by its steps (`composio_rules.py`, plain checks on the step's name and target):
+  reads and Gmail drafts are class 1 (not asked), a write into a Google sheet or doc that **Minty made itself or you named** is class 2 (asked
+  only if your own request does not already say it: "organize the findings in my leads sheet" does), and anything else, a send, a delete, a
+  calendar invite, a step it does not recognise, or a sheet nobody registered, is class 3 and always asked. Minty learns the sheets and docs it
+  creates from Composio's answer (their link), and you can add one yourself by giving its link in your own words ("use this sheet for the
+  leads: <link>"); `artifacts_list` shows them, `artifacts_forget` removes one. A page or an e-mail cannot add one. Not checked against a live
+  create: the link in Composio's answer is matched by its address, and if Composio changes that, a new sheet is not remembered and its writes are asked.
 - The one exception is reading. A `COMPOSIO_MULTI_EXECUTE_TOOL` call whose every step is a read (a slug like `GMAIL_FETCH_EMAILS`,
   `GITHUB_GET_...`, `..._LIST_...`, `..._SEARCH_...`, with no write word such as SEND, CREATE, DELETE, UPDATE in it) is not asked about. One
   write step, or a step Minty cannot tell, and the whole call is asked. The search, schema and wait tools you allowed as read-only are not asked either.

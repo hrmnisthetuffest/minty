@@ -34,6 +34,19 @@ On by default: yes.
 | `apis_register` | Register a web API by base URL so it can be called. Needs confirmation. Keys are never passed here: the user sets them separately. | asks first |
 | `apis_unregister` | Remove a registered API and its stored key. Needs confirmation. | asks first |
 
+## artifacts
+
+The Google sheets and docs Minty made or you named: found again instead of made twice, and the only ones it may write to without asking. Only your own words can add one.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `artifacts_list` | The Google sheets and docs Minty made or you named (kind, title, link, what it is for). Look here before making a new one. |  |
+| `artifacts_register` | Add a sheet or doc the user gave you (link or id) so you may write to it. Only with their link. | risk varies |
+| `artifacts_forget` | Stop writing to a sheet or doc (link or id). | risk varies |
+| `artifacts_tag` | Say what a known sheet or doc is for (link or id, key such as a project name), so the next job finds it. | risk varies |
+
 ## attention
 
 What needs you: blocked missions, e-mails that may not have gone, overdue items and follow-ups. Said rarely, never twice for the same thing, and you can dismiss or snooze any of it.

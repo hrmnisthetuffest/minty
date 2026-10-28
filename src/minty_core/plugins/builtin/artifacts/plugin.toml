@@ -1,0 +1,3 @@
+name = "artifacts"
+description = "The Google sheets and docs Minty made or you named: found again instead of made twice, and the only ones it may write to without asking. Only your own words can add one."
+default_enabled = true

@@ -743,4 +743,11 @@ when it is good enough.
   not above the mandate's `max_class`, and no deny rule or lockdown applies. Class 3 stays asked unless the tool names it (research costs credits;
   money, keys, deletion and people never). Applied to `research_start` (a deep one still asks unless you asked for depth), `agents_start_task` and
   `agents_start_project`. Switch: `safety.mandates`. "Research X" no longer ends in "Shall I start researching?". Tests: `tests/test_policy_mandate.py` (18).
+- Autonomy 2: sheets and docs without a question per write. Composio steps are now judged one by one (`src/minty_core/composio_rules.py`): a read
+  or a Gmail draft is class 1, a write into a Google sheet or doc that Minty created or you named is class 2 (and your own request, "organize the
+  findings in my leads sheet", answers it), anything else is class 3 (sending, deleting, calendar invites, unknown steps, an unregistered
+  sheet). A step's name is read by words, so `GOOGLESHEETS_VALUES_GET` and `GOOGLECALENDAR_CALENDAR_LIST_GET` are reads too. New: `artifacts.py`
+  (sqlite, 0600) and the `artifacts` plugin (`artifacts_list/register/forget/tag`); Minty remembers a sheet or doc it creates from the link in
+  Composio's answer, and only your own words can name one to write to. Tests: `tests/test_composio_rules.py`, `tests/test_artifacts.py`,
+  `tests/test_plugin_artifacts.py`, `tests/test_mcp_remote.py`. **Not run against a live create** (the link pattern in Composio's answer is untested).
 

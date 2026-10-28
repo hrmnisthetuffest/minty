@@ -11,6 +11,10 @@ apis_register                      2 visible
 apis_search_catalog                0 read
 apis_send                          2 visible  +args
 apis_unregister                    2 visible
+artifacts_forget                   1 change
+artifacts_list                     0 read
+artifacts_register                 2 visible
+artifacts_tag                      1 change
 attention_dismiss                  1 change
 attention_review                   0 read
 attention_snooze                   1 change
