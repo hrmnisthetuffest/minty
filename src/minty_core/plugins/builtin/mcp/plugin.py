@@ -50,6 +50,7 @@ ARTIFACT_INTENT = (r"\b(sheets?|spreadsheets?|docs?|documents?|track(?:er|ing)?|
 
 
 MAX_SENDS_PER_DAY = 5
+APP_SLUG = re.compile(r"[A-Z][A-Z0-9]*_[A-Z0-9_]+")  # GMAIL_FETCH_EMAILS: a Composio app action named directly
 
 
 def register(ctx):
@@ -72,9 +73,24 @@ def register(ctx):
         server = registry.servers().get(name, {})
         return server.get("kind") == "composio" or composio_host_ok(server.get("url", ""))
 
+    def routed(args):
+        """What a model naturally writes, mcp_call(server=composio, tool=GMAIL_FETCH_EMAILS, arguments={account_id, ...}), as Composio runs it:
+        one step of COMPOSIO_MULTI_EXECUTE_TOOL with the account on the step. Everything below judges and runs the routed call."""
+        name, tool = str(args.get("server") or ""), str(args.get("tool") or "")
+        if not composio_server(name) or tool.upper().startswith("COMPOSIO_") or not APP_SLUG.fullmatch(tool.upper()):
+            if composio_server(name) and tool.upper() == "COMPOSIO_MULTI_EXECUTE_TOOL" and isinstance(args.get("arguments"), dict) \
+                    and "sync_response_to_workbench" not in args["arguments"]:
+                return {**args, "arguments": {**args["arguments"], "sync_response_to_workbench": False}}  # Composio requires it
+            return args
+        inner = dict(args.get("arguments") or {}) if isinstance(args.get("arguments"), dict) else {}
+        account = inner.pop("account", None) or inner.pop("account_id", None) or inner.pop("connected_account_id", None)
+        step = {"tool_slug": tool.upper(), "arguments": inner, **({"account": str(account)} if account else {})}
+        return {"server": name, "tool": "COMPOSIO_MULTI_EXECUTE_TOOL", "arguments": {"tools": [step], "sync_response_to_workbench": False}}
+
     def own_place(args) -> bool:
         """The call reads the user's own data, or writes into a sheet or doc Minty knows, through the Composio server they set up; or it is a tool
         they allowed as read-only. Then what it carries came from reading is not a reason to ask (a send, or any other server, still is)."""
+        args = routed(args)
         name, tool = str(args.get("server") or ""), str(args.get("tool") or "")
         if registry.is_readonly(name, tool):
             return True
@@ -83,6 +99,7 @@ def register(ctx):
     def lifts(args, request: str) -> bool:
         """The calls a request can answer: Composio steps that read, draft or write into a sheet or doc Minty knows (class 2), and, only when
         the user turned `safety.mandate_send_mail` on, one plain mail they asked for to an address they wrote (class 3, five a day)."""
+        args = routed(args)
         if not (composio_server(str(args.get("server") or "")) and str(args.get("tool") or "").upper() == "COMPOSIO_MULTI_EXECUTE_TOOL"):
             return False
         arguments = args.get("arguments")
@@ -126,7 +143,8 @@ def register(ctx):
             return ""
         return ("MCP: the user's connected apps (Gmail, Calendar, Slack, GitHub ...) are reached with mcp_call, not a browser. Allowed now: "
                 + "; ".join(parts) + ". Call them directly: do not ask the user whether to use one, the system asks when it must. "
-                "On composio start with COMPOSIO_SEARCH_TOOLS, then COMPOSIO_MULTI_EXECUTE_TOOL with what it returns.")
+                "On composio start with COMPOSIO_SEARCH_TOOLS, then call the action it names directly (tool GMAIL_FETCH_EMAILS, its arguments, "
+                "and account if there are several).")
 
     ctx.services["mcp_hint"] = hint
 
@@ -158,6 +176,7 @@ def register(ctx):
             f"{n}: {t} (a terminal command: {h}) — careful: {c}" for n, t, h, c in REMOTE)
 
     async def call(args):
+        args = routed(args)
         name, tool = str(args.get("server") or ""), str(args.get("tool") or "")
         arguments = args.get("arguments") or {}
         if not isinstance(arguments, dict):
@@ -192,6 +211,7 @@ def register(ctx):
         return f"{UNTRUSTED}\n{flag}{result.text or '(no text)'}"
 
     def risk(args):
+        args = routed(args)
         name, tool = str(args.get("server") or ""), str(args.get("tool") or "")
         server = registry.servers().get(name, {})
         # Composio however it was added: by user id, or as the plain https address of its general MCP (connect.composio.dev)
@@ -202,6 +222,7 @@ def register(ctx):
         return 1 if registry.is_readonly(name, tool) else 2
 
     def describe(args):
+        args = routed(args)
         arguments = args.get("arguments") or {}
         shown = json.dumps(arguments, ensure_ascii=False, default=str)[:600] if arguments else ""  # what is really being asked, not a summary
         return f"Should I run {args.get('tool')} on the {args.get('server')} server with {shown or 'no arguments'}?"

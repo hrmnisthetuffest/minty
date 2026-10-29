@@ -775,3 +775,41 @@ def test_what_counts_as_the_users_own_place_for_content_read_earlier(tmp_path, m
     assert not ok(execute(("GMAIL_SEND_EMAIL", {"recipient_email": "a@b.co"})))  # to a person
     assert not ok(execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": OTHER_ID})))  # somebody else's sheet
     assert not ok({"server": "acme", "tool": "echo", "arguments": {"text": "x"}})  # another server, not read-only
+
+
+async def test_an_app_action_named_directly_is_run_through_composios_execute_tool_without_a_question(tmp_path, monkeypatch):
+    """What Claude really sent: mcp_call(server=composio, tool=GMAIL_FETCH_EMAILS, arguments={account_id, ...})."""
+    from minty_core.policy import Guard
+    from tests.test_policy_mandate import Store
+
+    seen_calls = []
+
+    class Records(Server):
+        def __call__(self, request):
+            body = json.loads(request.content) if request.content else None
+            if body and body.get("method") == "tools/call":
+                seen_calls.append(body["params"])
+                return self.reply(body["id"], {"content": [{"type": "text", "text": '{"successful":true,"data":{"results":[]}}'}]})
+            return super().__call__(request)
+
+    host = composio_with_execute(tmp_path, monkeypatch, Records(tools=(EXECUTE,)))
+    spec = host.get_tool("mcp_call")
+    direct = {"server": "composio", "tool": "GMAIL_FETCH_EMAILS", "arguments": {"account_id": "gmail_acher-cheven", "max_results": 10, "query": ""}}
+    assert spec.risk(direct) == 1 and spec.content_ok(direct)  # judged as the read it is
+    asked = []
+
+    async def confirm(q):
+        asked.append(q)
+        return False
+
+    d = await Guard(Store()).authorize(spec, "mcp_call", direct, confirm, request="check my webhrmn gmail", known={"composio.dev"})
+    assert d.allowed and asked == []
+    out = await host.call("mcp_call", direct)
+    assert out.startswith("[untrusted MCP server output")
+    [params] = seen_calls
+    assert params["name"] == "COMPOSIO_MULTI_EXECUTE_TOOL"
+    step = params["arguments"]["tools"][0]
+    assert step == {"tool_slug": "GMAIL_FETCH_EMAILS", "arguments": {"max_results": 10, "query": ""}, "account": "gmail_acher-cheven"}
+    assert params["arguments"]["sync_response_to_workbench"] is False
+    assert spec.risk({"server": "composio", "tool": "GMAIL_SEND_EMAIL", "arguments": {"recipient_email": "a@b.co"}}) == 3  # a send named directly is still a send
+    assert spec.risk({"server": "acme", "tool": "GMAIL_FETCH_EMAILS", "arguments": {}}) == 2  # only Composio gets this routing
