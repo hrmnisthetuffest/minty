@@ -1,10 +1,12 @@
 """Approvals from the phone: inline buttons bound to the exact action, never for class 3 (unless you opted in with a
 passphrase).
 
+A question is offered here only when the request behind it was made on Telegram (`ApprovalStore.origin_of`); one raised on the laptop, whether a
+background job is waiting on it or it is being asked out loud, stays on the laptop.
+
 A button carries `ap:<id>:<first 8 hex of the action hash>:<y|n>`. Pressing it decides that approval only if the id
 exists, is still pending (not expired, not answered) and the hash prefix matches, so a button for one action cannot
-approve another and a stale button says so. Only approvals that a background job is waiting on are offered here; a
-question being asked out loud on the laptop stays a question for the laptop.
+approve another and a stale button says so.
 """
 from __future__ import annotations
 
@@ -16,7 +18,9 @@ import time
 from pathlib import Path
 from typing import Callable
 
-LAPTOP_ONLY = "This one needs your yes on the laptop."
+LAPTOP_ONLY = "This one needs your yes on the laptop. To approve big ones from here: run minty telegram-passphrase."
+BIG_ONE = ("It is a big one (money, keys, deleting or sending), so it needs your yes on the laptop. To approve big ones from here, run "
+           "`minty telegram-passphrase` on the laptop and turn on telegram.class3_passphrase.")
 STALE = "That request has expired or was already answered."
 PASSPHRASE_TRIES = 3
 PASSPHRASE_WINDOW_S = 600.0
@@ -77,25 +81,35 @@ class ApprovalBridge:
         gateway.text_hooks.append(self.on_text)
 
     # ---- offering ---------------------------------------------------------------------------------
+    def _big_ones_here(self) -> bool:
+        return self.passphrase is not None and bool(self.gw.store.config.telegram.class3_passphrase) and self.passphrase.exists()
+
+    async def _show(self, chat: int, ap, lead: str) -> None:
+        """The question with its two buttons; a big one that cannot be approved here is said plainly (no button that only refuses)."""
+        if ap.risk >= 3 and not self._big_ones_here():
+            await self.gw.sender.send(chat, self.gw.label(f"{lead} on the laptop: {ap.question}\n{BIG_ONE}"))
+        else:
+            await self.gw.sender.send(chat, self.gw.label(f"{lead}: {ap.question}"), reply_markup=keyboard(ap))
+
     async def offer_new(self) -> int:
-        """Send every job-waiting approval that has not been offered yet to every paired chat."""
+        """Send every open question that was asked on Telegram, once, to every paired chat. Nothing asked on the laptop is sent."""
         sent = 0
         for ap in self.approvals.pending():
-            if ap.id in self._offered or ap.job_id is None:
+            if ap.id in self._offered or self.approvals.origin_of(ap.id) != "telegram":
                 continue
             self._offered.add(ap.id)
             for chat in sorted(self.gw.allowed):
-                await self.gw.sender.send(chat, self.gw.label(f"Approval needed: {ap.question}"),
-                                          reply_markup=keyboard(ap))
+                await self._show(chat, ap, "Approval needed")
                 sent += 1
         return sent
 
     async def list_pending(self, chat_id: int, _args: str) -> str | None:
-        waiting = [a for a in self.approvals.pending() if a.job_id is not None]
+        """/approvals: you asked here, so the ones a background job waits on are shown too, wherever they started."""
+        waiting = [a for a in self.approvals.pending() if a.job_id is not None or self.approvals.origin_of(a.id) == "telegram"]
         if not waiting:
             return "Nothing is waiting for your approval."
         for ap in waiting[:5]:
-            await self.gw.sender.send(chat_id, self.gw.label(ap.question), reply_markup=keyboard(ap))
+            await self._show(chat_id, ap, "Waiting")
         return None
 
     # ---- pressing a button ------------------------------------------------------------------------

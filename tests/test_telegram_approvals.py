@@ -1,6 +1,7 @@
-"""Approvals from the phone: bound buttons, stale buttons, class 3 stays on the laptop (W3-03)."""
+"""Approvals from the phone: bound buttons, stale buttons, class 3 stays on the laptop (W3-03). Only what was asked on Telegram is offered there."""
 from tests.test_telegram_gateway import OWNER, STRANGER, build
 from minty_core.approvals import ApprovalStore
+from minty_core.origin import origin_scope
 from minty_core.telegram.approvals import LAPTOP_ONLY, STALE, ApprovalBridge, Passphrase, button_data
 
 
@@ -18,8 +19,10 @@ def setup(tmp_path, class3=False):
 
 async def test_a_job_waiting_for_a_yes_reaches_the_phone_with_two_buttons(tmp_path):
     gw, fake, approvals, bridge, _ = setup(tmp_path)
-    ap = approvals.request("files_delete", {"path": "old"}, "Delete the old notes?", risk=2, job_id=7)
-    approvals.request("mail_send", {"to": "x"}, "Said out loud on the laptop", risk=2)  # no job: not offered
+    with origin_scope("telegram"):  # the request behind it was made on Telegram
+        ap = approvals.request("files_delete", {"path": "old"}, "Delete the old notes?", risk=2, job_id=7)
+    approvals.request("mail_send", {"to": "x"}, "Said out loud on the laptop", risk=2)  # asked on the laptop: not offered
+    approvals.request("files_delete", {"path": "y"}, "A job started on the laptop waits", risk=2, job_id=8)  # nor is this one
     assert await bridge.offer_new() == 1
     sent = fake.sent[0]
     assert "Approval needed: Delete the old notes?" in sent["text"] and sent["text"].startswith("[laptop]")

@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 from typing import Awaitable, Callable
 
+from minty_core.origin import origin_scope
 from minty_core.telegram.api import BotAPI, TelegramError
 
 log = logging.getLogger(__name__)
@@ -307,8 +308,9 @@ class TelegramGateway:
             try:
                 kwargs = {"untrusted": untrusted} if untrusted else {}
                 kwargs["chat"] = True  # kept longer than the voice window, compressed in tiers
-                async for sentence in self.agent.respond(text, **kwargs):
-                    await queue.put(sentence)
+                with origin_scope("telegram"):  # whatever this starts (a gated action, a mission) asks its questions here, not on the laptop
+                    async for sentence in self.agent.respond(text, **kwargs):
+                        await queue.put(sentence)
             except Exception as e:  # noqa: BLE001 — a model failure is a message, not a crash of the gateway
                 log.warning("telegram request failed: %s", type(e).__name__)
                 await queue.put(e)

@@ -847,3 +847,10 @@ when it is good enough.
   (`JobRunner`) and the mission loop's clock (`Budget.waited`) leave the waiting out, whether the job asked itself or adopted the question the safety gate had already put to
   you. Work that really runs too long is still stopped. Missions also get 2 hours of work by default (was 30 minutes; `missions.max_runtime_s` still changes it), because
   cleaning a mailbox is not a five-minute job. A mission that timed out can be picked up where it stopped ("resume mission 14"). Tests: `tests/test_job_waiting_budget.py`.
+- Fix: Telegram sent every approval a background job waited on to your phone, wherever you had asked for the work, and then a big one (class 3) answered the Approve
+  button with "this one needs your yes on the laptop". Now every question remembers where its request came from (`minty_core/origin.py`: a Telegram message is handled as asked on
+  Telegram; a job keeps that, also after a restart). **Only what was asked on Telegram is sent to Telegram**: its approvals, what its jobs say, and its job pings; anything asked
+  on the laptop (voice, terminal, panel) stays on the laptop. A gated action asked on Telegram is now answered on Telegram instead of being asked out loud on the laptop. A big
+  question from the phone no longer shows an Approve button that can only refuse: it says plainly that it needs the laptop and how to allow it from Telegram (`minty
+  telegram-passphrase`, then `telegram.class3_passphrase`, your choice to make); with a passphrase set, it has buttons and asks for it. Reminders, timers, briefs and the
+  notifier's own phone route are unchanged (`notify.phone`, `telegram.briefs`). Tests: `tests/test_telegram_origin.py`.

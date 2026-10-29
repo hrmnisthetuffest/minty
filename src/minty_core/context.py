@@ -1,3 +1,4 @@
+import asyncio
 import os
 import contextlib
 import logging
@@ -9,6 +10,7 @@ from typing import Any
 
 from minty_core.agent import Agent
 from minty_core.approvals import ApprovalStore
+from minty_core.origin import current_origin
 from minty_core.answer_cache import AnswerCache
 from minty_core.brownout import Brownout
 from minty_core.config import ConfigStore
@@ -123,7 +125,7 @@ def build_context(config_dir: Path) -> AppContext:
     jobs = JobRunner(make_job_store(config_dir / "jobs", store.config.jobs.backend), bus=bus, tracer=tracer,
                      max_attempts=store.config.jobs.max_attempts, retry_delay_s=store.config.jobs.retry_delay_s,
                      approvals=approvals, resume=store.config.jobs.resume,
-                     notify=lambda text: bus.publish("notify", text=text))
+                     notify=lambda text: bus.publish("notify", text=text, job_origin=current_origin()))  # what a job says goes to the phone only if it was asked there
     guard = Guard(store, tracer=tracer, audit_dir=config_dir / "audit",
                   secret_values=lambda: secrets.values() + [token], approvals=approvals)
     from minty_core.butler.standing import StandingApprovals
@@ -370,6 +372,28 @@ def build_context(config_dir: Path) -> AppContext:
         lambda: {p["name"]: p["tools"] for p in host.list_plugins() if p["enabled"] and not p["error"]},
         tracer=tracer, live=live_sessions, diet=lambda: store.config.turn.request_diet)
     agent.trusted_destinations = lambda: services["trusted_destinations"]() if "trusted_destinations" in services else set()
+
+    async def phone_answer(question: str, poll_s: float = 0.5) -> bool | None:
+        """A question asked while handling a Telegram message: wait for the yes or no on Telegram (the bridge offers it there). None when the phone
+        cannot answer it (a big one with no passphrase set, or no open question to answer): the laptop asks as before."""
+        record = approvals.find_pending(question)
+        if record is None:
+            return None
+        if record.risk >= 3:
+            from minty_core.telegram.runtime import PASSPHRASE_FILE
+
+            if not (store.config.telegram.class3_passphrase and (config_dir / PASSPHRASE_FILE).exists()):
+                return None
+        while True:
+            current = approvals.get(record.id)
+            if current is None or current.status not in ("pending", "approved"):
+                return False
+            if current.status == "approved":
+                return True
+            await asyncio.sleep(poll_s)
+
+    agent.phone_answer = phone_answer
+    services["phone_answer"] = phone_answer
     agent.turn_extras.append(lambda request: services["mcp_hint"](request) if "mcp_hint" in services else "")
     from minty_core.composio_gmail import build_gmail_watcher
     from minty_core.gmailwatch import WatchStore

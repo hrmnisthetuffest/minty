@@ -98,13 +98,18 @@ def test_starting_inside_a_lockdown_starts_closed(tmp_path):
     assert runtime.gateway.suspended is True
 
 
-async def test_a_job_waiting_for_a_yes_is_offered_without_being_asked_for(tmp_path):
+async def test_a_question_asked_on_telegram_is_offered_without_being_asked_for_and_one_from_the_laptop_is_not(tmp_path):
+    from minty_core.origin import origin_scope
+
     ctx, fake = make_ctx(tmp_path), FakeTelegram()
     runtime = build_runtime(ctx, client=fake.client, offer_every_s=0.05)
     task = asyncio.create_task(runtime.run())
     try:
-        ctx.services["approvals"].request("files_delete", {"path": "old"}, "Delete the old notes?", risk=2, job_id=3)
+        ctx.services["approvals"].request("files_delete", {"path": "y"}, "A laptop job waits", risk=2, job_id=2)
+        with origin_scope("telegram"):
+            ctx.services["approvals"].request("files_delete", {"path": "old"}, "Delete the old notes?", risk=2, job_id=3)
         assert await until(lambda: any("Approval needed" in t for t in fake.texts(OWNER)))
+        assert not any("A laptop job waits" in t for t in fake.texts(OWNER))
     finally:
         runtime.stop()
         task.cancel()

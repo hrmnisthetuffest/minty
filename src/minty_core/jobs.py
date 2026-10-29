@@ -18,6 +18,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Awaitable, Callable, NamedTuple
 
+from minty_core.origin import current_origin, set_origin
+
 log = logging.getLogger(__name__)
 
 FINAL = frozenset({"done", "failed", "cancelled", "timeout", "interrupted", "blocked"})
@@ -75,6 +77,7 @@ class Job:
     resumable: bool = False  # the work can be picked up again from its checkpoint after an interruption
     payload: dict = field(default_factory=dict)  # inputs a resumer needs to rebuild the work
     resumed: int = 0  # how many times it was resumed
+    origin: str = "laptop"  # where the request came from ("telegram": its questions go to the phone and nowhere else)
 
     @property
     def active(self) -> bool:
@@ -422,7 +425,7 @@ class JobRunner:
                resumable: bool = False, payload: dict | None = None) -> Job:
         """announce: True = the standard spoken result, False = silent, or a function giving the words."""
         job = Job(id=self._next_id, kind=kind, goal=goal, created=self._clock(), budget_s=float(budget_s),
-                  exclusive=exclusive, private=private, resumable=bool(resumable), payload=dict(payload or {}),
+                  exclusive=exclusive, private=private, resumable=bool(resumable), payload=dict(payload or {}), origin=current_origin(),
                   max_attempts=max(1, int(max_attempts if max_attempts is not None else self._max_attempts)))
         self._next_id += 1
         self.jobs[job.id] = job
@@ -520,6 +523,7 @@ class JobRunner:
                     if job.status == "cancelled":
                         return
                     job.status, job.started = "running", self._clock()
+                    set_origin(job.origin)  # its questions go where the request came from, also after a restart
                     self._persist(job)
                     while True:
                         job.attempts += 1
@@ -598,7 +602,7 @@ class JobRunner:
         if self._bus is not None:
             self._bus.publish("job", id=job.id, kind=job.kind, goal=short(job.goal, 80), status=job.status,
                               progress=job.progress[-1] if job.progress else "", question=job.question,
-                              private=job.private)
+                              private=job.private, origin=job.origin)
 
     def _say(self, text: str) -> None:
         if self._notify is not None and text:

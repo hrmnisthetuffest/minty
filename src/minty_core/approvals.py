@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from minty_core.origin import LAPTOP, current_origin
+
 DEFAULT_TTL_S = 300.0
 KEEP_S = 30 * 86400  # decided and expired records older than this are dropped when the store opens
 PENDING, APPROVED, DENIED, EXPIRED, USED = "pending", "approved", "denied", "expired", "used"
@@ -63,6 +65,7 @@ _COLS = "id, hash, tool, question, risk, status, created, expires, decided, via,
 class ApprovalStore:
     def __init__(self, path: Path, clock: Callable[[], float] = time.time, ttl_s: float = DEFAULT_TTL_S):
         self.path = Path(path)
+        self._origins: dict[int, str] = {}  # question -> where the request came from (kept while the app runs: questions are short-lived)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._clock, self._ttl = clock, float(ttl_s)
         self._lock = threading.Lock()
@@ -77,7 +80,7 @@ class ApprovalStore:
 
     # ---- writing -------------------------------------------------------------------------------
     def request(self, name: str, args: dict | None, question: str, risk: int = 0, *, target: str = "",
-                ttl_s: float | None = None, job_id: int | None = None) -> Approval:
+                ttl_s: float | None = None, job_id: int | None = None, origin: str | None = None) -> Approval:
         now = self._clock()
         ttl = self._ttl if ttl_s is None else float(ttl_s)
         with self._lock:
@@ -87,7 +90,14 @@ class ApprovalStore:
                 (action_hash(name, args, target), name, str(question)[:300], int(risk), PENDING, now, now + ttl,
                  job_id))
             self._db.commit()
+            self._origins[cur.lastrowid] = origin or current_origin()
+            while len(self._origins) > 500:
+                self._origins.pop(next(iter(self._origins)))
             return self._get(cur.lastrowid)
+
+    def origin_of(self, ident: int) -> str:
+        """"laptop" or "telegram": where the request behind this question came from (a question from before a restart counts as the laptop's)."""
+        return self._origins.get(int(ident), LAPTOP)
 
     def decide(self, ident: int, approved: bool, via: str = "voice") -> bool:
         """Only a pending, unexpired approval can be decided, and only once."""

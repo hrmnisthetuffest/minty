@@ -49,9 +49,13 @@ class PushRouter:
         if event.get("type") == "notify":
             if event.get("local"):  # said and shown here only: it may carry detail that should not leave the laptop
                 return None
+            if event.get("job_origin") == "laptop":  # a job asked for on the laptop reports on the laptop
+                return None
             return {"text": str(event.get("text") or ""), "silent": False}
         if event.get("type") == "job":
             status, ident = event.get("status"), event.get("id")
+            if event.get("origin") == "laptop":  # only a job asked for on Telegram pings the phone
+                return None
             if status not in ("done", "failed", "timeout", "cancelled") or self._seen_jobs.get(ident) == status:
                 return None
             self._seen_jobs[ident] = status

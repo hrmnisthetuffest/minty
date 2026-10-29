@@ -29,6 +29,9 @@ or blocks them. Memory refuses to store passwords, PINs, one-time codes and keys
 - Every tool has a **risk class**. The safety level you pick (careful, balanced, trusting) decides how much it asks about; money,
   credentials and permanent deletion are always asked about.
 - Approvals can be given in the terminal, the panel or Telegram, and are recorded.
+  A question goes back to where the request came from: asked on Telegram, it is answered on Telegram (and nowhere else); asked on the laptop (voice,
+  terminal, panel), it is never sent to Telegram, and what a job reports follows the same rule. A big question (money, keys, deleting, sending) can only be
+  approved from Telegram with a passphrase (`minty telegram-passphrase`, then `telegram.class3_passphrase`); without one it says so and waits for the laptop.
 - **What you just asked for is not asked about again.** A tool that declares a mandate (`policy.Mandate`) runs without a question when
   your own words, this turn, ask for that kind of action ("research the competitors of acme", "have Claude Code fix the tests"), the
   people or places it touches (if it names any) are in those words, and nothing it uses came from a page, an e-mail or a file. This is a

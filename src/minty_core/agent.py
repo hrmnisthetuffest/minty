@@ -8,6 +8,7 @@ from dataclasses import replace
 from typing import AsyncIterator, Awaitable, Callable
 
 from minty_core.config import ConfigStore
+from minty_core.origin import TELEGRAM, current_origin
 from minty_core.plugins.host import PARALLEL_SAFE_TOOLS
 from minty_core import foldkit
 from minty_core.agentloop import StuckDetector, fingerprint, trim_old_observations
@@ -181,6 +182,7 @@ class Agent:
         self._personalities = personalities
         self._memory = memory
         self.confirm = confirm
+        self.phone_answer: Callable[[str], Awaitable[bool | None]] | None = None  # answers a question asked on Telegram there; None: ask on the laptop
         self._max_rounds = max_rounds
         self._max_history = max_history
         self.tier = tier
@@ -476,7 +478,7 @@ class Agent:
                 advice = await self.safety.advise(call.name, call.arguments)
                 if advice:
                     prompt = f"{prompt} {advice}"
-            decision = await self.guard.authorize(tool, call.name, call.arguments, self.confirm,
+            decision = await self.guard.authorize(tool, call.name, call.arguments, self._ask,
                                                   prompt=prompt, extra_risk=extra, known=known, request=self._request(),
                                                   user_origin=self.request_is_users)
             approval_id = decision.approval_id
@@ -522,6 +524,15 @@ class Agent:
         if self.provenance is not None and "telegram_forward" in self.provenance.sources:
             return ""  # a forwarded message sits inside the user's message as a quote: a stranger's words are never the user's request
         return current_request([m.content for m in self.history if m.role == "user"])
+
+    async def _ask(self, question: str) -> bool:
+        """The question goes back to where the request came from: on Telegram it is answered there; if the phone cannot answer it (a big one with
+        no passphrase set) or the request was made on the laptop, it is asked on the laptop as before."""
+        if self.phone_answer is not None and current_origin() == TELEGRAM:
+            answer = await self.phone_answer(question)
+            if answer is not None:
+                return answer
+        return await self.confirm(question)
 
     def _gate_inputs(self, tool, call: ToolCall) -> tuple[set, str, int]:
         """What the safety gate is shown for this call: destinations the user mentioned, the question, any extra risk."""
