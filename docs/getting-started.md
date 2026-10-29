@@ -110,7 +110,8 @@ Two buttons sit on the top edge of the chat bar: **M Mute** and **Space Listen**
 - **Music while it listens.** The moment Minty starts listening (you said the name, or pressed Listen) everything else that is playing
   is turned down to a tenth of its volume, and back up when the conversation ends, so a song is not heard as your words. It works for
   any player, not only ones Minty can pause (a browser tab, a video). If Minty is stopped or killed while the sound is down, the next
-  start turns it back up. Change how far it goes with `audio.listen_duck_level` (0.1 = a tenth, 0 = silent) or turn it off with
+  start turns it back up, and if the app closed its sound meanwhile (a browser does that when a video stops) the volume is turned up on
+  its next sound instead of staying low. Change how far it goes with `audio.listen_duck_level` (0.1 = a tenth, 0 = silent) or turn it off with
   `audio.listen_duck = false`. (Playing media is also paused for the conversation, as before, with `audio.music_pause`.)
 - **The room and the microphone.** Microphones and rooms differ, so the volume that counts as speech is not a fixed number: Minty
   learns the background level and sets the bar a little above it (`audio.auto_sensitivity`, on). It drops quickly when the room gets

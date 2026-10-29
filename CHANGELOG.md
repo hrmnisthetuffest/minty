@@ -821,3 +821,10 @@ when it is good enough.
   models that do not train on prompts and are verified for it may answer. Off: any model may use Composio, and what it reads goes to whichever model answers.
   The MCP tools follow it (settings changes rebuild them). Tests: `tests/test_mcp_remote.py`.
 
+- Fix: another app (the Zen browser) was left quiet for good after Minty listened. The sound server remembers the volume last set on a stream per application,
+  so when the browser closed a stream while Minty had it turned down (it does that whenever a video stops), turning it back up failed and every later stream of
+  that app started quiet, and the next listen took that quiet for the normal volume. Now: streams are matched by application, not by number (a number is used again
+  by something else), a new stream of a turned-down app is turned up too, and when no stream was left to turn up the volume is written down as owed and paid by the
+  first stream of that app that appears (a small watcher while anything is owed; also before the next turn-down reads the volume, and at start). A volume you set
+  yourself is left alone, an old debt is dropped after two days, and a note from a killed run no longer touches an unrelated app that took the same stream number.
+  Checked against the real sound server with a throwaway stream. Tests: `tests/test_duck_restore.py` (11 tests).
