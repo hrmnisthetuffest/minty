@@ -1,0 +1,3 @@
+name = "phone"
+description = "Tell you something on your own Telegram when you ask (send me that on Telegram): one message to the chat you paired, never to anyone else. Needs the Telegram switch on and a paired chat."
+default_enabled = true

@@ -112,6 +112,24 @@ def test_the_weekly_note_is_sent_only_when_there_is_something_to_say_and_only_on
     assert "12" in e.title and "scenes_launch" in e.body
 
 
+def test_a_week_of_only_always_asked_questions_gets_no_note(store, clock):
+    for _ in range(12):
+        ask(store, clock, "mcp_call", "yes", risk=3)
+    f = analyze(store.history(NOW - 7 * DAY), now=NOW, days=7, has_mandate=lambda tool: False)
+    assert any("always asked" in p for p in f.proposals) and "by design" in render(f)  # the report still says so when you ask
+    assert weekly_event(f, week="2026-W44") is None  # but nothing could change, so nothing is said
+
+
+def test_the_weekly_note_leaves_out_what_cannot_change(store, clock):
+    for _ in range(12):
+        ask(store, clock, "mcp_call", "yes", risk=3)
+    for _ in range(6):
+        ask(store, clock, "scenes_launch", "yes", risk=2)
+    f = analyze(store.history(NOW - 7 * DAY), now=NOW, days=7, has_mandate=lambda tool: False)
+    e = weekly_event(f, week="2026-W44")
+    assert e is not None and "scenes_launch" in e.body and "by design" not in e.body and "mcp_call" not in e.body
+
+
 def test_the_history_is_the_decided_and_unanswered_questions_since_a_time(store, clock):
     a = ask(store, clock, "files_delete_old", "yes")
     open_one = store.request("agents_start_task", {"x": 1}, "Should I?", 2)

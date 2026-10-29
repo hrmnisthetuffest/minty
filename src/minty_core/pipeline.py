@@ -543,7 +543,7 @@ class VoicePipeline:
                 log.warning("speech recognition failed: %s", e)
                 self.bus.publish("error", message=f"speech recognition failed: {e}")
                 turn["outcome"] = "stt_error"
-                await self._speak_plain(UNCLEAR)
+                await self._say_shown(UNCLEAR)
                 return False
             turn["t_stt"] = time.perf_counter()
             if self.voice is not None:
@@ -670,7 +670,7 @@ class VoicePipeline:
             count = notes.end()
             self._publish_notes()
             self._set_state("idle")
-        await self._speak_plain(f"Stopped noting. {count} {'note' if count == 1 else 'notes'} saved.")
+        await self._say_shown(f"Stopped noting. {count} {'note' if count == 1 else 'notes'} saved.")
 
     def _count_conversation(self) -> None:
         if self.on_conversation is None:
@@ -877,6 +877,7 @@ class VoicePipeline:
             return False
         self._wait_clips.append(audio)
         self._remember_spoken(text)
+        self.bus.publish("transcript", role="assistant", text=text)
         queue.put_nowait(audio)
         return True
 
@@ -934,10 +935,12 @@ class VoicePipeline:
                 local = await self._offline_answer(text)
                 if local:  # the internet is down: what needs no model is still answered
                     self._remember_spoken(local)
+                    self.bus.publish("transcript", role="assistant", text=local)
                     await queue.put(await self._synth(local))
                 else:
-                    await queue.put(await self._synth(MODELS_SLOW if isinstance(e, DeadlineExceeded)
-                                                      else BRAIN_DOWN))
+                    notice = MODELS_SLOW if isinstance(e, DeadlineExceeded) else BRAIN_DOWN
+                    self.bus.publish("transcript", role="assistant", text=notice)
+                    await queue.put(await self._synth(notice))
             except Exception:
                 log.exception("could not speak the brain-down notice")
         except Exception as e:
@@ -1067,13 +1070,18 @@ class VoicePipeline:
         except Exception:
             log.exception("could not speak %r", text)
 
-    async def say(self, text: str) -> None:
+    async def _say_shown(self, text: str) -> None:
+        """Said out loud and shown in the chat: nothing is spoken that the screen does not have."""
+        self.bus.publish("transcript", role="assistant", text=text)
         await self._speak_plain(text)
+
+    async def say(self, text: str) -> None:
+        await self._say_shown(text)
 
     async def confirm(self, prompt: str) -> bool:
         if self._queue is not None:
             await self._queue.join()
-        await self._speak_plain(prompt)
+        await self._say_shown(prompt)
         await self._stop_watcher()
         try:
             self._set_state("listening")

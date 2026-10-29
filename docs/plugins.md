@@ -465,6 +465,16 @@ Settings: `user`, `smtp_host`, `smtp_port`, `smtp_security`, `auto_reply_to`, `n
 | `outbox_list` | What is in the outbox: drafted, sent (and how), failed or unknown. |  |
 | `outbox_discard` | Throw away an unsent outbox item. | risk 1 |
 
+## phone
+
+Tell you something on your own Telegram when you ask (send me that on Telegram): one message to the chat you paired, never to anyone else. Needs the Telegram switch on and a paired chat.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `phone_tell` | Message the user on their own paired Telegram, when they ask (send me that on Telegram). | risk varies |
+
 ## playbooks
 
 Reusable ways of doing a kind of work (research, lead lists, weekly reviews): found for a matching goal, adapted to the facts, measured, versioned. An improvement is only a proposal until you accept it, and going back is one step.

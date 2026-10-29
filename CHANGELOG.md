@@ -828,3 +828,17 @@ when it is good enough.
   first stream of that app that appears (a small watcher while anything is owed; also before the next turn-down reads the volume, and at start). A volume you set
   yourself is left alone, an old debt is dropped after two days, and a note from a killed run no longer touches an unrelated app that took the same stream number.
   Checked against the real sound server with a throwaway stream. Tests: `tests/test_duck_restore.py` (11 tests).
+- Fix: a background mission asked about every read-only Composio call (mission 14: "Should I run COMPOSIO_SEARCH_TOOLS ..."). The safety gate asks about data going to a
+  destination you never mentioned; the conversation is told which servers you set up yourself, but the helper agents built for missions and sub-agents were not, so your own
+  Composio looked like a stranger and was floored to a class 3 question. They now get the same trusted places. Reading mail is allowed in a mission, sending or trashing it is
+  still asked. Tests: `tests/test_mission_composio.py`.
+- Fix: the weekly "You answered 9 questions this week" note was spoken even when nothing in it could change ("deletion and messages to people are always asked by design, so this
+  will not change"). The note now only appears when there is something you could actually change (a standing approval, unanswered questions, a question you mostly refuse); the
+  by-design lines stay in the report you get when you ask (`notices_friction`). Tests: `tests/test_friction.py`.
+- Fix: some things Minty said out loud never showed in the chat text: "One moment." / "Still working on it." while it works, "I can't reach my brain" and "My models are not
+  answering", "Sorry, I couldn't make that out", "Stopped noting ...", a line the panel has it say, an offline answer, and the questions it asks out loud. All of them are now
+  published to the chat as well. Tests: `tests/test_spoken_is_shown.py`.
+- New: Minty can send you a message on your own Telegram when you ask ("send me that on Telegram"). There was no tool for it, so it said it had no access even though Telegram was
+  paired. New `phone_tell` tool (plugin `phone`, offered when Telegram or your phone comes up): one message to the chat you paired, never to a chat the model names; nothing in private
+  mode; it goes even in quiet hours because you asked just now; asking for it in your own words (Telegram, or "on my phone") is not asked about again, doing it unprompted is. If
+  Telegram is off or no chat is paired it says how to turn that on instead of pretending. Tests: `tests/test_plugin_phone.py`.

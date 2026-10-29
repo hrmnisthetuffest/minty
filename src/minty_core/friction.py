@@ -96,12 +96,16 @@ def render(f: Friction) -> str:
     return "\n".join(lines)
 
 
+BY_DESIGN = "are always asked by design"  # a line that explains a question and proposes nothing
+
+
 def weekly_event(f: Friction, week: str) -> Event | None:
-    """One quiet note a week, only when there was a lot of asking and something that could change."""
-    if f.asked < WEEKLY_AT_LEAST or not f.proposals:
+    """One quiet note a week, only when there was a lot of asking and something that could change (what is asked by design is not that)."""
+    can_change = [p for p in f.proposals if BY_DESIGN not in p]
+    if f.asked < WEEKLY_AT_LEAST or not can_change:
         return None
     return Event("friction", f"week:{week}", "notable", f"You answered {f.answered} questions this week ({f.asked} asked)",
-                 clean(" ".join(f.proposals[:2]), 300), "see notices_friction for all of it", fingerprint=week)
+                 clean(" ".join(can_change[:2]), 300), "see notices_friction for all of it", fingerprint=week)
 
 
 def friction_note(approvals, notifier, get_tool: Callable[[str], object], now: float | None = None) -> None:

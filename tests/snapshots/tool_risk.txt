@@ -171,6 +171,7 @@ outbox_discard                     1 change
 outbox_draft                       0 read
 outbox_list                        0 read
 outbox_send                        3 critical +args sensitive
+phone_tell                         2 visible
 playbooks_accept                   2 visible
 playbooks_create                   2 visible
 playbooks_list                     0 read

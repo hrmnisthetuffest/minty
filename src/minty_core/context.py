@@ -475,6 +475,7 @@ def build_context(config_dir: Path) -> AppContext:
         helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "agents", "installer", "missions", "outbox", "recipes", "studio")), store,
                        personalities, memory, _deny, max_rounds=8, tier=tier)
         helper.guard = guard  # same rules and audit trail as the main conversation
+        helper.trusted_destinations = agent.trusted_destinations  # the servers you set up are as good as named here too
         return helper
 
     def make_worker(goal: str, confirm):
@@ -485,6 +486,7 @@ def build_context(config_dir: Path) -> AppContext:
         helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "installer", "missions", "recipes"), allow_risky=True),
                        store, personalities, memory, confirm or _deny, max_rounds=8, tier="deep")
         helper.guard, helper.safety, helper.receipts = guard, safety, receipts
+        helper.trusted_destinations = agent.trusted_destinations  # your own MCP servers (Composio) are not strangers to a mission either
         helper.provenance = Provenance()  # what this mission reads does not taint the conversation, and the other way round
         helper.request_is_users = False  # the goal came from missions_start, written by the model: it can never be "your words" for a class 3 lift
         helper.force_private = is_private()
