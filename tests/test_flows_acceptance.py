@@ -174,11 +174,11 @@ async def test_8_editing_testing_and_running_are_not_questions_but_turning_one_o
     guard = Guard(w.ctx.store)
     host = w.ctx.services["get_tool"]
     for name in ("flows_save", "flows_patch", "flows_run", "flows_restore", "flows_get"):
-        a = guard.assess(host(name), name, {"flow": "x", "enabled": False}, request="")
+        a = guard.assess(host(name), name, {"flow": "x", "on": False}, request="")
         assert a.decision == "allow", name
-    on = guard.assess(host("flows_set"), "flows_set", {"flow": "x", "enabled": True}, request="what time is it")
+    on = guard.assess(host("flows_set"), "flows_set", {"flow": "x", "on": True}, request="what time is it")
     assert on.decision == "ask"  # it would start running by itself later
-    asked_for = guard.assess(host("flows_set"), "flows_set", {"flow": "x", "enabled": True}, request="schedule that to run every morning")
+    asked_for = guard.assess(host("flows_set"), "flows_set", {"flow": "x", "on": True}, request="schedule that to run every morning")
     assert asked_for.decision == "allow"
 
 
@@ -207,7 +207,7 @@ async def test_10_a_workflow_that_cannot_run_says_so_and_runs_nothing(w):
     detail = await w.tool("flows_runs", run=r["run"])
     assert detail["steps"] == [] and detail["diagnosis"]["cause"] == "invalid configuration"
     assert w.calls == []
-    switched = await w.tool("flows_set", flow="stale", enabled=True)
+    switched = await w.tool("flows_set", flow="stale", on=True)
     assert "cannot be switched on" in switched
 
 

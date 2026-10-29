@@ -254,13 +254,13 @@ On by default: yes.
 | `flows_list` | The workflows (id, name, who made it, on or off, last run). | risk varies |
 | `flows_get` | One workflow: its nodes and connections, problems, run stats and versions. Any workflow, whoever made it. | risk varies |
 | `flows_check` | Validate a workflow (flow) or a draft (doc) without saving: errors, warnings, hints. | risk varies |
-| `flows_save` | Create a workflow, or with flow replace one with a new version. doc = {name, nodes:[{id,type,params,pos}], edges:[{from,port,to}]}. Saved only if valid. | risk varies |
+| `flows_save` | Create a workflow, or with flow replace one with a new version (see catalogue example). Checks it first: saved only if valid. | risk varies |
 | `flows_patch` | Change a workflow in place as a new version. ops: add_node, remove_node, set_params, connect, disconnect, move, rename. | risk varies |
 | `flows_run` | Run a workflow: test=true only assesses what would change something. Give input, or resume a run. Returns the result and per-step status. | sensitive, risk varies |
 | `flows_runs` | A run in detail with its steps and diagnosis (run=id), or the recent runs and stats of a workflow. | sensitive, risk varies |
 | `flows_history` | A workflow's versions, or what changed between versions a and b. | risk varies |
 | `flows_restore` | Go back to an earlier version (as a new version; nothing is lost). | risk varies |
-| `flows_set` | Turn a workflow on or off (enabled) or archive/unarchive it. Never deletes. | risk varies |
+| `flows_set` | Turn a workflow on or off (on) or archive/unarchive it. Never deletes. | risk varies |
 
 ## health
 

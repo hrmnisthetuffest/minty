@@ -104,15 +104,15 @@ def register(ctx):
         flow = s._need(args["flow"])
         if args.get("archived") is not None:
             s.store.set_archived(flow.id, bool(args["archived"]))
-        if args.get("enabled") is not None:
-            if args["enabled"] and any(i["level"] == "error" for i in s.check(s.store.doc(flow.id) or {})):
+        if args.get("on") is not None:
+            if args["on"] and any(i["level"] == "error" for i in s.check(s.store.doc(flow.id) or {})):
                 raise ValueError("It has errors, so it cannot be switched on (flows_check shows them).")
-            s.store.set_enabled(flow.id, bool(args["enabled"]))
+            s.store.set_enabled(flow.id, bool(args["on"]))
         f = s.store.get(flow.id)
         return out({"id": f.id, "name": f.name, "enabled": f.enabled, "archived": f.archived})
 
     def enable_risk(args):
-        return R2 if args.get("enabled") else R1
+        return R2 if args.get("on") else R1
 
     s, o, b, i = {"type": "string"}, {"type": "object"}, {"type": "boolean"}, {"type": "integer"}
     ref = {"flow": {"type": ["string", "integer"]}}
@@ -132,6 +132,6 @@ def register(ctx):
              {"type": "object", "properties": {**ref, "run": i, "limit": i}}, guarded(runs), sensitive=True, risk=R1),
         Tool("history", "A workflow's versions, or what changed between versions a and b.", {"type": "object", "properties": {**ref, "a": i, "b": i}, "required": ["flow"]}, guarded(history), risk=R1),
         Tool("restore", "Go back to an earlier version (as a new version; nothing is lost).", {"type": "object", "properties": {**ref, "version": i}, "required": ["flow", "version"]}, guarded(restore), risk=R1),
-        Tool("set", "Turn a workflow on or off (enabled) or archive/unarchive it. Never deletes.", {"type": "object", "properties": {**ref, "enabled": b, "archived": b}, "required": ["flow"]},
+        Tool("set", "Turn a workflow on or off (on) or archive/unarchive it. Never deletes.", {"type": "object", "properties": {**ref, "on": b, "archived": b}, "required": ["flow"]},
              guarded(set_), risk=enable_risk, mandate=ENABLE),
     ]
