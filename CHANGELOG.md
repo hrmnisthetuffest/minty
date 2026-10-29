@@ -854,3 +854,10 @@ when it is good enough.
   question from the phone no longer shows an Approve button that can only refuse: it says plainly that it needs the laptop and how to allow it from Telegram (`minty
   telegram-passphrase`, then `telegram.class3_passphrase`, your choice to make); with a passphrase set, it has buttons and asks for it. Reminders, timers, briefs and the
   notifier's own phone route are unchanged (`notify.phone`, `telegram.briefs`). Tests: `tests/test_telegram_origin.py`.
+- New: Minty remembers by itself which apps are connected through Composio, so "upload this to YouTube" needs no explaining (it only worked after being told "use Composio").
+  Composio has no "list everything" call, so the inventory (`minty_core/composio_apps.py`, kept in `composio-apps.json`: names and account counts only) is learned from the
+  connection state in every COMPOSIO_SEARCH_TOOLS answer, and refreshed by the app by itself a minute after start and then twice a day by asking about about 50 common apps in
+  batches of six (read-only; Composio takes at most 7 queries per call). The model's hint now lists what is connected ("gmail (3 accounts), youtube, googledrive ...", remembered,
+  more may be) and says to search Composio first for any app or service task and never to say it has no access to an app before it searched. Checked live: the refresh found your
+  YouTube, Drive, Docs, Sheets, Calendar, Gmail (3), Instagram (2), Reddit, ElevenLabs and Gemini, and a real "upload a video to my youtube" turn went through Composio with no
+  question. Tests: `tests/test_composio_apps.py`.

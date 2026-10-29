@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from minty_core.artifacts import ArtifactStore
+from minty_core.composio_apps import AppsStore, refresh
 from minty_core.composio_rules import call_class, checked_send, created_artifacts
 from minty_core.mcp.client import McpError, composio_host_ok, open_session
 from minty_core.mcp.directory import DIRECTORY, REMOTE
@@ -24,6 +25,7 @@ COMPOSIO_ACTING = re.compile(r"EXECUTE|BASH|WORKBENCH|MANAGE_|CODE|SEND|CREATE|D
 PLAIN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 JSON_TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "array": list, "object": dict}
 MAX_ARG_CHARS = 20000
+COMPOSIO_SEARCH = "COMPOSIO_SEARCH_TOOLS"
 
 
 def check_arguments(schema: dict, args: dict) -> None:
@@ -131,6 +133,20 @@ def register(ctx):
 
     ctx.services["trusted_destinations"] = trusted
 
+    apps = AppsStore(ctx.config_dir / "composio-apps.json")
+    ctx.services["composio_apps"] = apps
+
+    async def refresh_apps() -> int:
+        """Look through the common apps for the ones connected through Composio (read-only; the app does this by itself now and then)."""
+        from minty_core.composio_gmail import ComposioRunner
+
+        name = next((n for n, s in registry.servers().items() if s.get("kind") == "composio" or composio_host_ok(s.get("url", ""))), "")
+        if not name or not cfg().enabled:
+            return 0
+        return await refresh(ComposioRunner(registry, lambda key: ctx.secrets.get(key), server=name, needs=(COMPOSIO_SEARCH,)), apps)
+
+    ctx.services["composio_apps_refresh"] = refresh_apps
+
     def hint(request: str = "") -> str:
         """Which tools the model may just call, so it does not stop to ask whether it may "enable" one (names only, never descriptions)."""
         if not ready():
@@ -142,10 +158,14 @@ def register(ctx):
                 parts.append(f"{name} ({', '.join(allowed)})")
         if not parts:
             return ""
-        return ("MCP: the user's connected apps (Gmail, Calendar, Slack, GitHub ...) are reached with mcp_call, not a browser. Allowed now: "
-                + "; ".join(parts) + ". Call them directly: do not ask the user whether to use one, the system asks when it must. "
-                "On composio start with COMPOSIO_SEARCH_TOOLS, then call the action it names directly (tool GMAIL_FETCH_EMAILS, its arguments, "
-                "and account if there are several).")
+        linked = apps.connected()
+        known = (" Connected through composio (remembered, more may be): " + ", ".join(
+            f"{n} ({c} accounts)" if c > 1 else n for n, c in linked.items()) + ".") if linked else ""
+        return ("MCP: the user's connected apps (Gmail, Calendar, Slack, GitHub, YouTube, Drive ...) are reached with mcp_call, not a browser. Allowed now: "
+                + "; ".join(parts) + "." + known + " Call them directly: do not ask the user whether to use one, the system asks when it must. "
+                "For any app or service task (upload to YouTube, post, files, docs, calendar), search composio first: COMPOSIO_SEARCH_TOOLS with the task, "
+                "and its toolkit_connection_statuses says what is connected. Never say you have no access to an app before you searched. Then call the "
+                "action it names directly (tool GMAIL_FETCH_EMAILS, its arguments, and account if there are several).")
 
     ctx.services["mcp_hint"] = hint
 
@@ -201,6 +221,11 @@ def register(ctx):
             check_arguments(live[tool].get("inputSchema") or {}, arguments)
             result = await session.call_tool(tool, arguments)
         flag = "The tool reported an error. " if result.is_error else ""
+        if not result.is_error and composio_server(name) and tool.upper() == "COMPOSIO_SEARCH_TOOLS":
+            try:
+                apps.learn(json.loads(result.text or ""))  # what is connected is remembered, whatever the call was for
+            except ValueError:
+                pass
         if not result.is_error and composio_server(name) and tool.upper() == "COMPOSIO_MULTI_EXECUTE_TOOL":
             if any(isinstance(t, dict) and str(t.get("tool_slug", "")).upper() == "GMAIL_SEND_EMAIL" for t in (arguments.get("tools") or [])):
                 sends[time.strftime("%Y-%m-%d")] = sends.get(time.strftime("%Y-%m-%d"), 0) + 1  # counted whoever approved it

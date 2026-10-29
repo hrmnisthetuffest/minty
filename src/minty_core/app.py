@@ -853,6 +853,23 @@ async def _gmail_loop(ctx, *, first_s: float = 180.0, rounds: int | None = None,
         await sleep(cfg.interval_s if cfg.enabled else 300.0)
 
 
+async def _composio_apps_loop(ctx, *, first_s: float = 90.0, rounds: int | None = None, sleep=asyncio.sleep) -> None:
+    """Keep the list of apps connected through Composio up to date by itself (read-only): a minute after start, then twice a day, so "upload
+    this to YouTube" is understood without anyone explaining that Composio is connected to it."""
+    await sleep(first_s)
+    n = 0
+    while rounds is None or n < rounds:
+        n += 1
+        refresh = ctx.services.get("composio_apps_refresh")
+        heard = 0
+        if refresh is not None and ctx.store.config.mcp.enabled:
+            try:
+                heard = await refresh()
+            except Exception:  # noqa: BLE001 — never a reason to stop the app
+                log.warning("could not look through the connected apps", exc_info=True)
+        await sleep(12 * 3600.0 if heard else 3600.0)
+
+
 async def _recipes_loop(ctx, *, every_s: float = 60.0, rounds: int | None = None) -> None:
     """Every minute, start the recipes whose time has come (each is a mission with all its checks). On the loop, like the
     attention check, because it reads the job table."""
@@ -1306,6 +1323,8 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
     attention_task.add_done_callback(lambda t: _log_task_failure(t, "attention"))
     gmail_task = asyncio.create_task(_gmail_loop(ctx))
     gmail_task.add_done_callback(lambda t: _log_task_failure(t, "gmail"))
+    apps_task = asyncio.create_task(_composio_apps_loop(ctx))
+    apps_task.add_done_callback(lambda t: _log_task_failure(t, "composio apps"))
     recipes_task = asyncio.create_task(_recipes_loop(ctx))
     recipes_task.add_done_callback(lambda t: _log_task_failure(t, "recipes"))
     maintain_task = asyncio.create_task(_maintenance_loop(ctx, directory))
@@ -1367,6 +1386,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         heart_task.cancel()
         attention_task.cancel()
         gmail_task.cancel()
+        apps_task.cancel()
         recipes_task.cancel()
         power_task.cancel()
         leak_task.cancel()
@@ -1374,7 +1394,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         loop_task.cancel()
         checks_task.cancel()
         await asyncio.gather(compact_task, telegram_task, health_task, coach_task, finance_task, life_task,
-                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, gmail_task, recipes_task, power_task, leak_task, schedule_task,
+                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, gmail_task, apps_task, recipes_task, power_task, leak_task, schedule_task,
                              loop_task, checks_task, return_exceptions=True)
         if tui_task is not None:
             tui_task.cancel()
