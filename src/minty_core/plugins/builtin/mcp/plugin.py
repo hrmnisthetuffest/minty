@@ -55,7 +55,7 @@ APP_SLUG = re.compile(r"[A-Z][A-Z0-9]*_[A-Z0-9_]+")  # GMAIL_FETCH_EMAILS: a Com
 
 def register(ctx):
     registry = McpRegistry(Path(ctx.config_dir) / "mcp.json")
-    private = bool(getattr(ctx.services["config"](), "mcp", None) is None or ctx.services["config"]().mcp.private_results)  # tools are rebuilt on every settings change
+    private = bool(getattr(getattr(ctx.services["config"](), "mcp", None), "private_results", True))  # rebuilt on every settings change; unknown means private
     sends = ctx.state.setdefault("sends", {})  # date -> mails sent through Composio on the user's own request
 
     def artifacts() -> ArtifactStore:  # one open database across reloads (every settings change reloads the plugins)
@@ -234,14 +234,18 @@ def register(ctx):
         return urlsplit(s["url"]).hostname if kind == "http" else "backend.composio.dev" if kind == "composio" else None
 
     obj = {"type": "object", "properties": {}}
-    return [
+    tools = [
         Tool("servers", "The MCP servers set up, with each tool's state (descriptions come from outside).", obj, guarded(servers),
-             sensitive=private),
+             sensitive=True),
         Tool("directory", "A starting list of MCP servers. Adding one is a terminal command.", obj, guarded(directory)),
         Tool("call", "Run a tool you allowed on an MCP server: server, tool, arguments (object). Call it directly; the system asks when "
                      "needed. Gmail, Slack etc.: use this, not a browser.",
              {"type": "object", "properties": {"server": {"type": "string"}, "tool": {"type": "string"},
                                                "arguments": {"type": "object"}}, "required": ["server", "tool"]},
-             guarded(call), sensitive=private, risk=risk, describe=describe, egress=egress,
+             guarded(call), sensitive=True, risk=risk, describe=describe, egress=egress,
              mandate=Mandate("", max_class=R3, check=lifts, class3_flag="mandate_send_mail"), content_ok=own_place)  # `lifts` reads the request itself,
     ]
+    if not private:  # mcp.private_results is off: any model may use Composio, and what it returns no longer keeps the turn private
+        for t in tools:
+            t.sensitive = False
+    return tools
