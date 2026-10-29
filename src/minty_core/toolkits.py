@@ -99,6 +99,8 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
               "habit habits preference preferences learned learn suggestion suggestions always never prefer playbook playbooks template "
               "templates procedure standard way workflow version versions rollback notices notice told lately watcher dealt resolve resolved"),
     "phone": (("phone",), "message you on your own Telegram", "telegram phone mobile ping"),
+    "flows": (("flows",), "workflows: build, edit, test, run, debug automations",
+             "workflow workflows automation automations automate canvas node nodes trigger flow flows pipeline n8n schedule"),
     "apps": (("mcp", "artifacts"), "your connected apps (Gmail, Slack, GitHub) via MCP/Composio",
             "mcp composio server tool gmail google calendar slack github notion drive sheet sheets outlook teams "
             "linear jira trello asana discord twitter figma hubspot salesforce dropbox airtable stripe"),

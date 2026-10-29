@@ -1,0 +1,3 @@
+name = "flows"
+description = "Visual automations (workflows) you and Minty build and run together: look at, create, change, test, run, debug and roll back any workflow, including ones you made by hand in the panel. Every step goes through the same safety checks as everything else."
+default_enabled = true

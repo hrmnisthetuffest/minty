@@ -31,7 +31,7 @@ MAX_BACKOFF_S = 60.0
 PROGRESS_KEEP = 20
 STORE_MAX_BYTES = 1_000_000
 KIND_LABEL = {"mission": "mission", "browser": "browser job", "subagent": "helper", "think": "deep thinking", "coding": "coding job",
-              "research": "research"}
+              "research": "research", "flow": "workflow"}
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
 

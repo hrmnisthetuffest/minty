@@ -507,7 +507,7 @@ def build_context(config_dir: Path) -> AppContext:
         receipts and secret checks as the conversation) with its own record of what it read, the toolkits its goal needs
         (and need_toolkit for more), and a confirm that waits for the user instead of refusing. Never the terminal, other
         helpers, the installer or missions themselves."""
-        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "installer", "missions", "recipes"), allow_risky=True),
+        helper = Agent(router, FilteredHost(host, exclude_plugins=("subagents", "installer", "missions", "recipes", "flows"), allow_risky=True),
                        store, personalities, memory, confirm or _deny, max_rounds=8, tier="deep")
         helper.guard, helper.safety, helper.receipts = guard, safety, receipts
         helper.trusted_destinations = agent.trusted_destinations  # your own MCP servers (Composio) are not strangers to a mission either
@@ -565,6 +565,26 @@ def build_context(config_dir: Path) -> AppContext:
     services["proactive_control"] = ProactiveControl(store)
     services["agent_factory"] = make_subagent
     services["mission_worker"] = make_worker
+
+    from minty_core.flows.service import FlowService
+    from minty_core.flows.store import FlowStore
+
+    async def flow_ask(system: str, user: str) -> str:
+        """One bounded model call for a workflow's AI step (nothing else in the workflow can reach the model)."""
+        parts: list[str] = []
+        stream = router.stream([Message("system", system), Message("user", user)], [], sensitive=is_private(), tier="fast")
+        async with contextlib.aclosing(stream) as events:
+            async for event in events:
+                if isinstance(event, TextDelta):
+                    parts.append(event.text)
+        return "".join(parts)
+
+    services["flows"] = FlowService(
+        FlowStore(config_dir / "flows.sqlite"), jobs=jobs, worker_factory=make_worker, get_tool=host.get_tool,
+        tool_names=lambda: [t for p in host.list_plugins() if p["enabled"] and not p["error"] for t in p["tools"]], ask=flow_ask,
+        notify=lambda text: bus.publish("notify", text=text, job_origin=current_origin()),
+        emit=lambda event: bus.publish("flow", **{k: v for k, v in event.items() if k != "type"}))
+    jobs.on_finish.append(services["flows"].on_job_finished)
     services["mission_context"] = mission_context
 
     def workflow_brief(goal: str) -> str:

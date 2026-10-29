@@ -99,6 +99,17 @@ finance_scam                       0 read
 finance_set                        1 change   sensitive
 finance_show                       0 read     sensitive local-only
 finance_summary                    0 read     sensitive
+flows_catalogue                    1 change
+flows_check                        1 change
+flows_get                          1 change
+flows_history                      1 change
+flows_list                         1 change
+flows_patch                        1 change
+flows_restore                      1 change
+flows_run                          1 change   sensitive
+flows_runs                         1 change   sensitive
+flows_save                         1 change
+flows_set                          1 change   +args
 health_check                       0 read     sensitive
 health_consent                     1 change
 health_delete_data                 3 critical

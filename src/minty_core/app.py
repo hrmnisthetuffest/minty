@@ -876,6 +876,12 @@ async def _recipes_loop(ctx, *, every_s: float = 60.0, rounds: int | None = None
     n = 0
     while rounds is None or n < rounds:
         n += 1
+        flows = ctx.services.get("flows")
+        if flows is not None and not getattr(ctx.services.get("lockdown"), "active", False):
+            try:
+                flows.tick()  # the workflows whose schedule has come
+            except Exception:  # noqa: BLE001 — tried again next minute
+                log.warning("workflow schedule check failed", exc_info=True)
         recipes = ctx.services.get("recipes")
         if recipes is not None:
             lock = ctx.services.get("lockdown")
