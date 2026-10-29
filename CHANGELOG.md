@@ -817,4 +817,7 @@ when it is good enough.
   The same real turn then ran with no question in 13 s and answered with the newest subjects. Found too, **not changed**: once mail is read the turn is
   private, and Minty only sends private turns to providers marked as not training on data; Claude is marked as training on data, Groq hit its
   tokens-per-minute limit and NVIDIA answers 404, so without a change to that setting no model can answer after reading mail.
+- New setting `mcp.private_results` (default on, the old behaviour): what an MCP server returns, such as your mail through Composio, keeps the turn private, so only
+  models that do not train on prompts and are verified for it may answer. Off: any model may use Composio, and what it reads goes to whichever model answers.
+  The MCP tools follow it (settings changes rebuild them). Tests: `tests/test_mcp_remote.py`.
 

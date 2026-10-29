@@ -813,3 +813,13 @@ async def test_an_app_action_named_directly_is_run_through_composios_execute_too
     assert params["arguments"]["sync_response_to_workbench"] is False
     assert spec.risk({"server": "composio", "tool": "GMAIL_SEND_EMAIL", "arguments": {"recipient_email": "a@b.co"}}) == 3  # a send named directly is still a send
     assert spec.risk({"server": "acme", "tool": "GMAIL_FETCH_EMAILS", "arguments": {}}) == 2  # only Composio gets this routing
+
+
+def test_what_composio_returns_keeps_the_turn_private_unless_the_user_says_any_model_may_see_it(tmp_path, monkeypatch):
+    host = plugin_host(tmp_path, monkeypatch, Server())
+    assert host.get_tool("mcp_call").sensitive and host.get_tool("mcp_servers").sensitive  # the safe default: mail stays with private-safe models
+    data = host._store.config.model_dump(mode="json")
+    data["mcp"]["private_results"] = False  # "all models should be able to use Composio": the user's call about their own data
+    host._store.update(data)
+    host.reload()
+    assert not host.get_tool("mcp_call").sensitive and not host.get_tool("mcp_servers").sensitive

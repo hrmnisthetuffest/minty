@@ -663,6 +663,9 @@ class McpConfig(BaseModel):
     """MCP servers (WP-20). Off until switched on. Servers and tools are added and allowed at the terminal only."""
     enabled: bool = False
     timeout_s: int = Field(30, ge=5, le=120)
+    # what an MCP server returns (your mail, through Composio) keeps the turn private, so only models that do not train on prompts and are
+    # verified for it may answer. Off: any model may use Composio, and what it reads goes to whichever model answers (your call, about your data).
+    private_results: bool = True
 
 
 class ShellConfig(BaseModel):

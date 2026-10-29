@@ -27,6 +27,7 @@ LABELS = {
     "safety.audit": "Keep an audit trail of decisions",
     "safety.approval_inbox": "Keep every question as an approval record",
     "safety.block_secret_egress": "Stop tool calls that would send a stored key",
+    "mcp.private_results": "Keep what Composio returns (your mail) to models that do not train on prompts",
     "gmail_watch.enabled": "Watch your Gmail through Composio and tell you what matters",
     "gmail_watch.lookup_senders": "Search once per new sender to see whether you have written to them",
     "gmail_watch.reminders": "Remind you the morning before a deadline an important mail names",
