@@ -48,6 +48,9 @@ class Tool:
     blocked_when: Callable[[dict], str | None] | None = None
     # what the user's own request must say for the question to be redundant (policy.Mandate); None = the class decides, as always
     mandate: Any = None
+    # true when this call puts what it carries into a fixed place the user set up and trusts (their own mailbox or sheet through a server they
+    # allowed): then where that content came from does not make a read or a write into a question; a call that reaches anyone else still does
+    content_ok: Callable[[dict], bool] | None = None
 
 
 # Tools whose repeat must not repeat the side effect (send, upload, download, install, fire a webhook). One list,

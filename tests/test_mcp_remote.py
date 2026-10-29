@@ -751,3 +751,27 @@ def test_a_vendor_managed_servers_new_description_is_accepted_when_the_inputs_ar
     unpinned.record_tools("composio", [tool])
     unpinned.allow("composio", tool["name"], tool_hash(tool))  # allowed before the inputs were pinned
     assert unpinned.status("composio", tool["name"], tool_hash(reworded), reworded) == "changed"  # until the user allows it once more
+
+
+def test_what_counts_as_the_users_own_place_for_content_read_earlier(tmp_path, monkeypatch):
+    from minty_core.artifacts import ArtifactStore
+    from minty_core.mcp.registry import tool_hash
+
+    host = composio_with_execute(tmp_path, monkeypatch)
+    r = McpRegistry(tmp_path / "mcp.json")
+    search = {"name": "COMPOSIO_SEARCH_TOOLS", "description": "d", "inputSchema": {"type": "object"}}
+    r.record_tools("composio", [search])
+    r.allow("composio", "COMPOSIO_SEARCH_TOOLS", tool_hash(search), readonly=True)
+    r.add_remote("acme", URL, {"x-api-key": "ACME_API_KEY"})
+    r.record_tools("acme", [TOOL])
+    r.allow("acme", "echo", tool_hash(TOOL), readonly=False)
+    store = ArtifactStore(tmp_path / "artifacts.db")
+    store.add("sheet", SHEET_ID, "Leads", source="minty")
+    store.close()
+    ok = host.get_tool("mcp_call").content_ok
+    assert ok({"server": "composio", "tool": "COMPOSIO_SEARCH_TOOLS", "arguments": {}})  # a tool you allowed as read-only
+    assert ok(execute(("GMAIL_FETCH_EMAILS", {"max_results": 5})))  # reading your mail
+    assert ok(execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": SHEET_ID, "values": [["from the web"]]})))  # into a sheet it knows
+    assert not ok(execute(("GMAIL_SEND_EMAIL", {"recipient_email": "a@b.co"})))  # to a person
+    assert not ok(execute(("GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", {"spreadsheetId": OTHER_ID})))  # somebody else's sheet
+    assert not ok({"server": "acme", "tool": "echo", "arguments": {"text": "x"}})  # another server, not read-only

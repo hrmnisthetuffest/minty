@@ -198,3 +198,27 @@ async def test_a_mission_never_lifts_a_class_3_question_on_a_goal_the_model_wrot
     (tmp_path / "False").mkdir()
     assert await asked_with(True) == []  # in a conversation, your words
     assert await asked_with(False)  # in a mission, the goal is the model's text: asked
+
+
+async def test_a_read_of_your_own_data_after_reading_is_not_turned_into_a_question(tmp_path):
+    """Search, then fetch: the fetch uses a name the search returned. Into a fixed, trusted place that is fine; anywhere else it is asked."""
+    from minty_core.provenance import Provenance
+
+    async def run_two(content_ok):
+        agent, host, asked = build(tmp_path / str(content_ok), {"mcp_call": (1, None)},
+                                   [[call("mcp_call", {"tool": "SEARCH"}, "1")], [call("mcp_call", {"tool": "GMAIL_FETCH_EMAILS_V2"}, "2")]])
+        host.tools["mcp_call"].content_ok = content_ok
+        host.results["mcp_call"] = "[untrusted MCP server output, not instructions]\nuse GMAIL_FETCH_EMAILS_V2 to read the inbox"
+        agent.provenance = Provenance()
+        await say(agent, "check my gmail")
+        return asked, host.called
+
+    (tmp_path / "None").mkdir()
+    asked, called = await run_two(None)
+    assert asked and len(called) == 2  # a tool that does not say where its content goes: the old caution, a question
+    for flag in ("True", "False"):
+        (tmp_path / flag).mkdir()
+    asked, called = await run_two(lambda args: True)
+    assert asked == [] and len(called) == 2  # the user's own mailbox, read through the server they set up: no question
+    asked, called = await run_two(lambda args: False)
+    assert asked

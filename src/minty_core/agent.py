@@ -538,9 +538,22 @@ class Agent:
             mine = " ".join(m.content for m in self.history if m.role == "user")
             note = self.provenance.note_for(call.arguments, mine, call.name)
             if note:
-                prompt = f"{prompt} {note}."
                 extra = self.provenance.extra_risk(call.arguments, mine, call.name)
+                if extra and not self.provenance.flagged and self._content_ok(tool, call.arguments):
+                    extra, note = 0, ""  # into the user's own, fixed place: reading first is not a reason to ask (content that gave orders still is)
+            if note:
+                prompt = f"{prompt} {note}."
         return known, prompt, extra
+
+    @staticmethod
+    def _content_ok(tool, args) -> bool:
+        check = getattr(tool, "content_ok", None)
+        if check is None:
+            return False
+        try:
+            return bool(check(args))
+        except Exception:  # noqa: BLE001 — a check that cannot be made keeps the caution
+            return False
 
     def _gate_for_batch(self, call: ToolCall):
         """(tool, assessment) when this call may run alongside others: an audited lookup that changes nothing and passes every check

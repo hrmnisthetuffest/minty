@@ -72,6 +72,14 @@ def register(ctx):
         server = registry.servers().get(name, {})
         return server.get("kind") == "composio" or composio_host_ok(server.get("url", ""))
 
+    def own_place(args) -> bool:
+        """The call reads the user's own data, or writes into a sheet or doc Minty knows, through the Composio server they set up; or it is a tool
+        they allowed as read-only. Then what it carries came from reading is not a reason to ask (a send, or any other server, still is)."""
+        name, tool = str(args.get("server") or ""), str(args.get("tool") or "")
+        if registry.is_readonly(name, tool):
+            return True
+        return (composio_server(name) and tool.upper() == "COMPOSIO_MULTI_EXECUTE_TOOL" and call_class(args.get("arguments"), known) <= 2)
+
     def lifts(args, request: str) -> bool:
         """The calls a request can answer: Composio steps that read, draft or write into a sheet or doc Minty knows (class 2), and, only when
         the user turned `safety.mandate_send_mail` on, one plain mail they asked for to an address they wrote (class 3, five a day)."""
@@ -213,5 +221,5 @@ def register(ctx):
              {"type": "object", "properties": {"server": {"type": "string"}, "tool": {"type": "string"},
                                                "arguments": {"type": "object"}}, "required": ["server", "tool"]},
              guarded(call), sensitive=True, risk=risk, describe=describe, egress=egress,
-             mandate=Mandate("", max_class=R3, check=lifts, class3_flag="mandate_send_mail"))  # `lifts` reads the request itself,
+             mandate=Mandate("", max_class=R3, check=lifts, class3_flag="mandate_send_mail"), content_ok=own_place)  # `lifts` reads the request itself,
     ]

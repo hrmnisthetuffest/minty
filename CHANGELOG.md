@@ -804,4 +804,10 @@ when it is good enough.
   words where the tool has a mandate), never given (work waited and gave up) or usually no (offered too eagerly); class 3 is never proposed away and nothing is changed. A quiet
   weekly note goes through the notifier when a week had at least ten questions and something that could go (`friction_note`, told once per ISO week). `ApprovalStore.history`.
   Tests: `tests/test_friction.py`.
+- Fix: "check my gmail" still asked. The audit showed why: the first Composio call (a search) ran, and every call after it was asked, because `mcp_call` is
+  on the list of tools that must never act on something just read, and Composio's own answer counts as something read. A tool can now say where its content
+  goes (`Tool.content_ok`); for `mcp_call` that is a read of your own data or a write into a sheet or doc Minty knows, through the Composio server you set
+  up, or a tool you allowed as read-only. For those, reading first is no longer a reason to ask; content that gave orders still is, and a send or any
+  other server keeps the old caution. Replayed against a copy of your real settings: the search and the Gmail fetch after it are both allowed without a
+  question. Tests: `tests/test_policy_mandate.py`, `tests/test_mcp_remote.py`.
 
