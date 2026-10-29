@@ -872,4 +872,5 @@ when it is good enough.
   connect), a searchable palette, a settings form, live problems, live per-node status over the events socket, run history with a diagnosis, versions with a diff and restore, and an Ask Minty box that works
   on the same workflow. Also `docs/jarvis-gaps.md`: the assessment of what still limits Minty, checked against the code. Tests: `tests/test_flows_engine.py` (20), `tests/test_flows_acceptance.py` (14, the ten
   acceptance scenarios and the boundaries), `tests/test_flows_api.py` (6). Checked in a real browser against the real core app (render, live validation, test and real runs lighting up nodes). Not
-  verified: a live model driving the tools, drag-to-connect by mouse (only the DOM path was exercised), a schedule firing over a real day.
+  verified: drag-to-connect by mouse (only the DOM path was exercised), a schedule firing over a real day, long messy requests to a live model. A real model did build a workflow from one
+  sentence and edit it on a scratch copy; that showed the catalogue needed an example and the conditions needed to be forgiving, so `input.n > 10` and `{left, op, right}` are accepted and stored in the canonical form.

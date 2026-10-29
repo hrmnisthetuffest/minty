@@ -92,6 +92,19 @@ def test_the_expression_language_is_paths_and_comparisons_and_nothing_else():
     assert ok({"path": "input.s", "op": "matches", "value": "^hello"})
 
 
+def test_the_natural_ways_to_write_a_condition_are_stored_as_the_one_canonical_form():
+    def where(c):
+        doc = flow([("go", "trigger.manual", {}), ("c", "logic.if", {"where": c})], [("go", "out", "c")])
+        assert errors(doc) == [], c
+        return model.normalize(doc)["nodes"][1]["params"]["where"]
+    canon = {"path": "input.n", "op": "gt", "value": 10}
+    assert where("input.n > 10") == canon and where(canon) == canon
+    assert where({"left": "{{input.n}}", "op": ">", "right": 10}) == canon
+    assert where("input.name == 'Ann'") == {"path": "input.name", "op": "eq", "value": "Ann"}
+    assert where({"all": ["input.n >= 1", {"left": "input.n", "op": "<", "right": 5}]}) == {"all": [{"path": "input.n", "op": "gte", "value": 1}, {"path": "input.n", "op": "lt", "value": 5}]}
+    assert errors(flow([("go", "trigger.manual", {}), ("c", "logic.if", {"where": "when it feels big"})], [("go", "out", "c")]))  # prose is still refused
+
+
 def test_a_patch_changes_only_what_it_names_and_a_diff_says_what_changed():
     base = flow([("go", "trigger.manual", {}), ("a", "data.set", {"values": {"x": 1}})], [("go", "out", "a")])
     new = model.apply_ops(base, [{"op": "add_node", "id": "b", "type": "out.result", "params": {"value": "{{nodes.a.x}}"}}, {"op": "connect", "from": "a", "to": "b"},

@@ -38,7 +38,7 @@ def register(ctx):
         return [f"{i['level']}{' ' + i['node'] if i.get('node') else ''}: {i['message']}" for i in issues]
 
     async def catalogue(args):
-        return out(svc().catalogue())
+        return out(svc().catalogue(compact=True))
 
     async def list_(args):
         s = svc()
@@ -122,7 +122,7 @@ def register(ctx):
         Tool("get", "One workflow: its nodes and connections, problems, run stats and versions. Any workflow, whoever made it.",
              {"type": "object", "properties": ref, "required": ["flow"]}, guarded(get), risk=R1),
         Tool("check", "Validate a workflow (flow) or a draft (doc) without saving: errors, warnings, hints.", {"type": "object", "properties": {**ref, "doc": o}}, guarded(check), risk=R1),
-        Tool("save", "Create a workflow, or with flow replace one with a new version. doc = {name, nodes:[{id,type,params,pos}], edges:[{from,port,to}]}. Saved only if valid.",
+        Tool("save", "Create a workflow, or with flow replace one with a new version (see catalogue example). Checks it first: saved only if valid.",
              {"type": "object", "properties": {"doc": o, **ref, "note": s}, "required": ["doc"]}, guarded(save), risk=R1),
         Tool("patch", "Change a workflow in place as a new version. ops: add_node, remove_node, set_params, connect, disconnect, move, rename.",
              {"type": "object", "properties": {**ref, "ops": {"type": "array", "items": o}, "note": s}, "required": ["flow", "ops"]}, guarded(patch), risk=R1),

@@ -25,5 +25,8 @@ See `docs/flows.md`.
 ## Verified, and not
 * Verified: the engine rules (mutation-checked), the agent tools against the real job runner and stores, the HTTP routes, and the page in a real browser against the real core app
   (render, add a node with live problems, test run with nodes lighting up through the events socket, real run with stats, per-step table).
-* Not verified: a live model choosing and editing workflows on its own (no live-model run of the `flows_*` tools yet); drag-to-connect and node dragging by mouse were written but only
+* Live model (scratch copy, real provider): built a workflow from one sentence in 3 tool calls with no questions and reported the test honestly (not verified, not switched on); edited it into
+  a valid second version. The first attempts ran out of tool rounds guessing the condition syntax, which led to the catalogue example and to accepting `input.n > 10` and `{left, op, right}`
+  (stored canonically). One edit run's final summary hit a provider timeout. Not tried: long, messy requests; debugging a real failure end to end by a live model.
+* Not verified: drag-to-connect and node dragging by mouse were written but only
   exercised through the DOM (the connection and move code paths have no automated browser test); a schedule firing across a real day; a Composio tool step in a real run.

@@ -107,6 +107,39 @@ def evaluate(cond, ctx: dict) -> bool:
     raise ValueError(f"unknown operator {op}")
 
 
+SYMBOLS = {"==": "eq", "=": "eq", "!=": "ne", ">": "gt", ">=": "gte", "<": "lt", "<=": "lte"}
+_SIMPLE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_.\[\]\-]*)\s*(==|!=|>=|<=|=|>|<)\s*(.+?)\s*$")
+
+
+def _literal(text: str):
+    try:
+        return json.loads(text)
+    except ValueError:
+        return text.strip().strip("'\"")
+
+
+def coerce_condition(cond):
+    """The natural ways to write a condition ("input.n > 10", {left, op: ">", right}) become the canonical {path, op, value}; anything else is returned as it was."""
+    if isinstance(cond, str):
+        m = _SIMPLE.match(cond)
+        return {"path": m.group(1), "op": SYMBOLS[m.group(2)], "value": _literal(m.group(3))} if m else cond
+    if not isinstance(cond, dict):
+        return cond
+    for key in ("all", "any"):
+        if isinstance(cond.get(key), list):
+            return {key: [coerce_condition(c) for c in cond[key]]}
+    if "not" in cond:
+        return {"not": coerce_condition(cond["not"])}
+    if "path" not in cond and "left" in cond:
+        left = str(cond.get("left") or "")
+        whole = TEMPLATE.fullmatch(left.strip())
+        op = str(cond.get("op") or "eq")
+        return {"path": whole.group(1) if whole else left, "op": SYMBOLS.get(op, op), "value": cond.get("right", cond.get("value"))}
+    if cond.get("op") in SYMBOLS:
+        return {**cond, "op": SYMBOLS[cond["op"]]}
+    return cond
+
+
 def condition_problem(cond) -> str:
     """'' when the condition is well formed."""
     if not isinstance(cond, dict):
@@ -122,7 +155,7 @@ def condition_problem(cond) -> str:
     if "not" in cond:
         return condition_problem(cond["not"])
     if not isinstance(cond.get("path"), str) or not cond["path"]:
-        return "a condition needs a path"
+        return 'a condition needs a path, like {"path": "input.n", "op": "gt", "value": 10}'
     if cond.get("op", "eq") not in OPS:
         return f"unknown operator {cond.get('op')!r} (use one of {', '.join(OPS)})"
     return ""
@@ -185,6 +218,11 @@ def normalize(doc: dict) -> dict:
                   for n in (d.get("nodes") if isinstance(d.get("nodes"), list) else []) if isinstance(n, dict)]
     d["edges"] = [{"from": e.get("from"), "port": e.get("port") or "out", "to": e.get("to")}
                   for e in (d.get("edges") if isinstance(d.get("edges"), list) else []) if isinstance(e, dict)]
+    for n in d["nodes"]:
+        spec = CATALOGUE.get(n["type"])
+        for name in ([k for k, v in spec.params.items() if v[0] == "cond"] if spec else []):
+            if name in n["params"]:
+                n["params"][name] = coerce_condition(n["params"][name])
     return d
 
 

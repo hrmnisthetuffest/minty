@@ -23,6 +23,12 @@ RUN_BUDGET_S = 3600.0  # seconds of work, not counting the time spent waiting fo
 APPROVAL_TTL_S = 900.0
 APPROVAL_WAIT_S = 6 * 3600.0
 BAD = ("failed", "blocked", "timeout")
+EXAMPLE = {"name": "size check", "nodes": [
+    {"id": "start", "type": "trigger.manual", "params": {}, "pos": [40, 40]},
+    {"id": "big", "type": "logic.if", "params": {"where": {"path": "input.n", "op": "gt", "value": 10}}, "pos": [260, 40]},
+    {"id": "yes", "type": "out.result", "params": {"value": "n is above 10"}, "pos": [480, 0]},
+    {"id": "no", "type": "out.result", "params": {"value": "n is 10 or less"}, "pos": [480, 90]}],
+    "edges": [{"from": "start", "port": "out", "to": "big"}, {"from": "big", "port": "true", "to": "yes"}, {"from": "big", "port": "false", "to": "no"}]}
 
 
 class FlowService:
@@ -43,12 +49,19 @@ class FlowService:
         f = self.store.get(ref)
         return f is not None and not f.archived
 
-    def catalogue(self) -> dict:
+    def catalogue(self, compact: bool = False) -> dict:
+        """What can be built. The editor gets every setting of every node; the agent (compact) gets the settings that are special to a node, the ones every
+        node has once, and a small complete example, so it does not spend its turns guessing the shape."""
+        common = set(model.COMMON)
         return {"nodes": [{"type": s.type, "title": s.title, "group": s.group, "doc": s.doc, "ports": list(s.ports) + (["error"] if not s.trigger else []),
-                           "effect": s.effect, "trigger": s.trigger, "params": {k: {"kind": v[0], "required": v[1]} for k, v in s.params.items()}}
+                           "effect": s.effect, "trigger": s.trigger,
+                           "params": {k: ({"kind": v[0], "required": v[1]} if not compact else f"{v[0]}{'*' if v[1] else ''}") for k, v in s.params.items() if not (compact and k in common)}}
                           for s in model.CATALOGUE.values()],
                 "tools": sorted(n for n in self._tool_names() if self.tool_exists(n)),
-                "expressions": "{{input.x}} {{nodes.<id>.field}} {{prev.field}} {{item.field}} {{index}}; conditions {path, op, value} with all/any/not; ops: " + ", ".join(model.OPS)}
+                "every_node": "retry {max 0-3, delay_s} (transient failures of steps that change nothing only), timeout_s 1-300, label, note; connect an `error` port to handle a failure",
+                "expressions": "{{input.x}} {{nodes.<id>.field}} {{prev.field}} {{item.field}} {{index}}; a condition is {\"path\": \"input.n\", \"op\": \"gt\", \"value\": 10} "
+                               "or {all|any: [..]} or {not: ..}; op is one of " + ", ".join(model.OPS) + " (words, not symbols)",
+                "example": EXAMPLE}
 
     def check(self, doc: dict) -> list[dict]:
         issues = model.validate(doc, tool_exists=self.tool_exists, flow_exists=self.flow_exists)

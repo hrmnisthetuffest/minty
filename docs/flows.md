@@ -55,4 +55,6 @@ Routes: `/api/flows...` (listed in `src/minty_core/flows/api.py`).
 * Waiting for an outside event in the middle of a run (a run can wait for your answer, not for the world).
 * Evidence-based self-optimisation that runs by itself: Minty can measure (`flows_runs` stats, per-step timing, call counts) and propose changes, but nothing rewrites a workflow
   without being asked.
-* A live model run of any of this has not been done in this session (the tests drive the real tools with scripted data).
+* Live-model use is lightly checked, not proven: on a scratch copy of the settings a real model built a workflow from one sentence (catalogue, save, test run: 3 tool calls, no questions)
+  and edited it (a valid second version with a meaningful diff). It needed the forgiving condition parsing and the catalogue example that these runs showed were missing; one run's
+  final summary hit a provider timeout. Longer, messier requests have not been tried.
