@@ -616,6 +616,10 @@ def create_app(ctx: AppContext) -> FastAPI:
     from minty_core.studio.player_api import add_routes as studio_routes
 
     studio_routes(api, ctx)
+
+    from minty_core.flows.api import add_routes as flow_routes
+
+    flow_routes(api, ctx)
     app.include_router(api)
 
     @app.websocket("/events")
