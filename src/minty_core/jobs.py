@@ -243,6 +243,11 @@ class JobContext:
         self._runner, self.job = runner, job
         self.last_approval = ""  # how the last question ended: approved, denied or expired
 
+    @property
+    def waited_s(self) -> float:
+        """Seconds this job has spent waiting for the user's answer so far: the time budget does not count them."""
+        return self._runner.waited_s(self.job.id)
+
     def progress(self, text: str) -> None:
         self.job.progress = (self.job.progress + [short(text, 160)])[-PROGRESS_KEEP:]
         self._runner._publish(self.job)
@@ -284,6 +289,7 @@ class JobContext:
         self.job.status, self.job.approval_id, self.job.question = "waiting_approval", record.id, question
         self._runner._persist(self.job)
         self._runner._say(f"{self.job.label().capitalize()} needs your approval: {question}")
+        self._runner._pause(self.job.id)
         try:
             while True:
                 current = approvals.get(record.id)
@@ -295,6 +301,7 @@ class JobContext:
                     return True
                 await asyncio.sleep(poll_s)
         finally:
+            self._runner._resume(self.job.id)
             if self.job.status == "waiting_approval":
                 self.job.status, self.job.question = "running", ""
                 self._runner._persist(self.job)
@@ -310,6 +317,7 @@ class JobContext:
         self.job.status, self.job.approval_id, self.job.question = "waiting_approval", record.id, question
         self._runner._persist(self.job)
         self._runner._say(f"{self.job.label().capitalize()} needs your approval: {question}")
+        self._runner._pause(self.job.id)
         try:
             while True:
                 current = approvals.get(record.id)
@@ -319,6 +327,7 @@ class JobContext:
                     return approvals.consume(record.id, name, args)
                 await asyncio.sleep(poll_s)
         finally:
+            self._runner._resume(self.job.id)
             if self.job.status == "waiting_approval":
                 self.job.status, self.job.question = "running", ""
                 self._runner._persist(self.job)
@@ -343,7 +352,40 @@ class JobRunner:
         self._tasks: dict[int, asyncio.Task] = {}
         self._slots: asyncio.Semaphore | None = None
         self._locks: dict[str, asyncio.Lock] = {}
+        self._waited: dict[int, float] = {}  # job -> seconds spent waiting for the user (finished waits)
+        self._waiting_since: dict[int, float] = {}  # job -> when the wait it is in now began
         self.on_finish: list[Callable[[Job], None]] = []  # called once a job reaches a final state
+
+    # ---- the time budget counts work, not waiting for the user ------------------------------------
+    def _pause(self, job_id: int) -> None:
+        self._waiting_since.setdefault(job_id, time.monotonic())
+
+    def _resume(self, job_id: int) -> None:
+        began = self._waiting_since.pop(job_id, None)
+        if began is not None:
+            self._waited[job_id] = self._waited.get(job_id, 0.0) + (time.monotonic() - began)
+
+    def waited_s(self, job_id: int) -> float:
+        began = self._waiting_since.get(job_id)
+        return self._waited.get(job_id, 0.0) + (time.monotonic() - began if began is not None else 0.0)
+
+    async def _within_budget(self, job: Job, work: Awaitable):
+        """Run the work for at most `job.budget_s` seconds of working: the time it waits for the user to answer a question is not counted,
+        so a job that asked something and was not answered for an hour has not used up its budget."""
+        task = asyncio.ensure_future(work)
+        began, waited0 = time.monotonic(), self.waited_s(job.id)
+        try:
+            while True:
+                left = job.budget_s - ((time.monotonic() - began) - (self.waited_s(job.id) - waited0))
+                if left <= 0:
+                    raise asyncio.TimeoutError
+                done, _ = await asyncio.wait({task}, timeout=min(left, 1.0))
+                if done:
+                    return task.result()
+        finally:
+            if not task.done():
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
 
     # ---- queries ---------------------------------------------------------------------------------
     def get(self, job_id: int) -> Job | None:
@@ -482,7 +524,7 @@ class JobRunner:
                     while True:
                         job.attempts += 1
                         try:
-                            result = await asyncio.wait_for(work(JobContext(self, job)), job.budget_s)
+                            result = await self._within_budget(job, work(JobContext(self, job)))
                             break
                         except (asyncio.TimeoutError, asyncio.CancelledError):
                             raise

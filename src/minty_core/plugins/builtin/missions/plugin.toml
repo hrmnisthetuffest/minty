@@ -8,7 +8,7 @@ label = "Missions at once (default 2)"
 
 [settings.max_runtime_s]
 type = "number"
-label = "Max seconds per mission (default 1800)"
+label = "Max seconds of work per mission (default 7200; time spent waiting for your answer is not counted)"
 
 [settings.max_steps]
 type = "number"

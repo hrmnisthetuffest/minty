@@ -28,10 +28,13 @@ def _positive(value, default, cast):
     return cast(number)
 
 
+DEFAULT_RUNTIME_S = 7200.0  # seconds of work, not counting the time it waits for your answer (a mailbox clean-up is not a five-minute job)
+
+
 def register(ctx):
     settings = ctx.settings or {}
     max_concurrent = _positive(settings.get("max_concurrent"), 2, int)
-    max_runtime = _positive(settings.get("max_runtime_s"), 1800.0, float)
+    max_runtime = _positive(settings.get("max_runtime_s"), DEFAULT_RUNTIME_S, float)
     max_steps = _positive(settings.get("max_steps"), 40, int)
     approval_wait = _positive(settings.get("approval_wait_s"), 6 * 3600.0, float)
     expired = {"now": False}
@@ -81,7 +84,7 @@ def register(ctx):
             result = await run_mission(
                 router, goal, specs=worker.specs, call_tool=worker.call, progress=job_ctx.progress, save=job_ctx.checkpoint,
                 tracer=ctx.services.get("tracer"), sensitive=(lambda: bool(is_private())) if is_private else (lambda: False),
-                budget=Budget(steps=max_steps, seconds=max(60.0, max_runtime - 30), tokens=TOKENS),
+                budget=Budget(steps=max_steps, seconds=max(60.0, max_runtime - 30), tokens=TOKENS, waited=lambda: job_ctx.waited_s),
                 resume=resume, question=question, answer=answer,
                 context=background)
             job_ctx.checkpoint({"verified": result.verified, "plan": result.plan_json, "ledger": result.ledger,

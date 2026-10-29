@@ -842,3 +842,8 @@ when it is good enough.
   paired. New `phone_tell` tool (plugin `phone`, offered when Telegram or your phone comes up): one message to the chat you paired, never to a chat the model names; nothing in private
   mode; it goes even in quiet hours because you asked just now; asking for it in your own words (Telegram, or "on my phone") is not asked about again, doing it unprompted is. If
   Telegram is off or no chat is paired it says how to turn that on instead of pretending. Tests: `tests/test_plugin_phone.py`.
+- Fix: a mission was reported as "took too long, so I stopped it" after sitting for its whole 30 minutes on a question nobody was there to answer (mission 14, trashing
+  the promotions in a Gmail account). A job's time budget now counts the time it is working, not the time it waits for your answer: both the job's own limit
+  (`JobRunner`) and the mission loop's clock (`Budget.waited`) leave the waiting out, whether the job asked itself or adopted the question the safety gate had already put to
+  you. Work that really runs too long is still stopped. Missions also get 2 hours of work by default (was 30 minutes; `missions.max_runtime_s` still changes it), because
+  cleaning a mailbox is not a five-minute job. A mission that timed out can be picked up where it stopped ("resume mission 14"). Tests: `tests/test_job_waiting_budget.py`.

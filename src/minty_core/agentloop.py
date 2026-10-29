@@ -260,6 +260,7 @@ class Budget:
     used_steps: int = 0
     used_tokens: int = 0
     started: float = field(default_factory=time.monotonic)
+    waited: Callable[[], float] | None = None  # seconds spent waiting for the user's answer: they are not working time
 
     def charge(self, chars: int) -> None:
         self.used_tokens += chars // 4
@@ -267,7 +268,7 @@ class Budget:
     def exhausted(self) -> str:
         if self.used_steps >= self.steps:
             return "steps"
-        if time.monotonic() - self.started > self.seconds:
+        if time.monotonic() - self.started - (self.waited() if self.waited is not None else 0.0) > self.seconds:
             return "time"
         if self.used_tokens >= self.tokens:
             return "tokens"
