@@ -861,3 +861,15 @@ when it is good enough.
   more may be) and says to search Composio first for any app or service task and never to say it has no access to an app before it searched. Checked live: the refresh found your
   YouTube, Drive, Docs, Sheets, Calendar, Gmail (3), Instagram (2), Reddit, ElevenLabs and Gemini, and a real "upload a video to my youtube" turn went through Composio with no
   question. Tests: `tests/test_composio_apps.py`.
+- New: **Automations**, a visual workflow system that you and Minty operate together (`minty_core/flows/`, the panel's Automations page, `docs/flows.md`). One JSON definition per workflow (nodes with
+  positions, connections), validated the same way on save and on run, stored as immutable versions (edit = new version, going back = new version, delete = archive). Sixteen real node types (manual,
+  schedule and job-ended triggers; set / filter / map / merge / validate; if; run any Minty tool; ask the model; child workflows and for-each; wait; tell the user; result), a safe path-only expression
+  language (no eval), an engine that runs independent branches together, takes error paths, retries only transient failures of steps that change nothing, times steps out without counting the wait for your
+  answer, resumes without repeating finished steps, cancels, and reports `done`, `verified`, `failed`, `blocked` truthfully. A run is a background job (budget, cancel, resume, origin); tool steps go through
+  the mission worker so the same safety gate, receipts and provenance apply, and a step cannot call the workflow tools. Test runs assess what would change something instead of doing it. Schedules (every
+  minute, once per minute) and "a job ended" triggers start workflows, de-duplicated by event. Eleven `flows_*` agent tools read, create, patch, test, run, diagnose, diff, restore and switch any workflow,
+  including ones drawn by hand (no ownership check; edits are not questions, turning one on to run by itself is, unless your words asked for it). The panel page has a canvas (pan, zoom, minimap, drag to
+  connect), a searchable palette, a settings form, live problems, live per-node status over the events socket, run history with a diagnosis, versions with a diff and restore, and an Ask Minty box that works
+  on the same workflow. Also `docs/jarvis-gaps.md`: the assessment of what still limits Minty, checked against the code. Tests: `tests/test_flows_engine.py` (20), `tests/test_flows_acceptance.py` (14, the ten
+  acceptance scenarios and the boundaries), `tests/test_flows_api.py` (6). Checked in a real browser against the real core app (render, live validation, test and real runs lighting up nodes). Not
+  verified: a live model driving the tools, drag-to-connect by mouse (only the DOM path was exercised), a schedule firing over a real day.

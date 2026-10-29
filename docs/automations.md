@@ -2,6 +2,8 @@
 
 Minty can make things happen by themselves in three ways. Start with the simplest that does the job.
 
+**Visual workflows inside Minty** (draw a graph in the panel's *Automations* page, or have Minty build and fix it) are described in [flows.md](flows.md). The ways below are the simpler ones.
+
 ## 1. Minty's own: reminders, timers, the morning brief, routines
 
 - **Reminders and timers:** "remind me at 6 pm to take my medicine", "set a timer for ten minutes". Reminders survive a restart.

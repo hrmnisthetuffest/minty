@@ -54,3 +54,5 @@ The pasted request ends, in the saved conversation, exactly at the first sentenc
 No live-model run of the new behaviours (a mandate against a real voice request; the brief's effect on a real mission); no unattended day of
 the Gmail watcher on a real mailbox; no live Composio *create* (the link pattern in Composio's answer is untested); delivery to a phone from
 the notifier. The Composio read shapes (profile, history, message headers, account list) were taken from live read-only answers.
+
+See also: [flows.md](flows.md) (workflows you and Minty both build and run) and [jarvis-gaps.md](jarvis-gaps.md) (what is still missing, checked against the code).
