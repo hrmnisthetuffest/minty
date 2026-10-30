@@ -79,6 +79,10 @@ No installer? Everything it does is `python -m venv .venv && .venv/bin/pip insta
 - **Takes goals, not just commands.** Hand it an outcome and it works in the background, checks each step against what its tools
   really returned, and reports done, failed or blocked on a question; coding agents are checked by the files and tests, e-mail goes
   out only under rules you write, and it tells you what needs you. See [docs/work.md](docs/work.md).
+- **Visual workflows you and Minty edit together.** Draw an automation on the panel's Automations page (nodes, branches, schedules, versions, test runs) or ask Minty to
+  build, fix, rehearse and improve it; every step goes through the same safety gate. See [docs/flows.md](docs/flows.md).
+- **Knows what it is, what it can do and what it knows.** One identity file ([MINTY_IDENTITY.md](src/minty_core/MINTY_IDENTITY.md)), a live capability registry with evidence,
+  a sourced model of your projects and decisions, a watchdog for stalled work, and a Mission Control page. See [docs/jarvis-gaps.md](docs/jarvis-gaps.md) for what exists and what does not.
 - **Makes videos and runs content automations.** Voiceover, music, captions and your own gameplay footage become short videos, Claude
   Code makes the motion graphics, posts go to Instagram through the official API (asked first by default), and any goal can be
   put on a daily schedule by just asking. See [docs/studio.md](docs/studio.md).
