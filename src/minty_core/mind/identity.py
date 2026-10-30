@@ -95,6 +95,36 @@ def introduce(level: str = "short", live: dict | None = None) -> str:
     return body.strip()
 
 
+_ABOUT_ME = re.compile(
+    r"\b(?:(?:who|what) are you)\s*[?.!]*\s*$|\b(what is minty|what exactly is minty|introduce yourself|tell me about yourself|about yourself|explain yourself|what can you do|"
+    r"what are you capable|what are you able|your (?:architecture|limitations|limits|strengths|capabilities|abilities|purpose)|how do you (?:work|manage my work)|"
+    r"what makes you different|what are you currently capable)\b", re.IGNORECASE)
+
+
+_WANTS = (("E", re.compile(r"architect|how do you (?:work|manage)|how are you built|under the hood|components", re.I), 760),
+          ("F", re.compile(r"limit|strength|weakness|weak|cannot|can't|blocker|current(?:ly)? (?:capable|limit)", re.I), 820),
+          ("D", re.compile(r"what can you do|capabilit|abilit|able to|capable", re.I), 760))
+
+
+def hint_for(request: str) -> str:
+    """For a question about Minty itself: its identity and the section that was asked about, so the answer is put together from the file and the live registry, not from habit.
+    Nothing for other requests."""
+    text = str(request or "")
+    if not _ABOUT_ME.search(text):
+        return ""
+    try:
+        secs = sections()
+    except OSError:
+        return ""
+    parts = [secs.get("A", "").split("\n\n")[0]]
+    for letter, pattern, cap in _WANTS:
+        if letter in secs and pattern.search(text):
+            body = " ".join(secs[letter].split())
+            parts.append(f"[{letter}] " + (body if len(body) <= cap else body[: cap - 1].rstrip() + "…"))
+    return ("The owner is asking about you. Build your answer from this text, never from habit or guesses about how you work: " + " ".join(parts) +
+            " For a fuller introduction call self_about (level detailed, technical or user). For what you can really do or what limits you right now, call self_can or self_diagnose and say what is available, what needs setup, and what has not been shown to work.")
+
+
 def _agent(secs: dict, live: dict | None) -> str:
     """A structured description for another authorised AI system: identity, what is available now, the limits, and no credentials or endpoints."""
     caps = [{"capability": c["name"], "status": c["status"], "tools": len(c["tools"]), "evidence": c["evidence"].get("calls", 0)} for c in (live or {}).get("capabilities", [])]

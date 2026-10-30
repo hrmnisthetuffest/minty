@@ -584,7 +584,10 @@ def build_context(config_dir: Path) -> AppContext:
 
     world = services["world"] = WorldStore(config_dir / "world.sqlite")
     services["turn_read_outside"] = lambda: bool(agent.provenance is not None and agent.provenance.sources)  # this request read mail, a page or a file
-    agent.turn_extras.append(lambda request: world.hint(request, include_private=bool(is_private()), cap=700))  # only when the request names something it knows
+    agent.turn_extras.append(lambda request: world.hint(request, include_private=bool(is_private()), cap=700))
+    from minty_core.mind import identity as identity_file
+
+    agent.turn_extras.append(identity_file.hint_for)  # a question about Minty itself: the identity first  # only when the request names something it knows
     services["list_plugins"] = host.list_plugins
     services["router_status"] = router.status
     services["flows"] = FlowService(

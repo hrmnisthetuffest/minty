@@ -92,6 +92,18 @@ def test_the_identity_file_holds_no_personal_data_or_secrets_and_has_every_secti
     assert "personality" in identity.sections(text)["C"].lower()  # tone is the personality store's, not overridden here
 
 
+def test_a_question_about_minty_itself_gets_the_identity_in_front_of_the_model_and_other_requests_get_nothing():
+    asked = ["Who are you?", "introduce yourself", "What exactly is Minty?", "what can you do", "Explain your architecture", "what are your limitations", "tell me about yourself"]
+    for q in asked:
+        hint = identity.hint_for(q)
+        assert "personal operating agent" in hint and "self_about" in hint and "self_can" in hint and len(hint) <= 1600, q  # answer from the file, not from habit
+    assert "plugin host" in identity.hint_for("Explain your architecture to a new colleague")  # the section that was asked about is in front of the model
+    assert "Limits that are true by design" in identity.hint_for("what are your strengths and limitations?")
+    assert "planner, an executor" in identity.hint_for("what can you do?") and len(identity.hint_for("explain your architecture, strengths and what you can do")) <= 3400
+    for q in ["what time is it", "play some jazz", "who are you meeting tomorrow", "what can you tell me about the weather"]:
+        assert identity.hint_for(q) == "", q
+
+
 def test_the_introductions_come_from_one_source_and_differ_by_who_asks():
     live = {"tools": 300, "capabilities": [{"name": "weather", "status": "available", "tools": ["weather_get"], "evidence": {"calls": 3}},
                                            {"name": "phone", "status": "needs configuration", "tools": ["phone_tell"], "evidence": {"calls": 0}}],
