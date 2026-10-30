@@ -86,6 +86,12 @@ async def test_a_structured_item_gets_the_same_name_links_and_proposed_links_as_
     assert ("about", "world:Acme", "confirmed") in links and ("relates to", f"item:{old['id']}", "suggested") in links
 
 
+async def test_a_whole_brain_dump_passed_as_one_titled_item_is_still_split_into_its_thoughts(ctx):
+    dump = "Idea: sell a monthly tasting box to small cafes.\nLesson learned: always ask the supplier for a volume discount.\nQuestion: Should we invoice at thirty days?"
+    got = j(await call(ctx, "know_capture", kind="idea", title="Monthly tasting box for small cafes", body=dump, authored="you"))
+    assert got["status"] == "filed" and [a["kind"] for a in got["pieces"]] == ["idea", "lesson", "question"] and len(ctx.services["knowledge"].items()) == 3
+
+
 async def test_in_a_private_turn_what_is_filed_is_private(ctx):
     ctx.services["is_private"] = lambda: True
     await call(ctx, "know_capture", text="Idea: quietly approach a rival")

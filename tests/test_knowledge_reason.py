@@ -134,6 +134,12 @@ def test_related_proposes_only_similar_things_that_are_not_linked_yet(parts):
     assert r.related_to_item(a["id"]) == [] and ref(c) not in str(got)
 
 
+def test_accents_do_not_hide_what_a_request_is_about(parts):
+    store, _w, r = parts
+    store.add_item("note", "Pricing for cafés", "Cafés want clear pricing.", authored="you")
+    assert "Pricing for cafés" in r.hint("tell me about cafes pricing", include_private=False, cap=300)
+
+
 def test_filler_words_that_every_text_shares_do_not_make_two_things_related(parts):
     store, _w, r = parts
     a = store.add_item("idea", "Tasting box for Acme", "Offer Acme a tasting box every month, the last thing on Friday.")

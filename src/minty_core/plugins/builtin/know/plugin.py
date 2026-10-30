@@ -54,7 +54,8 @@ def register(ctx):
     async def capture(args):
         kb, cap = need("knowledge"), need("knowledge_capture")
         o, p = outside(), private()
-        if args.get("title"):
+        dump = str(args.get("text") or "") or (str(args.get("body") or "") if cap.looks_like_dump(str(args.get("body") or "")) else "")
+        if args.get("title") and not dump:  # a "titled item" whose body is really several labelled thoughts is a brain dump: it is split like one
             kind = str(args.get("kind") or "note")
             added = cap.add(kind, str(args["title"]), str(args.get("body") or ""), authored=str(args.get("authored") or "minty"), summary=str(args.get("summary") or ""),
                             project=str(args.get("project") or ""), tags=args.get("tags") or (), private=p, sources=[s for s in (args.get("sources") or []) if isinstance(s, str)],
@@ -70,7 +71,7 @@ def register(ctx):
                         "similar": [{"ref": x["ref"], "why": x["why"]} for x in added["similar"]], "linked_to": made, "link_problems": problems,
                         "note": "this was already in the second brain: the new source was added as evidence, not a second copy" if added["duplicate"] else
                         "from outside, unchecked: it needs a second source" if o else "written by Minty, not checked until a source is attached or the owner confirms it"})
-        got = await cap.capture(text=str(args.get("text") or ""), url=str(args.get("url") or ""), channel="agent", kind_hint=str(args.get("kind") or ""),
+        got = await cap.capture(text=dump, url=str(args.get("url") or ""), channel="agent", kind_hint=str(args.get("kind") or ""),
                                 origin="outside" if o else "you", private=p)
         return out(capture_view(got))
 

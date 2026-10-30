@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from typing import Callable
 
@@ -32,7 +33,7 @@ took need needs want like going one two new old good better best time way lot re
 
 
 def stem(word: str) -> str:
-    w = word.lower()
+    w = "".join(c for c in unicodedata.normalize("NFKD", word.lower()) if not unicodedata.combining(c))  # café and cafe are the same word
     for suffix, repl in (("ies", "y"), ("ing", ""), ("ed", ""), ("es", ""), ("s", "")):
         if len(w) > len(suffix) + 3 and w.endswith(suffix) and not (suffix == "s" and w.endswith("ss")):
             return w[: -len(suffix)] + repl

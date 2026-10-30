@@ -210,12 +210,23 @@ class Capturer:
         return {"kind": "text", "title": "", "text": cap["raw"], "source": src["id"], "content_origin": origin}
 
     # ---- understanding it -------------------------------------------------------------------------------------------
+    @staticmethod
+    def looks_like_dump(text: str) -> bool:
+        """Two or more lines that each begin with a label ("Idea:", "Lesson learned:", "Question:") are separate thoughts, however they were passed in."""
+        return sum(1 for ln in str(text).splitlines() if _LABEL.match(ln)) >= 2
+
     def _atomise(self, text: str) -> list[str]:
         parts: list[str] = []
         for para in re.split(r"\n\s*\n", text.strip()):
             lines = [ln for ln in para.splitlines() if ln.strip()]
             if len(lines) > 1 and all(re.match(r"\s*(?:[-*•]|\d+[.)])\s+", ln) for ln in lines):
                 parts += [re.sub(r"^\s*(?:[-*•]|\d+[.)])\s+", "", ln).strip() for ln in lines]
+            elif self.looks_like_dump(para):  # a new thought starts at each labelled line; an unlabelled line belongs to the one above
+                for ln in lines:
+                    if _LABEL.match(ln) or not parts:
+                        parts.append(ln.strip())
+                    else:
+                        parts[-1] += " " + ln.strip()
             elif para.strip():
                 parts.append(" ".join(para.split()) if len(lines) > 1 and len(para) < 400 else para.strip())
         if len(parts) > MAX_ATOMS:

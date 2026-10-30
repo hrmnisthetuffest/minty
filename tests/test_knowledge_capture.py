@@ -52,6 +52,12 @@ async def test_a_brain_dump_becomes_separate_pieces_each_with_a_guessed_kind_and
     assert items["question"]["title"].startswith("Should we sell wholesale")
 
 
+async def test_labelled_lines_with_no_blank_line_between_them_are_still_separate_thoughts(parts):
+    store, _w, cap, _ = parts
+    got = await cap.capture("Idea: sell a monthly tasting box to small cafes.\nLesson learned: always ask the supplier for a volume discount before agreeing a price.\nQuestion: Should we invoice cafes at thirty days instead of sixty?")
+    assert [a["kind"] for a in got["result"]["atoms"]] == ["idea", "lesson", "question"] and len(store.items()) == 3
+
+
 async def test_one_short_thought_is_one_piece_and_a_hint_from_the_caller_wins_over_the_guess(parts):
     store, _w, cap, _ = parts
     await cap.capture("Call the roaster about the delivery date", kind_hint="observation")
