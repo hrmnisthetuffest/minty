@@ -134,6 +134,15 @@ def test_related_proposes_only_similar_things_that_are_not_linked_yet(parts):
     assert r.related_to_item(a["id"]) == [] and ref(c) not in str(got)
 
 
+def test_plural_and_singular_forms_of_a_word_are_the_same_subject(parts):
+    store, _w, r = parts
+    store.add_item("lesson", "always ask the supplier for a volume discount before agreeing a price.", "", authored="you")
+    assert "volume discount" in r.hint("What do I already know about getting better prices from suppliers?", include_private=False, cap=300)
+    from minty_core.knowledge.reason import stem
+
+    assert len({stem(w) for w in ("price", "prices", "priced", "pricing")}) == 1 and len({stem(w) for w in ("cafe", "cafes")}) == 1 and len({stem(w) for w in ("agree", "agreeing", "agreed")}) == 1
+
+
 def test_accents_do_not_hide_what_a_request_is_about(parts):
     store, _w, r = parts
     store.add_item("note", "Pricing for cafés", "Cafés want clear pricing.", authored="you")

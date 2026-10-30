@@ -36,19 +36,28 @@ def stem(word: str) -> str:
     w = "".join(c for c in unicodedata.normalize("NFKD", word.lower()) if not unicodedata.combining(c))  # café and cafe are the same word
     for suffix, repl in (("ies", "y"), ("ing", ""), ("ed", ""), ("es", ""), ("s", "")):
         if len(w) > len(suffix) + 3 and w.endswith(suffix) and not (suffix == "s" and w.endswith("ss")):
-            return w[: -len(suffix)] + repl
-    return w
+            w = w[: -len(suffix)] + repl
+            break
+    # a final silent e goes too, so price / prices / priced / pricing and agree / agreeing are each one word
+    return w[:-1] if len(w) > 4 and w.endswith("e") else w
 
 
-def stems(text: str) -> list[str]:
-    out: list[str] = []
+def stem_pairs(text: str) -> list[tuple[str, str]]:
+    """(stem, the word as written) for each distinct subject word of a text, in order."""
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for w in significant(text):
         if w in GENERIC:
             continue
         s = stem(w)
-        if s not in out:
-            out.append(s)
+        if s not in seen:
+            seen.add(s)
+            out.append((s, w))
     return out
+
+
+def stems(text: str) -> list[str]:
+    return [s for s, _ in stem_pairs(text)]
 
 
 def _sentences(text: str) -> list[str]:
@@ -108,7 +117,8 @@ class Reasoner:
 
     def related(self, text: str, exclude=(), k: int = 3, include_private: bool = False, min_score: float = 0.25) -> list[dict]:
         """Existing items that look like `text`: shared subject words and similar spelling. Each says why."""
-        mine = stems(text)
+        pairs = stem_pairs(text)
+        mine = [s for s, _ in pairs]
         qv = self._emb.vector(text)
         out = []
         for it in self.store.items(include_private=include_private):
@@ -116,6 +126,7 @@ class Reasoner:
                 continue
             theirs = set(stems(f"{it['title']} {it['body'][:1500]} {' '.join(it['tags'])}"))
             shared = [s for s in mine if s in theirs]
+            shown = [w for s, w in pairs if s in theirs]
             if len(shared) < 2:
                 continue
             cos = max(0.0, self._emb.cosine(qv, self._vectors_one(it)))
@@ -123,7 +134,7 @@ class Reasoner:
                 continue
             score = 0.5 * cos + 0.5 * min(1.0, len(shared) / 5)
             if score >= min_score:
-                out.append({"ref": f"item:{it['id']}", "id": it["id"], "title": it["title"], "score": round(score, 3), "why": "shares: " + ", ".join(shared[:4])})
+                out.append({"ref": f"item:{it['id']}", "id": it["id"], "title": it["title"], "score": round(score, 3), "why": "shares: " + ", ".join(shown[:4])})
         return sorted(out, key=lambda x: -x["score"])[:k]
 
     def _vectors_one(self, it: dict) -> dict:
