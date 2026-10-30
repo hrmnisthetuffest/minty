@@ -138,7 +138,7 @@ def test_the_hint_tells_the_model_to_use_what_is_there_and_does_not_say_a_title_
     store, _w, r = parts
     store.add_item("lesson", "always ask the supplier for a volume discount before agreeing a price.", "", authored="you")
     hint = r.hint("what do I know about prices from suppliers?", include_private=False, cap=300)
-    assert "use it" in hint and "know_recall" in hint and hint.count("volume discount") == 1
+    assert "Answer from it" in hint and "never say you have no notes" in hint and "know_recall" in hint and hint.count("volume discount") == 1
 
 
 def test_plural_and_singular_forms_of_a_word_are_the_same_subject(parts):

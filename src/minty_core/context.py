@@ -611,7 +611,7 @@ def build_context(config_dir: Path) -> AppContext:
     def mind_hint(request: str) -> str:
         """What the world model and the second brain hold about what the request names: one short block, world and knowledge sharing the one 700-character budget."""
         private = bool(is_private())
-        k = brain.hint(request, include_private=private, cap=330)
+        k = brain.hint(request, include_private=private, cap=390)
         w = world.hint(request, include_private=private, cap=700 - len(k))
         text = " ".join(x for x in (w, k) if x)
         return "\n\n" + text if text else ""  # its own paragraph: glued on to the end of the section before it, a model overlooks it
