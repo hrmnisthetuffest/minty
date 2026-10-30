@@ -185,7 +185,8 @@ class FlowService:
         async def run_child(ref, input_, depth, mode):
             return await self._child(job_ctx, ref, input_, depth, mode, worker, origin)
         return Env(call_tool=lambda name, args: worker.call(name, args), assess_tool=assess, ask_model=self._ask, notify=lambda text: self._notify(text),
-                   run_child=run_child, emit=self._emit, clock=self._clock, waited=lambda: job_ctx.waited_s)
+                   run_child=run_child, emit=lambda e: (job_ctx.progress(f"{e['node']} {e['status']}") if e.get("node") else None, self._emit(e))[1], clock=self._clock,
+                   waited=lambda: job_ctx.waited_s)  # every step is a sign of life for the watchdog
 
     async def _child(self, job_ctx, ref, input_, depth: int, mode: str, worker, origin) -> dict:
         flow = self.store.get(ref)

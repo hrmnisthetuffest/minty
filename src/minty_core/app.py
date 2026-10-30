@@ -853,6 +853,20 @@ async def _gmail_loop(ctx, *, first_s: float = 180.0, rounds: int | None = None,
         await sleep(cfg.interval_s if cfg.enabled else 300.0)
 
 
+async def _watchdog_loop(ctx, *, every_s: float = 30.0, rounds: int | None = None, sleep=asyncio.sleep) -> None:
+    """Look at everything running every half minute from outside the work: stalled or looping jobs, state that does not match, a workflow that keeps failing."""
+    n = 0
+    while rounds is None or n < rounds:
+        n += 1
+        watch = ctx.services.get("watchdog")
+        if watch is not None:
+            try:
+                await watch.tick()
+            except Exception:  # noqa: BLE001 — the watchdog must never be the thing that stops the app
+                log.warning("watchdog round failed", exc_info=True)
+        await sleep(every_s)
+
+
 async def _composio_apps_loop(ctx, *, first_s: float = 90.0, rounds: int | None = None, sleep=asyncio.sleep) -> None:
     """Keep the list of apps connected through Composio up to date by itself (read-only): a minute after start, then twice a day, so "upload
     this to YouTube" is understood without anyone explaining that Composio is connected to it."""
@@ -1329,6 +1343,8 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
     attention_task.add_done_callback(lambda t: _log_task_failure(t, "attention"))
     gmail_task = asyncio.create_task(_gmail_loop(ctx))
     gmail_task.add_done_callback(lambda t: _log_task_failure(t, "gmail"))
+    watchdog_task = asyncio.create_task(_watchdog_loop(ctx))
+    watchdog_task.add_done_callback(lambda t: _log_task_failure(t, "watchdog"))
     apps_task = asyncio.create_task(_composio_apps_loop(ctx))
     apps_task.add_done_callback(lambda t: _log_task_failure(t, "composio apps"))
     recipes_task = asyncio.create_task(_recipes_loop(ctx))
@@ -1393,6 +1409,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         attention_task.cancel()
         gmail_task.cancel()
         apps_task.cancel()
+        watchdog_task.cancel()
         recipes_task.cancel()
         power_task.cancel()
         leak_task.cancel()
@@ -1400,7 +1417,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         loop_task.cancel()
         checks_task.cancel()
         await asyncio.gather(compact_task, telegram_task, health_task, coach_task, finance_task, life_task,
-                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, gmail_task, apps_task, recipes_task, power_task, leak_task, schedule_task,
+                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, gmail_task, apps_task, watchdog_task, recipes_task, power_task, leak_task, schedule_task,
                              loop_task, checks_task, return_exceptions=True)
         if tui_task is not None:
             tui_task.cancel()

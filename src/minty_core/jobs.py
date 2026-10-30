@@ -77,6 +77,8 @@ class Job:
     resumable: bool = False  # the work can be picked up again from its checkpoint after an interruption
     payload: dict = field(default_factory=dict)  # inputs a resumer needs to rebuild the work
     resumed: int = 0  # how many times it was resumed
+    touched: float = 0.0  # the last sign of life (progress, a status change, an answered question): what the watchdog measures a stall from
+    health: str = "ok"  # ok | slow | stalled | looping, set by the watchdog
     origin: str = "laptop"  # where the request came from ("telegram": its questions go to the phone and nowhere else)
 
     @property
@@ -365,6 +367,8 @@ class JobRunner:
 
     def _resume(self, job_id: int) -> None:
         began = self._waiting_since.pop(job_id, None)
+        if job_id in self.jobs:
+            self.jobs[job_id].touched = self._clock()  # an answered question is a sign of life: the wait is not a stall
         if began is not None:
             self._waited[job_id] = self._waited.get(job_id, 0.0) + (time.monotonic() - began)
 
@@ -523,6 +527,7 @@ class JobRunner:
                     if job.status == "cancelled":
                         return
                     job.status, job.started = "running", self._clock()
+                    job.touched = job.started
                     set_origin(job.origin)  # its questions go where the request came from, also after a restart
                     self._persist(job)
                     while True:
@@ -599,6 +604,7 @@ class JobRunner:
         self._publish(job)
 
     def _publish(self, job: Job) -> None:
+        job.touched = self._clock()
         if self._bus is not None:
             self._bus.publish("job", id=job.id, kind=job.kind, goal=short(job.goal, 80), status=job.status,
                               progress=job.progress[-1] if job.progress else "", question=job.question,

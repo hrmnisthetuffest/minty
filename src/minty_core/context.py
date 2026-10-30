@@ -593,6 +593,10 @@ def build_context(config_dir: Path) -> AppContext:
         notify=lambda text: bus.publish("notify", text=text, job_origin=current_origin()),
         emit=lambda event: bus.publish("flow", **{k: v for k, v in event.items() if k != "type"}))
     jobs.on_finish.append(services["flows"].on_job_finished)
+
+    from minty_core.mind.watchdog import Watchdog
+
+    services["watchdog"] = Watchdog(jobs, services["flows"], lambda: services.get("notifier"))
     services["mission_context"] = mission_context
 
     def workflow_brief(goal: str) -> str:
