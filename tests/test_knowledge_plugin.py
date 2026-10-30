@@ -176,6 +176,8 @@ async def test_the_turn_hint_carries_what_the_second_brain_knows_inside_the_one_
     got = extras("what did I learn about asking Acme's supplier for a discount?")
     assert "Supplier volume discount" in got and "Acme" in got and len(got) <= 760
     assert "Supplier volume discount" not in extras("what is the weather like")
+    block = next(h for h in (f("what did I learn about asking Acme's supplier for a discount?") for f in ctx.agent.turn_extras) if "Supplier volume discount" in h)
+    assert block.startswith("\n\n")  # a section of its own in the prompt, not run on to the end of the one before it
 
 
 async def test_a_finished_mission_is_proposed_as_knowledge_once_and_never_filed_by_itself(ctx):

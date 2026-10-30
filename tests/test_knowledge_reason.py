@@ -134,6 +134,13 @@ def test_related_proposes_only_similar_things_that_are_not_linked_yet(parts):
     assert r.related_to_item(a["id"]) == [] and ref(c) not in str(got)
 
 
+def test_the_hint_tells_the_model_to_use_what_is_there_and_does_not_say_a_title_twice(parts):
+    store, _w, r = parts
+    store.add_item("lesson", "always ask the supplier for a volume discount before agreeing a price.", "", authored="you")
+    hint = r.hint("what do I know about prices from suppliers?", include_private=False, cap=300)
+    assert "use it" in hint and "know_recall" in hint and hint.count("volume discount") == 1
+
+
 def test_plural_and_singular_forms_of_a_word_are_the_same_subject(parts):
     store, _w, r = parts
     store.add_item("lesson", "always ask the supplier for a volume discount before agreeing a price.", "", authored="you")

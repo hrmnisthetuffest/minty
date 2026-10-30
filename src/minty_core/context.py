@@ -611,9 +611,10 @@ def build_context(config_dir: Path) -> AppContext:
     def mind_hint(request: str) -> str:
         """What the world model and the second brain hold about what the request names: one short block, world and knowledge sharing the one 700-character budget."""
         private = bool(is_private())
-        k = brain.hint(request, include_private=private, cap=260)
+        k = brain.hint(request, include_private=private, cap=330)
         w = world.hint(request, include_private=private, cap=700 - len(k))
-        return " ".join(x for x in (w, k) if x)
+        text = " ".join(x for x in (w, k) if x)
+        return "\n\n" + text if text else ""  # its own paragraph: glued on to the end of the section before it, a model overlooks it
 
     agent.turn_extras.append(mind_hint)
     from minty_core.mind import identity as identity_file
