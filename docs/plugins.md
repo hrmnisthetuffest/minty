@@ -350,7 +350,7 @@ On by default: yes.
 
 | Tool | What it does | Flags |
 |---|---|---|
-| `know_capture` | Put anything in the second brain. text (a thought or brain dump, split and linked), url (a page), or title+kind+body for something already analysed (with links [{rel,to}], sources [source ids], authored you/minty). Outside content waits for the owner. | risk varies |
+| `know_capture` | Put anything in the second brain. For what the owner said use text (a thought or brain dump: split, linked, de-duplicated); url (a page); title+kind+body only for something you worked out (links [{rel,to}], sources [ids], authored you/minty). Outside content waits for the owner. | risk varies |
 | `know_recall` | What the second brain knows: query finds items (who wrote each, checked or not, sources, links) plus world facts; ref (item:ID or source:ID) opens one with evidence, links, history. | sensitive, risk varies |
 | `know_link` | Connect two things by reference (item:ID, source:ID, world:NAME, vault:ID, mission:ID, flow:ID). rel: supports, contradicts, answers, part of, derived from, about, relates to... action link, confirm or reject (by id), unlink. | risk varies |
 | `know_edit` | Change an item (title, body, summary, kind, tags, project), set status (verified needs a source), archive true/false, reviewed; or work the inbox: id c-... with do reprocess, archive, edit. | risk varies |

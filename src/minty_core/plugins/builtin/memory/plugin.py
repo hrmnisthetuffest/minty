@@ -50,10 +50,21 @@ def register(ctx):
         save(note)
         return "Noted."
 
+    def second_brain(query: str) -> str:
+        """When remembered facts hold nothing, what the second brain holds about the same words: "what do I know about X" must not end at "nothing" while it knows."""
+        brain = ctx.services.get("knowledge_reason")
+        if brain is None or not str(query).strip():
+            return ""
+        try:
+            text = brain.hint(str(query), include_private=bool(ctx.services.get("is_private", lambda: False)()), cap=520)
+        except Exception:  # noqa: BLE001 — the second brain being unreadable must not break memory
+            return ""
+        return "\n" + text if text else ""
+
     async def audit_tool(args):
         found = audit().entries(kind=str(args.get("kind") or "facts"), query=str(args.get("query") or ""), limit=25)
         if not found:
-            return "Nothing in memory matches that."
+            return "Nothing in memory matches that." + second_brain(str(args.get("query") or ""))
         return TAG + "\n" + "\n".join(
             f"[{e.id}] {e.text} ({e.source}{', ' + e.date if e.date else ''})" for e in found)
 
@@ -141,7 +152,7 @@ def register(ctx):
             return "Memory is not available."
         if args.get("id") is None:  # no number: look for words
             found = gists.search(str(args.get("query") or ""), limit=8, include_private=True)
-            return TAG + "\n" + "\n".join(line(g) for g in found) if found else "Nothing in memory matches that."
+            return TAG + "\n" + "\n".join(line(g) for g in found) if found else "Nothing in memory matches that." + second_brain(str(args.get("query") or ""))
         try:
             g = gists.get(int(args.get("id")))
         except (TypeError, ValueError):

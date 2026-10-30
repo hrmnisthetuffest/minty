@@ -92,6 +92,19 @@ async def test_a_whole_brain_dump_passed_as_one_titled_item_is_still_split_into_
     assert got["status"] == "filed" and [a["kind"] for a in got["pieces"]] == ["idea", "lesson", "question"] and len(ctx.services["knowledge"].items()) == 3
 
 
+async def test_the_older_memory_tools_point_at_the_second_brain_instead_of_saying_there_is_nothing(ctx):
+    ctx.services["knowledge"].add_item("lesson", "always ask the supplier for a volume discount before agreeing a price.", "", authored="you")
+    for tool in ("memory_audit", "memory_recall"):
+        got = await call(ctx, tool, query="prices from suppliers")
+        assert "volume discount" in got and "second brain" in got, tool
+    assert await call(ctx, "memory_audit", query="quantum chromodynamics") == "Nothing in memory matches that."  # unchanged when the second brain has nothing either
+    ctx.services["is_private"] = lambda: True
+    ctx.services["knowledge"].add_item("idea", "Quietly approach a rival about merging", "", private=True)
+    assert "merging" in await call(ctx, "memory_audit", query="approach a rival about merging")
+    ctx.services["is_private"] = lambda: False
+    assert "merging" not in await call(ctx, "memory_audit", query="approach a rival about merging")
+
+
 async def test_in_a_private_turn_what_is_filed_is_private(ctx):
     ctx.services["is_private"] = lambda: True
     await call(ctx, "know_capture", text="Idea: quietly approach a rival")
