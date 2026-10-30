@@ -51,3 +51,10 @@ Levels: 1 implemented and tested, 2 implemented but thinly tested, 3 partial, 4 
 **Digital twin:** `registry.twin`: components and dependencies read from the code (which services a plugin or loop needs), the toolkit table, the running app and the workflows; `impact()` and findings marked verified or hypothesis (`self_diagnose`). It is a map built from metadata, not a model of behaviour.
 
 **Backlog, in order of leverage (not built):** (1) amend-while-running for missions, with the contract; (2) a skills library on top of playbooks (promote a repeated successful procedure, test, version); (3) deadline and dependency forecasting and follow-through commitments on top of the world model and `attention`; (4) anomaly and opportunity detection through the notifier (the watchdog is the first part); (5) a visual diff and side-by-side run comparison in the editor; (6) cost accounting per model call; (7) learning working-style preferences from corrections (extend `prefs`); (8) strategy comparison and an independent reviewer for consequential work.
+
+## The Second Brain (this round)
+
+A personal knowledge layer on top of what existed: a sourced store of ideas, findings, lessons, questions and hypotheses with immutable originals, typed links across the notes folder,
+the world model and missions, a capture inbox, contradiction and gap detection, five tools for Minty and an interactive map in the panel. Design, rules, what was checked and what
+is not built: [docs/second-brain.md](second-brain.md). Memory and contextual retrieval moves from level 2 to level 3 for what is captured; knowledge Minty has not been given
+(old research notebooks, remembered facts, Telegram files) is not in it yet.

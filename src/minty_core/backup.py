@@ -23,9 +23,9 @@ from pathlib import Path
 MAGIC = b"MINTYBK1"
 SCRYPT = dict(n=2**14, r=8, p=1)
 INCLUDE_FILES = ("config.toml", "memory.md", "instructions.md", "learned.json", "commands.json", "proposals.json")
-INCLUDE_DIRS = ("personalities", "history/days", "history/months", "config-snapshots")
+INCLUDE_DIRS = ("personalities", "history/days", "history/months", "config-snapshots", "knowledge-originals")
 INCLUDE_RAW = "history/raw"
-DATABASES = ("memory.db", "schedule.db", "inbox.db", "library.db", "health.db", "finance.db")
+DATABASES = ("memory.db", "schedule.db", "inbox.db", "library.db", "health.db", "finance.db", "knowledge.sqlite", "world.sqlite", "flows.sqlite")
 KEEP = 7
 
 

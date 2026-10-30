@@ -252,6 +252,31 @@ def find(services: dict, query: str, include_private: bool = False, k: int = 12)
     return out[: k + 6]
 
 
+def label_of(services: dict, ref: str) -> str:
+    """What to call something a link points at: a mission by its goal, a decision by its title, a note by its title, a person by name, an item by its title."""
+    try:
+        system, ident = parse_ref(ref)
+    except ValueError:
+        return ref
+    jobs, world, flows = services.get("jobs"), services.get("world"), services.get("flows")
+    if system == "mission" and jobs is not None and ident.isdigit():
+        job = jobs.get(int(ident))
+        return _short(job.goal, 70) if job else ref
+    if system == "decision" and world is not None:
+        d = next((d for d in world.graph(include_private=True)["decisions"] if str(d["id"]) == ident), None)
+        return d["title"] if d else ref
+    if system == "vault":
+        row = next((r for r in _vault_rows(services) if r["id"] == ident), None)
+        return row["title"] if row else ref
+    if system == "flow" and flows is not None:
+        try:
+            return next((f.name for f in flows.store.list(include_archived=True) if str(f.id) == ident), ref)
+        except Exception:  # noqa: BLE001
+            return ref
+    brain = services.get("knowledge_reason")
+    return brain._label(ref) if brain is not None else ref
+
+
 def node(services: dict, ref: str, include_private: bool = False) -> dict | None:
     """One thing opened: the content (the original apart from any summary), who wrote it, how far it is checked, the evidence, every connection and the history."""
     kb, brain, world = services["knowledge"], services.get("knowledge_reason"), services.get("world")
@@ -265,7 +290,7 @@ def node(services: dict, ref: str, include_private: bool = False) -> dict | None
         for x in kb.links(r, statuses=("confirmed", "suggested")):
             out_dir = x["src"] == r
             other = x["dst"] if out_dir else x["src"]
-            out.append({"id": x["id"], "rel": x["rel"], "direction": "out" if out_dir else "in", "ref": other, "label": brain._label(other) if brain else other, "status": x["status"],
+            out.append({"id": x["id"], "rel": x["rel"], "direction": "out" if out_dir else "in", "ref": other, "label": label_of(services, other), "status": x["status"],
                         "by": x["by"], "why": x["why"], "score": x["score"]})
         return out
 

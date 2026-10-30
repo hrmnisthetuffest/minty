@@ -134,6 +134,14 @@ def test_related_proposes_only_similar_things_that_are_not_linked_yet(parts):
     assert r.related_to_item(a["id"]) == [] and ref(c) not in str(got)
 
 
+def test_filler_words_that_every_text_shares_do_not_make_two_things_related(parts):
+    store, _w, r = parts
+    a = store.add_item("idea", "Tasting box for Acme", "Offer Acme a tasting box every month, the last thing on Friday.")
+    store.add_item("lesson", "Confirm the route", "Always confirm the delivery route with Jane every week, even at the last minute.")
+    assert r.related_to_item(a["id"]) == []
+    assert r.related("every last thing", k=3) == []
+
+
 def test_health_counts_what_is_sourced_linked_and_waiting(parts):
     store, _w, r = parts
     src = store.add_source("text", "s")

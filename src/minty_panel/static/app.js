@@ -21,6 +21,7 @@ import timeline from "./pages/timeline.js";
 import studio from "./pages/studio.js";
 import flows from "./pages/flows.js";
 import mission from "./pages/mission.js";
+import knowledge from "./pages/knowledge.js";
 import { initBackdrop, stopBackdrop } from "./backdrop.js";
 
 const PAGES = [
@@ -37,6 +38,7 @@ const PAGES = [
   ["plugins", "Plugins", plugins],
   ["flags", "Switches", flags],
   ["prompts", "Prompts", prompts],
+  ["knowledge", "Second Brain", knowledge],
   ["memory", "Memory", memory],
   ["notes", "Notes", notes],
   ["audit", "What I know", audit],
@@ -46,7 +48,7 @@ const GROUPS = [
   ["Monitor", ["dashboard", "mission", "timeline", "logs", "studio"]],
   ["Automate", ["flows"]],
   ["Configure", ["settings", "profile", "personality", "brain", "plugins", "flags", "prompts"]],
-  ["Memory", ["memory", "notes", "audit"]],
+  ["Memory", ["knowledge", "memory", "notes", "audit"]],
 ];
 const ICONS = {
   dashboard: "M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z",
@@ -62,6 +64,7 @@ const ICONS = {
   plugins: "M3 6h4V3h3v3h3v4h-3v3H7v-3H3z",
   flags: "M2 5h12v6H2zM9 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
   prompts: "M3 3h10v8H8l-3 3v-3H3z",
+  knowledge: "M4 3.5a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM12 6a1.6 1.6 0 1 0 0 3.2A1.6 1.6 0 0 0 12 6zM7 11a1.6 1.6 0 1 0 0 3.2A1.6 1.6 0 0 0 7 11zM5.4 6.4l1.2 4.7M10.8 9l-2.6 2.6M5.6 5.2l5 1.2",
   memory: "M3 4c0-1.5 10-1.5 10 0v8c0 1.5-10 1.5-10 0zM3 8c0 1.5 10 1.5 10 0",
   notes: "M4 2h8v12H4zM6 5h4M6 8h4M6 11h2",
   audit: "M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",

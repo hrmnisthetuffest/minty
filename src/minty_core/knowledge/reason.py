@@ -26,6 +26,11 @@ _CLAIMS = ("finding", "observation", "insight", "lesson", "hypothesis", "concept
 _NOT_CLAIMS = ("question", "dump")
 
 
+# words nearly every text shares: they say nothing about what two things are about
+GENERIC = frozenset("""every last always never thing things over into after before than very much more most some such other another each both same also just only even still get got make made take
+took need needs want like going one two new old good better best time way lot really maybe probably think know see said say week weeks day days""".split())
+
+
 def stem(word: str) -> str:
     w = word.lower()
     for suffix, repl in (("ies", "y"), ("ing", ""), ("ed", ""), ("es", ""), ("s", "")):
@@ -37,6 +42,8 @@ def stem(word: str) -> str:
 def stems(text: str) -> list[str]:
     out: list[str] = []
     for w in significant(text):
+        if w in GENERIC:
+            continue
         s = stem(w)
         if s not in out:
             out.append(s)
@@ -111,6 +118,8 @@ class Reasoner:
             if len(shared) < 2:
                 continue
             cos = max(0.0, self._emb.cosine(qv, self._vectors_one(it)))
+            if len(shared) < 3 and cos < 0.12:  # a couple of shared words and no similar spelling is a coincidence
+                continue
             score = 0.5 * cos + 0.5 * min(1.0, len(shared) / 5)
             if score >= min_score:
                 out.append({"ref": f"item:{it['id']}", "id": it["id"], "title": it["title"], "score": round(score, 3), "why": "shares: " + ", ".join(shared[:4])})

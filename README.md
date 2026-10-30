@@ -83,6 +83,7 @@ No installer? Everything it does is `python -m venv .venv && .venv/bin/pip insta
   build, fix, rehearse and improve it; every step goes through the same safety gate. See [docs/flows.md](docs/flows.md).
 - **Knows what it is, what it can do and what it knows.** One identity file ([MINTY_IDENTITY.md](src/minty_core/MINTY_IDENTITY.md)), a live capability registry with evidence,
   a sourced model of your projects and decisions, a watchdog for stalled work, and a Mission Control page. See [docs/jarvis-gaps.md](docs/jarvis-gaps.md) for what exists and what does not.
+- **A second brain you can see.** Drop in a thought, a brain dump, a link or a file, and it is kept with where it came from, split, connected to what it already knows and shown as an interactive map in the panel (Memory → Second Brain): zoom into clusters, open anything to see its original, evidence and connections, search, and watch what disagrees or is missing. Minty uses it too. See [docs/second-brain.md](docs/second-brain.md).
 - **Makes videos and runs content automations.** Voiceover, music, captions and your own gameplay footage become short videos, Claude
   Code makes the motion graphics, posts go to Instagram through the official API (asked first by default), and any goal can be
   put on a daily schedule by just asking. See [docs/studio.md](docs/studio.md).

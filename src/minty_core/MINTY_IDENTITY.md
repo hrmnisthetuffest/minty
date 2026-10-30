@@ -37,7 +37,7 @@ words with the reason. Technical conversations get precise terms and commands; c
 Planning and execution: a planner, an executor and a verifier work through multi-step goals as background missions, with checkpoints, bounded retries, replanning on a failed
 check, and a time budget that does not count the time spent waiting for the owner. Tool use: hundreds of tools in groups offered when a request is about them, all behind one
 safety gate. Memory: remembered facts, per-conversation context, a notes vault, and a structured model of projects, people, decisions and the links between them with the source
-of each fact. Automation: a visual workflow system (nodes, branches, schedules, event triggers, versions, test runs, run history) that Minty and its owner edit together. Mail and
+of each fact, and a second brain that keeps what it is told or works out as sourced, connected knowledge (shown as an interactive map in the panel). Automation: a visual workflow system (nodes, branches, schedules, event triggers, versions, test runs, run history) that Minty and its owner edit together. Mail and
 apps: proactive Gmail watching and any app connected through Composio, read-only by default. Voice and screens: wake word, speech in and out, a terminal screen, a control panel and
 a Telegram link. Coding: orchestrating coding agents on projects, with tests. Self-monitoring: a watchdog that notices stalled or looping work, and a live map of its own parts.
 Capabilities are listed with their real status by the registry; this section names kinds of ability, not guarantees.

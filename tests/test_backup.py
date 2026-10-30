@@ -80,3 +80,23 @@ def test_only_the_newest_seven_are_kept(tmp_path):
     for i in range(10):
         (tmp_path / f"minty-backup-2026101{i}.bak").write_bytes(b"x")
     assert len(prune(tmp_path)) == 3 and len(list(tmp_path.glob("*.bak"))) == 7
+
+
+def test_what_minty_knows_is_backed_up_too_the_second_brain_its_originals_the_world_model_and_the_workflows(tmp_path):
+    cfg = tmp_path / "cfg"
+    make_profile(cfg)
+    from minty_core.knowledge.store import KnowledgeStore
+    from minty_core.mind.world import WorldStore
+
+    kb = KnowledgeStore(cfg / "knowledge.sqlite", originals=cfg / "knowledge-originals")
+    src = kb.add_source("pdf", "the contract says ninety days", name="contract.pdf", data=b"%PDF the real bytes", origin="outside")
+    kb.add_item("finding", "Payment terms are ninety days", "x", sources=[src["id"]])
+    kb.close()
+    WorldStore(cfg / "world.sqlite").note("organization", "Acme", "size", "50 people", "told", "owner")
+    info = create(cfg, b"k", tmp_path / "a.bak")
+    target = tmp_path / "restored"
+    restore(info.path, b"k", target)
+    db = sqlite3.connect(target / "knowledge.sqlite")
+    assert db.execute("select title from items").fetchone()[0] == "Payment terms are ninety days"
+    assert (target / "knowledge-originals" / src["sha256"][:2] / src["sha256"]).read_bytes() == b"%PDF the real bytes"  # the original, byte for byte
+    assert sqlite3.connect(target / "world.sqlite").execute("select count(*) from entities").fetchone()[0] == 1

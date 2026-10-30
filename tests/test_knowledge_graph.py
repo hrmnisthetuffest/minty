@@ -138,6 +138,19 @@ def test_a_mission_only_an_unseen_item_pointed_at_is_not_drawn_alone(ctx):
     assert "mission:9" not in by_id(graph.build(ctx.services))
 
 
+def test_a_connection_to_a_mission_a_decision_or_a_note_is_named_not_shown_as_a_reference(ctx):
+    k = seeded(ctx)
+    ctx.services["vault"] = FakeVault()
+    ctx.services["jobs"].jobs[7] = Job(id=7, kind="mission", goal="Research wholesale cafe margins", status="done", created=time.time(), started=time.time())
+    dec = next(n["id"] for n in graph.build(ctx.services)["nodes"] if n["kind"] == "decision")
+    kb = ctx.services["knowledge"]
+    kb.link(ref(k["a"]), "derived from", "mission:7")
+    kb.link(ref(k["a"]), "relates to", dec)
+    kb.link(ref(k["a"]), "relates to", "vault:n1")
+    labels = {l["ref"]: l["label"] for l in graph.node(ctx.services, ref(k["a"]))["links"]}
+    assert labels["mission:7"] == "Research wholesale cafe margins" and labels[dec] == "Focus on wholesale first" and labels["vault:n1"] == "Supplier call"
+
+
 def test_archived_items_leave_the_universe(ctx):
     k = seeded(ctx)
     ctx.services["knowledge"].archive(k["b"]["id"])
