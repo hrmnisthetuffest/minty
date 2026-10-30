@@ -67,6 +67,8 @@ which is not connected here, so they fail loudly rather than being filed empty.
 * Tools (group `know`): `know_capture`, `know_recall`, `know_link`, `know_edit`, `know_check`.
 * The turn hint: when a request names something the Second Brain holds (two shared subject words), a short line with the title, who wrote it and whether it is checked goes in front
   of the model, sharing the world model's 700 characters. Missions get it too.
+* The older memory tools (`memory_audit`, `memory_recall`) no longer stop at "Nothing in memory matches that" when the second brain holds something about the same words (one shared word is enough when the owner
+  asks directly; private items only in a private turn). A model asked "what do I know about ..." goes to those first.
 * `know_check` lists the **gaps** (an open question nothing answers, a hypothesis with no evidence, a claim with no source, something built on that came only from outside and is
   unchecked, an isolated item, a verified fact not reviewed for months) and the **conflicts**: verified when linked as contradicting or when the world model holds two values, otherwise
   *a guess from the wording* (a number or a negation differs), which you can confirm or dismiss.
@@ -85,11 +87,17 @@ Routes (`/api/knowledge/...`): `graph`, `node`, `search`, `attention`, `captures
 
 ## What was checked, and how
 
-* 90 tests across the store, capture, reasoning, tools, the map and the routes; for the store, capture, tools, map and routes each safety rule was switched off in turn and a test
-  failed every time (mutation check); six gaps this showed in the tests were closed.
+* 80 tests for the store, capture, reasoning, tools, the map and the routes. For the store, capture, tools, map, routes and the later fixes each safety rule was switched off in turn and a test
+  failed every time (mutation check); six gaps this showed in the tests were closed. The full suite (about 6 270 tests) passes.
 * In a real browser, against a scratch brain of about 200 and about 840 items (created for the check and deleted): the map, selecting, search, filters, the inbox (a real brain dump became
   an idea, a question and a lesson, linked to Acme and Jane, and appeared on the map), the attention tab, the private toggle (a private item appears only when asked), the time slider,
   the empty state and a phone-width layout. Two real problems were found and fixed this way (a collapsed layout, a legend covering the map on a phone).
+* With a real model, on a scratch copy of the daily setup (deleted afterwards): the model filed a brain dump through `know_capture`, and a question asked with the conversation history cleared
+  ("what do I already know about charging cafes, and about getting better prices from suppliers?") was answered with all three captured thoughts. Getting there found five real faults that
+  no synthetic test had: a retried turn made nine copies of one idea (the title form had no duplicate check); a whole three-thought dump passed as one titled item was filed as one idea;
+  "prices" did not match "price"; the hint sat glued to the end of the previous prompt section and was too polite; and the old memory tools told the model there was nothing while the second
+  brain held the answer. All five are fixed and tested. The answer ultimately arrived through the memory tools' new pointer to the second brain, not through the turn hint alone: this model
+  reached for the memory tools first.
 * The backup now includes the Second Brain, its originals, the world model and the workflows (the last two were missing before).
 
 ## Not done, or not verified
@@ -101,5 +109,5 @@ Routes (`/api/knowledge/...`): `graph`, `node`, `search`, `attention`, `captures
   "private" are not built.
 * Frame rate on a very large map was only measured in a software-rendered pane (about 12 to 19 frames a second at about 840 nodes); halos and animation are switched off while a big map
   is moved. Nothing was measured on a real GPU or on the owner's real knowledge over months.
-* The turn hint and the live behaviour with a real model were checked in a scratch copy only (see the changelog entry); the quality of rule-based kind guessing on the owner's real
-  writing is untested.
+* The live capture turn never completed its closing answer in the scratch runs (the free model tier's 8 000-tokens-a-minute limit and slow fallbacks); the filing itself was read back from the
+  store. One model on one question is not a guarantee: another model may use the tools differently. The quality of rule-based kind guessing on the owner's real writing is untested.

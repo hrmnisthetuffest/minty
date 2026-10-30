@@ -56,7 +56,7 @@ def register(ctx):
         if brain is None or not str(query).strip():
             return ""
         try:
-            text = brain.hint(str(query), include_private=bool(ctx.services.get("is_private", lambda: False)()), cap=520)
+            text = brain.lookup(str(query), include_private=bool(ctx.services.get("is_private", lambda: False)()), cap=520)
         except Exception:  # noqa: BLE001 — the second brain being unreadable must not break memory
             return ""
         return "\n" + text if text else ""

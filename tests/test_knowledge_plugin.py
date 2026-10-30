@@ -97,6 +97,8 @@ async def test_the_older_memory_tools_point_at_the_second_brain_instead_of_sayin
     for tool in ("memory_audit", "memory_recall"):
         got = await call(ctx, tool, query="prices from suppliers")
         assert "volume discount" in got and "second brain" in got, tool
+    ctx.services["knowledge"].add_item("idea", "sell a monthly tasting box to small cafes.", "", authored="you")
+    assert "tasting box" in await call(ctx, "memory_recall", query="charging cafes")  # one shared word is enough when the owner asks directly (a turn hint needs two)
     assert await call(ctx, "memory_audit", query="quantum chromodynamics") == "Nothing in memory matches that."  # unchanged when the second brain has nothing either
     ctx.services["is_private"] = lambda: True
     ctx.services["knowledge"].add_item("idea", "Quietly approach a rival about merging", "", private=True)
