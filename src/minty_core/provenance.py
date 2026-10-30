@@ -38,7 +38,7 @@ MAX_REMEMBERED = 60_000
 
 _INJECTION = re.compile(
     r"ignore (?:all |any |your |the )?(?:previous|prior|above|earlier)? ?(?:instructions|prompts?|rules)|"
-    r"disregard (?:all |any |the |your )?(?:previous|prior|system|above)|you are now\b|new instructions?:|"
+    r"disregard (?:all |any |the |your )?(?:previous|prior|system|above|instructions|rules)|you are now\b|new instructions?:|"
     r"(?:^|\n)\s*(?:system|assistant|developer)\s*:|do not (?:tell|inform|alert) the user|"
     r"without (?:asking|telling|informing|notifying) the user|"
     r"(?:send|forward|email|upload|post) (?:this|these|it|them|all|everything|the .{0,30}) to \S+@\S+|"

@@ -1,0 +1,3 @@
+name = "world"
+description = "What Minty knows about your projects, people, documents and decisions as connected, sourced facts (told, discovered, inferred, assumed), with conflicts kept side by side, and the decisions made and why."
+default_enabled = true

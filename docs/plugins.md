@@ -842,3 +842,15 @@ Settings: `brave_key`.
 | Tool | What it does | Flags |
 |---|---|---|
 | `web_search_search` | Search the web and return the top results. |  |
+
+## world
+
+What Minty knows about your projects, people, documents and decisions as connected, sourced facts (told, discovered, inferred, assumed), with conflicts kept side by side, and the decisions made and why.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `world_note` | Record what you learned with its source: a fact (kind, name, attr, value) or a link (rel, to_name). provenance: told (owner said it), discovered, observed, inferred, assumed. | risk varies |
+| `world_recall` | What is known about things named in query (facts with sources, conflicts, links, decisions); impact=name: what a change may affect; decisions=true: past decisions. | sensitive, risk varies |
+| `world_decide` | (described in the source) | risk varies |

@@ -315,3 +315,6 @@ web_search_search                  0 read
 web_session                        0 read     +args sensitive
 web_show                           0 read     +args
 web_watch                          0 read     +args egress sensitive
+world_decide                       1 change
+world_note                         1 change
+world_recall                       1 change   sensitive
