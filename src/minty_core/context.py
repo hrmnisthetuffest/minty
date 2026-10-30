@@ -542,6 +542,8 @@ def build_context(config_dir: Path) -> AppContext:
         from minty_core.governance.audit import MemoryAudit
 
         known = world.hint(goal, include_private=False, cap=600)  # what the world model holds about what the goal names (never private records)
+        if services.get("knowledge_reason") is not None:  # and what the second brain holds (sourced, labelled as yours / Minty's / from outside)
+            known = " ".join(x for x in (known, services["knowledge_reason"].hint(goal, include_private=False, cap=400)) if x)
         wanted = set(words(goal.replace("'s", "")))
         if not wanted:
             return known
@@ -584,7 +586,36 @@ def build_context(config_dir: Path) -> AppContext:
 
     world = services["world"] = WorldStore(config_dir / "world.sqlite")
     services["turn_read_outside"] = lambda: bool(agent.provenance is not None and agent.provenance.sources)  # this request read mail, a page or a file
-    agent.turn_extras.append(lambda request: world.hint(request, include_private=bool(is_private()), cap=700))
+    from minty_core.knowledge.capture import Capturer
+    from minty_core.knowledge.reason import Reasoner
+    from minty_core.knowledge.store import KnowledgeStore
+
+    kb = services["knowledge"] = KnowledgeStore(config_dir / "knowledge.sqlite", originals=config_dir / "knowledge-originals")
+
+    def notes_search(query: str, limit: int) -> list[dict]:
+        vault = services.get("vault")  # the notes folder, when it is on: its notes are part of what the second brain can recall
+        if vault is None or not vault.active():
+            return []
+        return [{"ref": f"vault:{h.id}", "title": h.title} for h in vault.kit().search.where(query, limit=limit) if h.kind == "note"]
+
+    brain = services["knowledge_reason"] = Reasoner(kb, world=world, vault_search=notes_search)
+
+    async def fetch_page(url: str) -> dict:
+        got = await services["web"].open(url, excerpt=20000)  # the safe page reader: judged first, plain text, no cookies, no scripts
+        return {"ok": got.opened, "title": got.title, "text": got.text, "final_host": got.final_host, "note": "" if got.opened else got.summary()}
+
+    from minty_core.telegram.intake import pdf_text as read_pdf
+
+    services["knowledge_capture"] = Capturer(kb, brain, world=world, fetch=fetch_page, pdf_text=read_pdf)
+
+    def mind_hint(request: str) -> str:
+        """What the world model and the second brain hold about what the request names: one short block, world and knowledge sharing the one 700-character budget."""
+        private = bool(is_private())
+        k = brain.hint(request, include_private=private, cap=260)
+        w = world.hint(request, include_private=private, cap=700 - len(k))
+        return " ".join(x for x in (w, k) if x)
+
+    agent.turn_extras.append(mind_hint)
     from minty_core.mind import identity as identity_file
 
     agent.turn_extras.append(identity_file.hint_for)  # a question about Minty itself: the identity first  # only when the request names something it knows

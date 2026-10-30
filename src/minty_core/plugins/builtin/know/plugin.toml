@@ -1,0 +1,3 @@
+name = "know"
+description = "Your second brain: capture anything (text, links, brain dumps), keep it with where it came from, connect it, recall it with who wrote it and whether it is checked, and see what disagrees or is missing."
+default_enabled = true

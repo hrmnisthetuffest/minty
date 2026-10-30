@@ -342,6 +342,20 @@ Settings: `directory`.
 | `journal_read_entries` | Read journal entries for a date or an ISO date range (start, end). | sensitive |
 | `journal_search_entries` | Search all journal entries for a word or phrase. | sensitive |
 
+## know
+
+Your second brain: capture anything (text, links, brain dumps), keep it with where it came from, connect it, recall it with who wrote it and whether it is checked, and see what disagrees or is missing.
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `know_capture` | Put anything in the second brain. text (a thought or brain dump, split and linked), url (a page), or title+kind+body for something already analysed (with links [{rel,to}], sources [source ids], authored you/minty). Outside content waits for the owner. | risk varies |
+| `know_recall` | What the second brain knows: query finds items (who wrote each, checked or not, sources, links) plus world facts; ref (item:ID or source:ID) opens one with evidence, links, history. | sensitive, risk varies |
+| `know_link` | Connect two things by reference (item:ID, source:ID, world:NAME, vault:ID, mission:ID, flow:ID). rel: supports, contradicts, answers, part of, derived from, about, relates to... action link, confirm or reject (by id), unlink. | risk varies |
+| `know_edit` | Change an item (title, body, summary, kind, tags, project), set status (verified needs a source), archive true/false, reviewed; or work the inbox: id c-... with do reprocess, archive, edit. | risk varies |
+| `know_check` | Where the second brain stands: gaps (open questions, unsourced claims, isolated items), conflicts (verified or guessed), inbox, related (for id), health. Default: overview. | risk varies |
+
 ## learn
 
 Remember how a finished browser job was done as a routine: draft, test run, your approval, then it can be replayed without thinking. Failing routines are quarantined, never silently rewritten.

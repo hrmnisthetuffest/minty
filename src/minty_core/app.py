@@ -867,6 +867,44 @@ async def _watchdog_loop(ctx, *, every_s: float = 30.0, rounds: int | None = Non
         await sleep(every_s)
 
 
+async def _harvest_missions(ctx) -> int:
+    """Propose what a finished mission came to as a capture for the owner to approve (never filed by itself): the goal, the outcome and which criteria were verified."""
+    from minty_core.mind.control import contract
+
+    kb, cap, jobs = ctx.services.get("knowledge"), ctx.services.get("knowledge_capture"), ctx.services.get("jobs")
+    if kb is None or cap is None or jobs is None:
+        return 0
+    now, made = time.time(), 0
+    for job in sorted(jobs.jobs.values(), key=lambda j: j.id):
+        if job.kind != "mission" or job.status not in ("done", "failed", "blocked", "timeout") or now - (job.started or job.created) > 3 * 86400:
+            continue
+        ref = f"mission:{job.id}"
+        if kb.has_event(ref, "harvested"):
+            continue
+        kb.note_event(ref, "capture", "harvested")  # once, even if the capture below fails: it must not come back every round
+        c = contract(job)
+        lines = [f"Mission {job.id} finished ({c['status']}): {job.goal}", f"Outcome: {c['result'] or job.result or 'no result recorded'}"]
+        lines += [f"- {x['state']}: {x['step']}" + (f" ({x['evidence']})" if x["evidence"] else "") for x in c["criteria"]]
+        await cap.capture("\n".join(lines), channel="mission", kind_hint="observation" if c["complete"] else "lesson", origin="minty", private=bool(job.private), refs=[("derived from", ref)])
+        made += 1
+        if made >= 3:
+            break
+    return made
+
+
+async def _knowledge_loop(ctx, *, first_s: float = 120.0, every_s: float = 300.0, rounds: int | None = None, sleep=asyncio.sleep) -> None:
+    """Every few minutes: finished missions become proposals in the second brain's inbox."""
+    await sleep(first_s)
+    n = 0
+    while rounds is None or n < rounds:
+        n += 1
+        try:
+            await _harvest_missions(ctx)
+        except Exception:  # noqa: BLE001 — proposing knowledge must never be the thing that stops the app
+            log.warning("knowledge round failed", exc_info=True)
+        await sleep(every_s)
+
+
 async def _composio_apps_loop(ctx, *, first_s: float = 90.0, rounds: int | None = None, sleep=asyncio.sleep) -> None:
     """Keep the list of apps connected through Composio up to date by itself (read-only): a minute after start, then twice a day, so "upload
     this to YouTube" is understood without anyone explaining that Composio is connected to it."""
@@ -1345,6 +1383,8 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
     gmail_task.add_done_callback(lambda t: _log_task_failure(t, "gmail"))
     watchdog_task = asyncio.create_task(_watchdog_loop(ctx))
     watchdog_task.add_done_callback(lambda t: _log_task_failure(t, "watchdog"))
+    knowledge_task = asyncio.create_task(_knowledge_loop(ctx))
+    knowledge_task.add_done_callback(lambda t: _log_task_failure(t, "knowledge"))
     apps_task = asyncio.create_task(_composio_apps_loop(ctx))
     apps_task.add_done_callback(lambda t: _log_task_failure(t, "composio apps"))
     recipes_task = asyncio.create_task(_recipes_loop(ctx))
@@ -1410,6 +1450,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         gmail_task.cancel()
         apps_task.cancel()
         watchdog_task.cancel()
+        knowledge_task.cancel()
         recipes_task.cancel()
         power_task.cancel()
         leak_task.cancel()
@@ -1417,7 +1458,7 @@ async def _run(directory: Path, with_panel: bool = True, safe: bool = False) -> 
         loop_task.cancel()
         checks_task.cancel()
         await asyncio.gather(compact_task, telegram_task, health_task, coach_task, finance_task, life_task,
-                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, gmail_task, apps_task, watchdog_task, recipes_task, power_task, leak_task, schedule_task,
+                             vault_task, butler_task, productivity_task, web_task, system_task, dev_task, create_task, integrations_task, selfcheck_task, learned_task, study_task, narration_task, timers_task, focus_task, maintain_task, heart_task, attention_task, gmail_task, apps_task, watchdog_task, knowledge_task, recipes_task, power_task, leak_task, schedule_task,
                              loop_task, checks_task, return_exceptions=True)
         if tui_task is not None:
             tui_task.cancel()

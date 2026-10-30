@@ -134,6 +134,11 @@ jobs_status                        0 read
 journal_add_entry                  1 change
 journal_read_entries               0 read     sensitive
 journal_search_entries             0 read     sensitive
+know_capture                       1 change
+know_check                         0 read
+know_edit                          1 change
+know_link                          1 change
+know_recall                        0 read     sensitive
 learn_approve                      2 visible
 learn_forget                       1 change
 learn_list                         0 read

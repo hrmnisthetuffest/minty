@@ -109,14 +109,14 @@ class Capturer:
 
     # ---- taking things in -------------------------------------------------------------------------------------------
     async def capture(self, text: str = "", *, url: str = "", data: bytes | None = None, name: str = "", channel: str = "", kind_hint: str = "", origin: str = "you",
-                      private: bool = False, process: bool = True) -> dict:
-        meta: dict = {}
+                      private: bool = False, process: bool = True, refs: list | None = None) -> dict:
+        meta: dict = {"refs": [list(r) for r in refs]} if refs else {}
         if data is not None:
             kind = "pdf" if (name.lower().endswith(".pdf") or data[:4] == b"%PDF") else "image" if name.lower().endswith(_IMAGE) else "file"
             src = self.store.add_source(kind, "", name=name or "upload", data=data, origin="outside" if origin == "you" else origin, channel=channel, private=private, meta={"name": name, "bytes": len(data)})
-            raw, meta = f"[file] {name or 'upload'}", {"source": src["id"], "name": name}
+            raw, meta = f"[file] {name or 'upload'}", {**meta, "source": src["id"], "name": name}
         elif url:
-            raw, meta = url.strip(), {"url": url.strip()}
+            raw, meta = url.strip(), {**meta, "url": url.strip()}
         else:
             raw = text
         cap = self.store.add_capture(raw, channel=channel, kind_hint=kind_hint, origin=origin, private=private, meta=meta)
@@ -245,6 +245,8 @@ class Capturer:
             it = self.store.add_item(atom["kind"], atom["title"], atom["body"], authored=authored, summary=atom["summary"], private=cap["private"], sources=[(sid, atom["title"][:200])],
                                      attrs={"summary_by": "minty", "capture": cid} if atom["summary"] else {"capture": cid}, actor=actor, outside=outside, tags=tags)
             atom["item"] = it["id"]
+            for rel, to in cap["meta"].get("refs", []):  # e.g. a finished mission this was drawn from
+                self.store.link(f"item:{it['id']}", rel, to, why="where it came from", by="auto", outside=outside)
             for name in atom["entities"]:
                 self.store.link(f"item:{it['id']}", "about", f"world:{name}", why="named in the text", by="auto", outside=outside)
             for s in atom["similar"]:

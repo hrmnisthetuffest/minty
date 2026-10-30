@@ -102,6 +102,9 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "self": (("self", "world"), "who I am, what I can do and know",
              "who are you introduce yourself about minty identity capabilities capability architecture limitations limits strengths diagnose "
              "yourself remember decision decided assumption project entity relationship why did we"),
+    "know": (("know",), "second brain: capture, link, recall",
+             "second brain knowledge brain dump capture remember idea ideas insight insights lesson lessons research notes note know learned connect connections "
+             "contradiction contradictions missing gaps hypothesis finding findings"),
     "flows": (("flows",), "build, edit, test, run workflows",
              "workflow workflows automation automations automate canvas node nodes trigger flow flows pipeline n8n schedule"),
     "apps": (("mcp", "artifacts"), "connected apps (Gmail, Slack...) via Composio",

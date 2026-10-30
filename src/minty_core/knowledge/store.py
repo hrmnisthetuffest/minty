@@ -117,6 +117,15 @@ class KnowledgeStore:
     def _log(self, ref: str, actor: str, action: str, detail: dict | None = None) -> None:
         self._db.execute("INSERT INTO history (ref, ts, actor, action, detail) VALUES (?,?,?,?,?)", (ref, self._clock(), actor, action, json.dumps(detail or {}, ensure_ascii=False)[:4000]))
 
+    def note_event(self, ref: str, actor: str, action: str, detail: dict | None = None) -> None:
+        with self._lock:
+            self._log(ref, actor, action, detail)
+            self._db.commit()
+
+    def has_event(self, ref: str, action: str) -> bool:
+        with self._lock:
+            return self._db.execute("SELECT 1 FROM history WHERE ref = ? AND action = ? LIMIT 1", (ref, action)).fetchone() is not None
+
     def history(self, ref: str, limit: int = 30) -> list[dict]:
         with self._lock:
             rows = self._db.execute("SELECT ts, actor, action, detail FROM history WHERE ref = ? ORDER BY id DESC LIMIT ?", (ref, limit)).fetchall()
