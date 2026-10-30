@@ -142,6 +142,12 @@ class Index:
                 "SELECT DISTINCT l.src FROM links l JOIN notes n ON n.id = l.src WHERE l.dst=? AND n.archived=0",
                 (ident,)).fetchall()]
 
+    def link_pairs(self) -> list[tuple[str, str]]:
+        """Every link between two live notes (for the second brain's map)."""
+        with self._lock:
+            return [(a, b) for a, b in self._db.execute(
+                "SELECT l.src, l.dst FROM links l JOIN notes s ON s.id = l.src JOIN notes d ON d.id = l.dst WHERE s.archived = 0 AND d.archived = 0").fetchall()]
+
     def broken_links(self) -> list[tuple[str, str]]:
         with self._lock:
             return [(s, d) for s, d in self._db.execute(

@@ -624,6 +624,9 @@ def create_app(ctx: AppContext) -> FastAPI:
     from minty_core.mind.control import add_routes as control_routes
 
     control_routes(api, ctx)
+    from minty_core.knowledge.api import add_routes as knowledge_routes
+
+    knowledge_routes(api, ctx)
     app.include_router(api)
 
     @app.websocket("/events")

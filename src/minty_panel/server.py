@@ -20,7 +20,7 @@ from minty_panel.core_client import CoreClient, CoreUnavailable
 security = logging.getLogger("minty.security")  # who was refused and why; never a PIN, a cookie or a token
 STATIC = Path(__file__).parent / "static"
 COOKIE = "minty_session"
-ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags", "profile", "studio", "flows", "control"}
+ALLOWED = {"status", "config", "secrets", "personalities", "plugins", "memory", "prompts", "restart", "restart-app", "mute", "listen", "say", "ask", "logs", "jobs", "vault", "audit", "timeline", "flags", "profile", "studio", "flows", "control", "knowledge"}
 # The panel loads only its own files. Scripts may never be inline or built from text; styles may carry a style attribute (the progress bars).
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
        "connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")

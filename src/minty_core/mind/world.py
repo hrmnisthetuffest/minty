@@ -315,6 +315,21 @@ class WorldStore:
         """Assumptions that later proved wrong: the lesson, so the same guess is trusted less."""
         return [d["title"] for d in self.decisions(limit=200) if d["kind"] == "assumed" and d["outcome_result"] == "wrong"]
 
+    def graph(self, include_private: bool = False) -> dict:
+        """Everything the second brain's map needs from the world model: the entities (with their top facts), the current relations between them and the current decisions."""
+        with self._lock:
+            ents = self._db.execute("SELECT id, kind, name, updated, private FROM entities WHERE status = 'active' ORDER BY id").fetchall()
+            facts: dict[int, list[str]] = {}
+            for eid, attr, value in self._db.execute("SELECT entity, attr, value FROM facts WHERE status IN ('current','conflict')" + ("" if include_private else " AND private = 0") + " ORDER BY id").fetchall():
+                facts.setdefault(eid, []).append(f"{attr}: {value}")
+            rels = self._db.execute("SELECT a, rel, b, private FROM relations WHERE status = 'current'").fetchall()
+            decs = self._db.execute("SELECT id, title, kind, rationale, entities, ts, private FROM decisions WHERE status = 'current' ORDER BY id").fetchall()
+        shown = {e[0]: e[2] for e in ents if include_private or not e[4]}
+        return {"entities": [{"kind": k, "name": n, "updated": u, "private": bool(pr), "facts": facts.get(i, [])[:2]} for i, k, n, u, pr in ents if i in shown],
+                "relations": [{"a": shown[a], "rel": r, "b": shown[b]} for a, r, b, pr in rels if a in shown and b in shown and (include_private or not pr)],
+                "decisions": [{"id": i, "title": t, "kind": k, "rationale": ra, "entities": [shown[e] for e in json.loads(es or "[]") if e in shown], "ts": ts}
+                              for i, t, k, ra, es, ts, pr in decs if include_private or not pr]}
+
     def close(self) -> None:
         with self._lock:
             self._db.close()
