@@ -20,10 +20,12 @@ import flags from "./pages/flags.js";
 import timeline from "./pages/timeline.js";
 import studio from "./pages/studio.js";
 import flows from "./pages/flows.js";
+import mission from "./pages/mission.js";
 import { initBackdrop, stopBackdrop } from "./backdrop.js";
 
 const PAGES = [
   ["dashboard", "Dashboard", dashboard],
+  ["mission", "Mission Control", mission],
   ["timeline", "Timeline", timeline],
   ["logs", "Logs", logs],
   ["studio", "Studio", studio],
@@ -41,13 +43,14 @@ const PAGES = [
 ];
 // The menu: pages in groups, each with a small line icon (a path in a 16 x 16 box).
 const GROUPS = [
-  ["Monitor", ["dashboard", "timeline", "logs", "studio"]],
+  ["Monitor", ["dashboard", "mission", "timeline", "logs", "studio"]],
   ["Automate", ["flows"]],
   ["Configure", ["settings", "profile", "personality", "brain", "plugins", "flags", "prompts"]],
   ["Memory", ["memory", "notes", "audit"]],
 ];
 const ICONS = {
   dashboard: "M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z",
+  mission: "M8 2l6 3v4c0 3-2.5 4.5-6 6-3.5-1.5-6-3-6-6V5zM5.5 8l2 2 3.5-3.5",
   timeline: "M3 2v12M3 4h9M3 8h6M3 12h8",
   logs: "M2 4l4 4-4 4M8 12h6",
   studio: "M2 3h12v10H2zM7 6l3.5 2L7 10z",

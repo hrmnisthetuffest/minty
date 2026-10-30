@@ -105,6 +105,7 @@ flows_get                          1 change
 flows_history                      1 change
 flows_list                         1 change
 flows_patch                        1 change
+flows_rehearse                     1 change   sensitive
 flows_restore                      1 change
 flows_run                          1 change   sensitive
 flows_runs                         1 change   sensitive
@@ -160,6 +161,7 @@ memory_recall                      0 read     sensitive
 memory_remember                    1 change
 memory_resolve                     1 change
 missions_answer                    1 change
+missions_contract                  0 read
 missions_report                    0 read
 missions_resume                    1 change
 missions_review                    0 read

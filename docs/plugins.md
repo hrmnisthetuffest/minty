@@ -259,6 +259,7 @@ On by default: yes.
 | `flows_run` | Run a workflow: test=true only assesses what would change something. Give input, or resume a run. Returns the result and per-step status. | sensitive, risk varies |
 | `flows_runs` | A run in detail with its steps and diagnosis (run=id), or the recent runs and stats of a workflow. | sensitive, risk varies |
 | `flows_history` | A workflow's versions, or what changed between versions a and b. | risk varies |
+| `flows_rehearse` | Try a change on a draft first: run it beside the current version on cases (replay=a run id uses its recorded results; fail injects errors); apply=true adopts it only if results match and it costs no more. | sensitive, risk varies |
 | `flows_restore` | Go back to an earlier version (as a new version; nothing is lost). | risk varies |
 | `flows_set` | Turn a workflow on or off (on) or archive/unarchive it. Never deletes. | risk varies |
 
@@ -426,6 +427,7 @@ Settings: `max_concurrent`, `max_runtime_s`, `max_steps`, `approval_wait_s`.
 | `missions_answer` | Give a blocked mission the answer to its question; it carries on. | risk varies |
 | `missions_resume` | Carry on with a mission that stopped, was interrupted or failed, from its saved plan. | risk varies |
 | `missions_review` | How missions and coding jobs have gone: tools that keep failing, projects whose tests fail, goals that ran out of steps. Evidence and proposals only; nothing is changed. |  |
+| `missions_contract` | What a mission is for and what would prove it done: objective, each criterion (verified, accepted unchecked, to do), blocker, next. | risk varies |
 | `missions_report` | Proof of what a mission did: its plan, each action and result, and whether it was checked. No id: the latest. |  |
 
 ## music_id

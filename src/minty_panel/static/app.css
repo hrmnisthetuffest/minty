@@ -354,3 +354,23 @@ tr.cooling td { color: var(--dim); }
 .fl-diag { padding: 6px 8px; border-left: 3px solid var(--warn); background: var(--panel); margin: 6px 0; }
 .fl-answer { white-space: pre-wrap; }
 @media (max-width: 1100px) { .fl-wrap { grid-template-columns: 1fr; height: auto; } .fl-side, .fl-panel { max-height: 320px; } }
+
+/* ---- mission control ---- */
+.mc { display: flex; flex-direction: column; gap: 14px; }
+.mc-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.mc-card h3 { margin: 0 0 8px; font: 700 11px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.mc-needs { border-color: var(--warn); }
+.mc-need { margin: 4px 0; } .mc-need b { color: var(--warn); font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.mc-mission { padding: 10px 0; border-top: 1px solid var(--line); }
+.mc-mission:first-of-type { border-top: 0; }
+.mc-mission.on { border-left: 3px solid var(--blue2); padding-left: 10px; }
+.mc-mission.done { opacity: .85; }
+.mc-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mc-head button, .mc-run button { margin-left: auto; padding: 3px 9px; font-size: 12px; }
+.mc-pill { font: 700 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; padding: 3px 7px; border-radius: 3px; background: var(--panel2); color: var(--soft); }
+.mc-pill.ok { color: var(--ok); } .mc-pill.slow { color: var(--warn); } .mc-pill.stalled, .mc-pill.looping { background: var(--err); color: #fff; }
+.mc-crit { margin: 2px 0; font-size: 13px; color: var(--soft); }
+.mc-crit.verified span { color: var(--ok); } .mc-crit.accepted-unchecked span { color: var(--warn); } .mc-crit.to-do span { color: var(--dim); }
+.mc-block { color: var(--err); margin: 6px 0 0; }
+.mc-run { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.mc table { width: 100%; border-collapse: collapse; font-size: 13px; } .mc td { padding: 4px 6px; border-bottom: 1px solid var(--line); }

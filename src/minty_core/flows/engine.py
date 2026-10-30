@@ -53,6 +53,7 @@ class Env:
     emit: Callable[[dict], None] = lambda event: None
     clock: Callable[[], float] = time.time
     sleep: Callable[[float], Awaitable] = asyncio.sleep
+    fixture: Callable[[str], dict | None] = lambda node_id: None  # a rehearsal: a tool step answers from a recorded output (or an injected failure) instead of running anything
     waited: Callable[[], float] = lambda: 0.0  # seconds spent waiting for the user's answer so far: a step's timeout does not count them
 
 
@@ -154,6 +155,12 @@ async def execute(doc: dict, store, run_id: int, env: Env, *, mode: str = "real"
             name, args = str(p["tool"]), render(p.get("args") or {}, ctx)
             if not isinstance(args, dict):
                 raise NodeError("the tool arguments have to be an object", "input")
+            fx = env.fixture(nid)
+            if fx is not None:  # simulated: nothing runs, so nothing outside can happen; the step says so
+                if "_raise" in fx:
+                    raise NodeError(str(fx["_raise"]), "transient" if TRANSIENT.search(str(fx["_raise"])) else "permanent")
+                metrics["replayed"] = metrics.get("replayed", 0) + 1
+                return {**{k: v for k, v in fx.items() if k != "_port"}, "simulated": True}, "out", "done"
             risk = risks[nid] = env.assess_tool(name, args)
             if risk is None:
                 raise Blocked(f"There is no tool called {name} here.")

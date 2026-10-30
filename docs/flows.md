@@ -40,6 +40,12 @@ resume), `runs` (a run with steps and a diagnosis, or recent runs and stats), `h
 a workflow you drew by hand is read, changed, tested and run exactly like one Minty made. Editing, testing and running are not questions; **turning a workflow on** (it then runs by
 itself) is asked unless your words asked for it ("schedule it every morning").
 
+## Rehearsal (`flows_rehearse`)
+Before a substantial change is adopted, run it beside the current version: the candidate is saved as a *draft* version and both run on the same cases in test mode (past inputs, or cases you give,
+with injected failures such as `{"fail": {"get": "503 service unavailable"}}`). With `replay=<run id>` every tool step answers from what that run recorded, so nothing runs outside, not even a
+send; without it, reads run for real and anything that would change something is only assessed. Everything is labelled simulated. The verdict is `improved`, `equal`, `fixes a failure`,
+`costlier`, `changed behaviour` or `regression`; `apply=true` adopts the candidate only for the first three. The runs are kept (trigger `rehearsal`) and the draft stays in the version history.
+
 ## Triggers
 Schedules are checked every minute by the same loop as recipes; the same minute never starts the same workflow twice. When a background job ends, the workflows waiting for it start
 (a workflow's own jobs never start workflows, so nothing chains forever). Every event has a key, so the same event never starts the same work twice.

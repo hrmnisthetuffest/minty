@@ -1,5 +1,5 @@
 // Keeps the panel's page shell so it opens quickly and installs on a phone. It never answers /api, /login or /logout from a cache.
-const SHELL = "minty-shell-v7";
+const SHELL = "minty-shell-v8";
 const FILES = ["/", "/static/app.css", "/static/app.js", "/static/lib.js", "/static/events.js", "/static/runner.js", "/static/palette.js", "/static/pinpad.js", "/static/statusbar.js", "/static/settings-schema.js", "/static/icon.svg", "/static/fonts/Antonio.woff2"];
 
 self.addEventListener("install", (event) => {

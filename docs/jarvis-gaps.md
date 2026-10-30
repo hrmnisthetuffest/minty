@@ -30,3 +30,24 @@ See `docs/flows.md`.
   (stored canonically). One edit run's final summary hit a provider timeout. Not tried: long, messy requests; debugging a real failure end to end by a live model.
 * Not verified: drag-to-connect and node dragging by mouse were written but only
   exercised through the DOM (the connection and move code paths have no automated browser test); a schedule firing across a real day; a Composio tool step in a real run.
+
+## The intelligence layer (this round): the ten systems named, classified against the code
+
+Levels: 1 implemented and tested, 2 implemented but thinly tested, 3 partial, 4 design only, 5 missing, 6 blocked by something outside.
+
+| System | Level | What is there now (and what is not) |
+|---|---|---|
+| Memory and contextual retrieval | 2 | `MemoryAudit` facts (flat, sourced) plus the new world model (`mind/world.py`: entities, links, provenance, conflicts, staleness, decisions; tested; surfaced in a prompt hint only when a request names something it knows, and in mission context). Not built: automatic extraction of entities from mail or chat (the model records them with `world_note`), linking mail to projects without being asked. |
+| Task and goal management | 2 | Jobs and missions are solid. The **outcome contract** is a read-only view of a mission's checkpoints (objective, criteria verified / accepted unchecked / to do, blocker, next; `missions_contract`, Mission Control). Not built: amending a running mission's goal or criteria, contracts for plain tool calls. |
+| Workflow execution | 1 | `flows/` (engine, versions, schedules, event triggers, rehearsal): tested, mutation-checked, drawn in a real browser. Live-model use checked lightly. |
+| Agent planning and tool orchestration | 2 | Planner / executor / verifier with replanning after failed checks, as before. Not built: choosing between genuinely different strategies, or a reviewer for important work. |
+| Persistent background execution | 1 | Job runner (budgets that leave out waiting, cancel, resume, origin), schedules, de-duplicated triggers. |
+| Monitoring and recovery | 2 | New **watchdog** (`mind/watchdog.py`): stalled and looping jobs flagged then cancelled, slow work marked, mismatched state failed, a workflow that fails three real runs in a row switched off; unit-tested with a fake clock, mutation-checked, **not yet run over a real day**. Not built: model-based review of whether progress is "meaningful", cost and memory limits per task. |
+| Capability discovery | 2 | `mind/registry.py`: every plugin with a status (available / needs configuration / unavailable / does not exist) and evidence from the tool-call traces; `self_can`. Evidence is only as good as the traces (recorded calls in the last days); "available" means loaded and its known needs met, not shown to work. |
+| Control panel | 1 | Panel pages plus **Mission Control** (`/api/control/overview`): needs-you first, missions with contracts, running work with health and Stop, workflows with last runs, recent outcomes, decisions. Rendered in a real browser from seeded real records. |
+| Performance and execution instrumentation | 3 | Per-run and per-step timing, tool and model call counts for workflows; tool-call traces with timing for everything; job durations. Not built: model latency and cost per call, a cost-per-verified-outcome figure, bottleneck analysis beyond the slowest steps. |
+| Documentation and identity | 2 | `MINTY_IDENTITY.md` (one canonical file, facts block generated from the code and checked by a test, no personal data, read-only for the model) and `self_about` for five kinds of introduction. |
+
+**Digital twin:** `registry.twin`: components and dependencies read from the code (which services a plugin or loop needs), the toolkit table, the running app and the workflows; `impact()` and findings marked verified or hypothesis (`self_diagnose`). It is a map built from metadata, not a model of behaviour.
+
+**Backlog, in order of leverage (not built):** (1) amend-while-running for missions, with the contract; (2) a skills library on top of playbooks (promote a repeated successful procedure, test, version); (3) deadline and dependency forecasting and follow-through commitments on top of the world model and `attention`; (4) anomaly and opportunity detection through the notifier (the watchdog is the first part); (5) a visual diff and side-by-side run comparison in the editor; (6) cost accounting per model call; (7) learning working-style preferences from corrections (extend `prefs`); (8) strategy comparison and an independent reviewer for consequential work.

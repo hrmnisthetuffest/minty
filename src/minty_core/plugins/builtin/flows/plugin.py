@@ -95,6 +95,11 @@ def register(ctx):
             raise LookupError("One of those versions does not exist.")
         return out({"diff": model.diff(a, b), "summary": model.describe_diff(model.diff(a, b))})
 
+    async def rehearse(args):
+        r = await svc().rehearse(args["flow"], ops=args.get("ops"), doc=args.get("doc"), cases=args.get("cases"), replay=int(args["replay"]) if args.get("replay") is not None else None,
+                                 apply=bool(args.get("apply")), by="minty")
+        return out(r)
+
     async def restore(args):
         r = svc().restore(args["flow"], int(args["version"]), by="minty")
         return out({**r, "issues": issues_text(r["issues"])})
@@ -131,6 +136,9 @@ def register(ctx):
         Tool("runs", "A run in detail with its steps and diagnosis (run=id), or the recent runs and stats of a workflow.",
              {"type": "object", "properties": {**ref, "run": i, "limit": i}}, guarded(runs), sensitive=True, risk=R1),
         Tool("history", "A workflow's versions, or what changed between versions a and b.", {"type": "object", "properties": {**ref, "a": i, "b": i}, "required": ["flow"]}, guarded(history), risk=R1),
+        Tool("rehearse", "Try a change on a draft first: run it beside the current version on cases (replay=a run id uses its recorded results; fail injects errors); apply=true adopts it only if results match and it costs no more.",
+             {"type": "object", "properties": {**ref, "ops": {"type": "array", "items": o}, "doc": o, "cases": {"type": "array", "items": o}, "replay": i, "apply": b}, "required": ["flow"]},
+             guarded(rehearse), sensitive=True, risk=R1),
         Tool("restore", "Go back to an earlier version (as a new version; nothing is lost).", {"type": "object", "properties": {**ref, "version": i}, "required": ["flow", "version"]}, guarded(restore), risk=R1),
         Tool("set", "Turn a workflow on or off (on) or archive/unarchive it. Never deletes.", {"type": "object", "properties": {**ref, "on": b, "archived": b}, "required": ["flow"]},
              guarded(set_), risk=enable_risk, mandate=ENABLE),

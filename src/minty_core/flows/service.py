@@ -31,6 +31,36 @@ EXAMPLE = {"name": "size check", "nodes": [
     "edges": [{"from": "start", "port": "out", "to": "big"}, {"from": "big", "port": "true", "to": "yes"}, {"from": "big", "port": "false", "to": "no"}]}
 
 
+class _NoJob:
+    """Stands in for a job when a workflow is rehearsed inline: nothing to wait on, and any question is answered no."""
+    waited_s = 0.0
+    job = type("J", (), {"id": 0})()
+
+    def progress(self, text: str) -> None:
+        pass
+
+    async def wait_on_open_approval(self, *args, **kwargs):
+        return False
+
+    async def ask_approval(self, *args, **kwargs):
+        return False
+
+
+def _cases(cases, store, flow_id: int, replay_run: dict | None) -> list[dict]:
+    out = [{"input": c.get("input") if isinstance(c.get("input"), dict) else {}, "fail": c.get("fail") if isinstance(c.get("fail"), dict) else {}} for c in (cases or []) if isinstance(c, dict)]
+    if out:
+        return out[:6]
+    if replay_run is not None:
+        return [{"input": replay_run["input"] or {}, "fail": {}}]
+    seen, found = set(), []
+    for r in store.runs(flow_id, 12):
+        key = repr(r["input"])
+        if key not in seen and r["trigger"] != "rehearsal":
+            seen.add(key)
+            found.append({"input": r["input"] or {}, "fail": {}})
+    return found[:3] or [{"input": {}, "fail": {}}]
+
+
 class FlowService:
     def __init__(self, store: FlowStore, *, jobs, worker_factory: Callable, get_tool: Callable, tool_names: Callable[[], list[str]],
                  ask: Callable[[str, str], Awaitable[str]], notify: Callable[[str], None], emit: Callable[[dict], None] = lambda e: None,
@@ -204,6 +234,65 @@ class FlowService:
         res = await execute(doc, self.store, run_id, env, mode=mode, trigger_input=input_, depth=depth, flow_id=flow.id)
         self.store.finish_run(run_id, res.status, res.output, res.error, res.verified, res.metrics)
         return {"status": res.status, "output": res.output, "error": res.error}
+
+    # ---- rehearsal: try a change beside the current version before it is adopted -------------------------------------------
+    async def rehearse(self, ref, *, ops=None, doc=None, cases=None, replay: int | None = None, apply: bool = False, by: str = "minty") -> dict:
+        """Run a candidate beside the active version on the same cases, in test mode, and compare. A tool step with a recorded output (replay) answers from it, so nothing runs
+        outside; failures can be injected per case. The candidate is a draft version; it becomes active only on `apply`, when no case got worse or different and it costs no more.
+        Everything here is labelled simulated: a rehearsed send is not a delivered send."""
+        flow = self._need(ref)
+        base = self.store.doc(flow.id) or {}
+        try:
+            cand = model.apply_ops(base, ops) if ops else model.normalize(doc or {})
+        except ValueError as e:
+            return {"verdict": "rejected", "why": str(e)}
+        problems = [i for i in self.check(cand) if i["level"] == "error"]
+        if problems:
+            return {"verdict": "rejected", "why": "the candidate has errors", "issues": [f"{i.get('node') or ''}: {i['message']}" for i in problems[:6]]}
+        run0 = self.store.run(replay) if replay is not None else None
+        if replay is not None and (run0 is None or run0["flow_id"] != flow.id):
+            raise ValueError("that run is not one of this workflow's")
+        tools = {n["id"] for n in base.get("nodes", []) if n.get("type") == "tool.call"}
+        recorded = {s["node"]: {k: v for k, v in s["output"].items() if k != "_port"} for s in (self.store.steps(replay) if run0 else [])
+                    if s["node"] in tools and s["status"] in ("done", "assessed") and isinstance(s["output"], dict)}
+        version = self.store.add_version(flow.id, cand, by=by, note="rehearsal candidate", activate=False)
+        rows = []
+        for case in _cases(cases, self.store, flow.id, run0):
+            sides = {}
+            for label, d, ver in (("baseline", base, flow.active_version), ("candidate", cand, version)):
+                fx = {**recorded, **{node: {"_raise": str(msg)} for node, msg in case["fail"].items()}}
+                env = self._env(_NoJob(), flow.name)
+                env.fixture = lambda nid, fx=fx: fx.get(nid)
+                rid = self.store.start_run(flow.id, ver, "test", "rehearsal", case["input"])
+                r = await execute(d, self.store, rid, env, mode="test", trigger_input=case["input"], flow_id=flow.id)
+                self.store.finish_run(rid, r.status, r.output, r.error, r.verified, r.metrics)
+                sides[label] = {"run": rid, "status": r.status, "output": r.output, "error": r.error[:100], "calls": r.metrics.get("tool_calls", 0) + r.metrics.get("model_calls", 0),
+                                "nodes": r.metrics.get("nodes_run", 0), "ms": r.metrics.get("ms", 0)}
+            b, c = sides["baseline"], sides["candidate"]
+            bad = ("failed", "blocked")
+            rows.append({"case": case, **sides, "result": "better" if b["status"] in bad and c["status"] == "done" else "worse" if c["status"] in bad and b["status"] == "done"
+                         else "same" if (b["status"], b["output"]) == (c["status"], c["output"]) else "different"})
+        kinds = {r["result"] for r in rows}
+        base_cost, cand_cost = sum(r["baseline"]["calls"] for r in rows), sum(r["candidate"]["calls"] for r in rows)
+        base_nodes, cand_nodes = sum(r["baseline"]["nodes"] for r in rows), sum(r["candidate"]["nodes"] for r in rows)
+        if "worse" in kinds:
+            verdict = "regression"
+        elif "different" in kinds:
+            verdict = "changed behaviour"
+        elif cand_cost > base_cost:
+            verdict = "costlier"
+        elif "better" in kinds:
+            verdict = "fixes a failure"
+        else:
+            verdict = "improved" if (cand_cost, cand_nodes) < (base_cost, base_nodes) else "equal"
+        applied = bool(apply and verdict in ("improved", "equal", "fixes a failure") and self.store.activate(flow.id, version))
+        how = ["replayed from the recorded run " + str(replay) + " (simulated: no tool ran)" if recorded else "reads ran for real; anything that would change something was only assessed (simulated)"]
+        if any(r["case"]["fail"] for r in rows):
+            how.append("failures were injected, not real")
+        return {"verdict": verdict, "applied": applied, "candidate_version": version, "cases": len(rows), "calls": {"before": base_cost, "after": cand_cost}, "nodes_run": {"before": base_nodes, "after": cand_nodes},
+                "results": [{"input": r["case"]["input"], "fail": r["case"]["fail"], "result": r["result"], "before": r["baseline"]["status"], "after": r["candidate"]["status"]} for r in rows],
+                "evidence": "; ".join(how), "changes": model.describe_diff(model.diff(base, cand)),
+                "next": "adopted" if applied else ("send apply=true to adopt it" if verdict in ("improved", "equal", "fixes a failure") else "not adopted: " + verdict)}
 
     # ---- what happened -----------------------------------------------------------------------------------------------
     def summary(self, run_id: int) -> str:
