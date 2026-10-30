@@ -51,7 +51,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 minty_core = ["plugins/builtin/*/plugin.toml", "plugins/builtin/apis/catalog.json", "skills_builtin/*/SKILL.md",
-               "prompts_terse.json"]
+               "prompts_terse.json", "MINTY_IDENTITY.md"]
 minty_panel = ["static/*", "static/pages/*", "static/fonts/*"]
 
 [tool.pytest.ini_options]

@@ -32,13 +32,13 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "missions": (("missions",), "hand over a whole goal and follow it",
                 "mission missions goal objective delegate handle ownership autonomously unattended overnight resume "
                 "blocked proof report accomplished"),
-    "attention": (("attention",), "what needs the user: blocked missions, overdue items",
+    "attention": (("attention",), "what needs the user: blocked missions, overdue",
                  "attention pending waiting overdue outstanding unfinished loose open items needs dismiss snooze nag "
                  "forgetting whats"),
-    "recipes": (("recipes",), "automations on a schedule: set up, list, run, pause",
+    "recipes": (("recipes",), "scheduled automations: set up, list, run, pause",
                "automation automations automate recipe recipes schedule scheduled every daily weekly weekdays "
                "nightly morning evening routine routines recurring regularly automatically post posting upload"),
-    "studio": (("studio",), "short videos (voice, music, captions); post to Instagram",
+    "studio": (("studio",), "short videos (voice, music, captions); Instagram",
               "video videos reel reels clip clips voiceover voice music captions caption instagram insta post "
               "posting upload carousel slides minecraft parkour gameplay stock footage edit render short shorts "
               "tiktok motion graphics backgrounds nasa"),
@@ -85,7 +85,7 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "productivity": (("productivity",), "habits, birthdays, trips, meals, alarms, day plan",
                     "habit habits streak birthday birthdays occasion person people trip packing pack meal meals shopping "
                     "groceries alarm wake snooze plan day wind summary record recording lecture meeting mark moment"),
-    "web": (("web",), "watch a price or page, read a link safely, downloads",
+    "web": (("web",), "watch a price or page, read a link, downloads",
            "watch watcher price prices drop stock wishlist changes changed link links safe safely suspicious "
            "phishing later queue quarantine download downloads release captions transcript youtube session tabs "
            "restore clickable handover login dry"),
@@ -99,12 +99,15 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
               "habit habits preference preferences learned learn suggestion suggestions always never prefer playbook playbooks template "
               "templates procedure standard way workflow version versions rollback notices notice told lately watcher dealt resolve resolved"),
     "phone": (("phone",), "message you on your own Telegram", "telegram phone mobile ping"),
-    "flows": (("flows",), "workflows: build, edit, test, run automations",
+    "self": (("self", "world"), "who I am, what I can do and know",
+             "who are you introduce yourself about minty identity capabilities capability architecture limitations limits strengths diagnose "
+             "yourself remember decision decided assumption project entity relationship why did we"),
+    "flows": (("flows",), "build, edit, test, run workflows",
              "workflow workflows automation automations automate canvas node nodes trigger flow flows pipeline n8n schedule"),
-    "apps": (("mcp", "artifacts"), "your connected apps (Gmail, Slack, GitHub) via MCP/Composio",
+    "apps": (("mcp", "artifacts"), "connected apps (Gmail, Slack...) via Composio",
             "mcp composio server tool gmail google calendar slack github notion drive sheet sheets outlook teams "
             "linear jira trello asana discord twitter figma hubspot salesforce dropbox airtable stripe"),
-    "creator": (("create",), "news, arXiv, ideas, slides, pictures, translation, clips",
+    "creator": (("create",), "news, papers, ideas, slides, pictures, translation",
                "news headlines brief feed rss arxiv paper papers research idea ideas inbox mind map mindmap slides "
                "slide deck powerpoint presentation outline image picture draw generate translate translation "
                "glossary hindi punjabi claim fact evidence source sources clip trim merge podcast lecture notes "

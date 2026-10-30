@@ -234,6 +234,9 @@ school_done                        1 change   sensitive
 school_homework                    0 read     sensitive
 school_notices                     0 read     sensitive
 school_set_portal                  2 visible
+self_about                         0 read
+self_can                           0 read
+self_diagnose                      0 read
 selfcheck_report                   0 read     +args
 selfcheck_timeline                 0 read     sensitive
 shell_run                          3 critical +args sensitive

@@ -630,6 +630,18 @@ Settings: `portal_url`.
 | `school_add` | Add a homework item by hand (subject, task, optional due date YYYY-MM-DD). | sensitive, risk varies |
 | `school_notices` | Read the school notices that are new (all=true for older ones too). | sensitive |
 
+## self
+
+Minty knowing itself: who it is (from one identity file), what it can really do right now (a live capability registry with evidence), and what limits it (a map of its own parts).
+
+On by default: yes.
+
+| Tool | What it does | Flags |
+|---|---|---|
+| `self_about` | Who Minty is, from its identity file. level: short, detailed, technical, user or agent (for another AI). | risk varies |
+| `self_can` | What Minty can really do now. task = a thing to do (available, needs setup, or not possible); none = the overview with evidence. | risk varies |
+| `self_diagnose` | What limits Minty now (verified findings, hypotheses marked), or component = what depends on it. | risk varies |
+
 ## selfcheck
 
 What happened (timeline), the weekly self-report, failure proposals you approve, the daily tip and card.

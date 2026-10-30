@@ -1,0 +1,3 @@
+name = "self"
+description = "Minty knowing itself: who it is (from one identity file), what it can really do right now (a live capability registry with evidence), and what limits it (a map of its own parts)."
+default_enabled = true

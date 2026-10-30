@@ -579,6 +579,8 @@ def build_context(config_dir: Path) -> AppContext:
                     parts.append(event.text)
         return "".join(parts)
 
+    services["list_plugins"] = host.list_plugins
+    services["router_status"] = router.status
     services["flows"] = FlowService(
         FlowStore(config_dir / "flows.sqlite"), jobs=jobs, worker_factory=make_worker, get_tool=host.get_tool,
         tool_names=lambda: [t for p in host.list_plugins() if p["enabled"] and not p["error"] for t in p["tools"]], ask=flow_ask,
