@@ -56,17 +56,20 @@ def register(ctx):
         o, p = outside(), private()
         if args.get("title"):
             kind = str(args.get("kind") or "note")
-            it = kb.add_item(kind, str(args["title"]), str(args.get("body") or ""), authored=str(args.get("authored") or "minty"), summary=str(args.get("summary") or ""),
-                             project=str(args.get("project") or ""), tags=args.get("tags") or (), private=p, sources=[s for s in (args.get("sources") or []) if isinstance(s, str)],
-                             actor="minty", outside=o)
+            added = cap.add(kind, str(args["title"]), str(args.get("body") or ""), authored=str(args.get("authored") or "minty"), summary=str(args.get("summary") or ""),
+                            project=str(args.get("project") or ""), tags=args.get("tags") or (), private=p, sources=[s for s in (args.get("sources") or []) if isinstance(s, str)],
+                            actor="minty", outside=o)
+            it = added["item"]
             made, problems = [], []
-            for link in args.get("links") or []:
+            for link in ([] if added["duplicate"] else args.get("links") or []):
                 try:
                     made.append(kb.link(f"item:{it['id']}", str(link.get("rel") or "relates to"), str(link.get("to") or ""), why=str(link.get("why") or ""), by="minty", outside=o)["dst"])
                 except KnowledgeError as e:
                     problems.append(str(e))
-            return out({"id": it["id"], "kind": it["kind"], "authored": it["authored"], "status": it["status"], "linked_to": made, "link_problems": problems,
-                        "note": "from outside, unchecked: it needs a second source" if o else "written by Minty, not checked until a source is attached or the owner confirms it"})
+            return out({"id": it["id"], "kind": it["kind"], "authored": it["authored"], "status": it["status"], "duplicate": added["duplicate"], "about": added["about"],
+                        "similar": [{"ref": x["ref"], "why": x["why"]} for x in added["similar"]], "linked_to": made, "link_problems": problems,
+                        "note": "this was already in the second brain: the new source was added as evidence, not a second copy" if added["duplicate"] else
+                        "from outside, unchecked: it needs a second source" if o else "written by Minty, not checked until a source is attached or the owner confirms it"})
         got = await cap.capture(text=str(args.get("text") or ""), url=str(args.get("url") or ""), channel="agent", kind_hint=str(args.get("kind") or ""),
                                 origin="outside" if o else "you", private=p)
         return out(capture_view(got))
@@ -159,7 +162,7 @@ def register(ctx):
 
     s, b = {"type": "string"}, {"type": "boolean"}
     return [
-        Tool("capture", "Put anything in the second brain. text (a thought or brain dump, split and linked), url (a page), or title+kind+body for something already analysed (with links [{rel,to}], sources [source ids], authored you/minty). Outside content waits for the owner.",
+        Tool("capture", "Put anything in the second brain. For what the owner said use text (a thought or brain dump: split, linked, de-duplicated); url (a page); title+kind+body only for something you worked out (links [{rel,to}], sources [ids], authored you/minty). Outside content waits for the owner.",
              {"type": "object", "properties": {"text": s, "url": s, "title": s, "kind": {"type": "string", "enum": list(KINDS)}, "body": s, "summary": s, "tags": {"type": "array", "items": s}, "project": s,
                                                "sources": {"type": "array", "items": s}, "authored": {"type": "string", "enum": ["you", "minty"]},
                                                "links": {"type": "array", "items": {"type": "object", "properties": {"rel": s, "to": s, "why": s}}}}}, guarded(capture), risk=R1),

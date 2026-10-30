@@ -95,17 +95,17 @@ KITS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "world": (("integrations",), "calendar, Home Assistant, weather alerts, network",
              "calendar agenda schedule event events meeting free busy scene scenes movie night energy electricity "
              "kwh sleep timer fade weather alert storm heat lan network devices router wifi n8n workflow template"),
-    "habits": (("prefs", "playbooks", "notices"), "learned habits, playbooks, what Minty told you",
+    "habits": (("prefs", "playbooks", "notices"), "habits, playbooks, notices",
               "habit habits preference preferences learned learn suggestion suggestions always never prefer playbook playbooks template "
               "templates procedure standard way workflow version versions rollback notices notice told lately watcher dealt resolve resolved"),
     "phone": (("phone",), "message you on your own Telegram", "telegram phone mobile ping"),
-    "self": (("self", "world"), "who I am, what I can do and know",
+    "self": (("self", "world"), "who I am, what I can do",
              "who are you introduce yourself about minty identity capabilities capability architecture limitations limits strengths diagnose "
              "yourself remember decision decided assumption project entity relationship why did we"),
-    "know": (("know",), "second brain: capture, link, recall",
+    "know": (("know",), "your second brain",
              "second brain knowledge brain dump capture remember idea ideas insight insights lesson lessons research notes note know learned connect connections "
              "contradiction contradictions missing gaps hypothesis finding findings"),
-    "flows": (("flows",), "build, edit, test, run workflows",
+    "flows": (("flows",), "build and run workflows",
              "workflow workflows automation automations automate canvas node nodes trigger flow flows pipeline n8n schedule"),
     "apps": (("mcp", "artifacts"), "connected apps (Gmail, Slack...) via Composio",
             "mcp composio server tool gmail google calendar slack github notion drive sheet sheets outlook teams "

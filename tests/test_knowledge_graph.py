@@ -275,5 +275,5 @@ def test_the_owner_edits_verifies_and_archives_items_and_makes_and_judges_links(
     assert client.post(f"/knowledge/links/{sug['id']}/confirm").json()["status"] == "confirmed"
     assert client.post(f"/knowledge/links/{sug['id']}/reject").json()["status"] == "rejected"
     new = client.post("/knowledge/items", json={"kind": "idea", "title": "Try a pop-up", "body": "x"}).json()
-    assert new["authored"] == "you" and client.post("/knowledge/items", json={"kind": "person", "title": "Jane"}).status_code == 400
+    assert new["authored"] == "you" and client.post("/knowledge/items", json={"kind": "idea", "title": "Try a pop-up", "body": "x"}).json()["id"] == new["id"]  # the same thing again is not a second copy and client.post("/knowledge/items", json={"kind": "person", "title": "Jane"}).status_code == 400
     assert client.delete(f"/knowledge/items/{k['a']['id']}").status_code in (404, 405)  # there is no way to delete knowledge, only to archive it

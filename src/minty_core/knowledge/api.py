@@ -119,9 +119,10 @@ def add_routes(api, ctx) -> None:
     # ---- items and links: what the owner decides -------------------------------------------------------------------------------
     @api.post("/knowledge/items")
     async def items_add(payload: dict = Body(...)):
-        kb = need("knowledge")
-        return safe(kb.add_item, str(payload.get("kind") or "note"), str(payload.get("title") or ""), str(payload.get("body") or ""), authored="you", summary=str(payload.get("summary") or ""),
-                    project=str(payload.get("project") or ""), tags=payload.get("tags") or (), private=bool(payload.get("private")), actor="you")
+        cap = need("knowledge_capture")
+        added = safe(cap.add, str(payload.get("kind") or "note"), str(payload.get("title") or ""), str(payload.get("body") or ""), authored="you", summary=str(payload.get("summary") or ""),
+                     project=str(payload.get("project") or ""), tags=payload.get("tags") or (), private=bool(payload.get("private")), actor="you")
+        return {**added["item"], "duplicate": added["duplicate"]}
 
     @api.patch("/knowledge/items/{iid}")
     async def items_edit(iid: str, payload: dict = Body(...)):

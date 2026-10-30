@@ -68,10 +68,28 @@ async def test_something_already_analysed_goes_in_as_a_structured_item_with_its_
     assert "world" in refused.lower() and len(kb.items()) == 2
 
 
+async def test_the_same_thing_filed_twice_by_the_structured_path_is_one_item_with_more_evidence(ctx):
+    kb = ctx.services["knowledge"]
+    s1, s2 = kb.add_source("text", "first telling"), kb.add_source("text", "second telling")
+    a = j(await call(ctx, "know_capture", kind="idea", title="Monthly tasting box for small cafes", body="Sell a box.", sources=[s1["id"]]))
+    b = j(await call(ctx, "know_capture", kind="idea", title="Monthly tasting box for small cafes", body="Sell a box.", sources=[s2["id"]]))
+    assert b["id"] == a["id"] and b["duplicate"] is True and len(kb.items()) == 1 and len(kb.evidence(a["id"])) == 2
+
+
+async def test_a_structured_item_gets_the_same_name_links_and_proposed_links_as_a_captured_one(ctx):
+    ctx.services["world"].note("organization", "Acme", "size", "50 people", "told", "owner")
+    kb = ctx.services["knowledge"]
+    old = kb.add_item("idea", "Coffee subscription box", "A monthly subscription box of coffee beans for cafes.")
+    got = j(await call(ctx, "know_capture", kind="idea", title="Offer Acme a coffee subscription", body="Offer Acme a monthly subscription box of coffee beans for cafes at thirty days."))
+    assert got["about"] == ["Acme"] and got["similar"][0]["ref"] == f"item:{old['id']}"
+    links = {(l["rel"], l["dst"], l["status"]) for l in kb.links(f"item:{got['id']}", statuses=("confirmed", "suggested"))}
+    assert ("about", "world:Acme", "confirmed") in links and ("relates to", f"item:{old['id']}", "suggested") in links
+
+
 async def test_in_a_private_turn_what_is_filed_is_private(ctx):
     ctx.services["is_private"] = lambda: True
     await call(ctx, "know_capture", text="Idea: quietly approach a rival")
-    await call(ctx, "know_capture", kind="idea", title="Quietly approach a rival", body="structured")
+    await call(ctx, "know_capture", kind="idea", title="Pitch a merger to the other roaster", body="structured")
     kb = ctx.services["knowledge"]
     assert kb.items() == [] and [i["private"] for i in kb.items(include_private=True)] == [True, True]
 
