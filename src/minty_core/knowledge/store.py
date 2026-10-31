@@ -470,6 +470,11 @@ class KnowledgeStore:
         with self._lock:
             return [self._capture(r) for r in self._db.execute(sql + " ORDER BY created DESC LIMIT ?", (*args, limit)).fetchall()]
 
+    def count_auto_captures(self, since: float) -> int:
+        """How many captures the system made on its own (not the owner or Minty asking) since a time: the ceiling on automatic filing counts these."""
+        with self._lock:
+            return self._db.execute("SELECT COUNT(*) FROM captures WHERE created >= ? AND json_extract(meta, '$.auto') = 1", (since,)).fetchone()[0]
+
     def update_capture(self, cid: str, *, actor: str = "you", **fields) -> dict:
         allowed = {"raw", "status", "result", "error", "attempts", "source_id", "kind_hint", "private", "meta"}
         if set(fields) - allowed:

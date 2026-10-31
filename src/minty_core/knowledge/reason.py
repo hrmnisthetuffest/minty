@@ -167,9 +167,15 @@ class Reasoner:
             if want and want in (flat(it["body"] or it["title"]), flat(it["title"]), flat(f"{it['title']} {it['body']}")):
                 return it
             c = self._emb.cosine(qv, self._vectors_one(it))
-            if c > best_cos:
+            if c > best_cos and self._same_figures(text, f"{it['title']} {it['body']}"):  # "900 euros" and "950 euros" are two claims, however alike they look
                 best, best_cos = it, c
         return best if best is not None and best_cos >= 0.9 else None
+
+    @staticmethod
+    def _same_figures(a: str, b: str) -> bool:
+        """The same numbers, and both or neither negated."""
+        nums = lambda t: {n.replace(",", ".") for n, _u in _NUM.findall(t)} | set(re.findall(r"\b\d+(?:[.,]\d+)?\b", t))  # noqa: E731
+        return nums(a) == nums(b) and bool(_NEG.search(a)) == bool(_NEG.search(b))
 
     # ---- recalling with provenance ----------------------------------------------------------------------------------
     def _label(self, ref: str) -> str:
@@ -257,6 +263,12 @@ class Reasoner:
                 if a and b and (include_private or not (a["private"] or b["private"])):
                     seen.add(frozenset((a["id"], b["id"])))
                     out.append({"kind": "claim", "a": a["id"], "b": b["id"], "verified": True, "why": link["why"] or "linked as contradicting each other", "titles": [a["title"], b["title"]]})
+        for link in self.store.links(statuses=("suggested",)):  # proposed by the system (a research's cross-check), not confirmed by anyone: a guess
+            if link["rel"] == "contradicts" and link["src"].startswith("item:") and link["dst"].startswith("item:"):
+                a, b = self.store.item(link["src"][5:]), self.store.item(link["dst"][5:])
+                if a and b and frozenset((a["id"], b["id"])) not in seen and (include_private or not (a["private"] or b["private"])):
+                    seen.add(frozenset((a["id"], b["id"])))
+                    out.append({"kind": "claim", "a": a["id"], "b": b["id"], "verified": False, "why": (link["why"] or "proposed as contradicting") + " (suggested, not confirmed)", "titles": [a["title"], b["title"]]})
         dismissed = {frozenset((x["src"][5:], x["dst"][5:])) for x in self.store.links(statuses=("rejected",)) if x["rel"] == "contradicts" and x["src"].startswith("item:") and x["dst"].startswith("item:")}
         items = [i for i in self.store.items(include_private=include_private) if i["kind"] not in _NOT_CLAIMS]
         by_id = {i["id"]: i for i in items}

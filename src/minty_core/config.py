@@ -415,6 +415,13 @@ class OverlayConfig(BaseModel):
     distraction_words: list[str] = ["youtube", "instagram", "reddit", "twitter", "netflix", "facebook", "tiktok"]
 
 
+class KnowledgeConfig(BaseModel):
+    """The second brain fills itself: what you say in a conversation (only your own words) and the points of every finished research."""
+    auto_chat: bool = True  # file what you say that is worth keeping, without being asked (never in private mode, never a secret, never Minty's own answer)
+    auto_research: bool = True  # a finished research becomes points connected to their sources, to each other and to what is already known
+    auto_per_hour: int = Field(12, ge=1, le=100)  # a ceiling on automatic filing from conversation, so a long chat cannot flood the map
+
+
 class VaultConfig(BaseModel):
     """The notes folder Minty owns: plain Markdown, a git history, a rebuildable index. Off by default."""
     enabled: bool = False
@@ -899,6 +906,7 @@ class Config(BaseModel):
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
     overlay: OverlayConfig = Field(default_factory=OverlayConfig)
     vault: VaultConfig = Field(default_factory=VaultConfig)
+    knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
     butler: ButlerConfig = Field(default_factory=ButlerConfig)
     study: StudyConfig = Field(default_factory=StudyConfig)
     productivity: ProductivityConfig = Field(default_factory=ProductivityConfig)

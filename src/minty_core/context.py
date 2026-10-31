@@ -606,7 +606,13 @@ def build_context(config_dir: Path) -> AppContext:
 
     from minty_core.telegram.intake import pdf_text as read_pdf
 
-    services["knowledge_capture"] = Capturer(kb, brain, world=world, fetch=fetch_page, pdf_text=read_pdf)
+    capturer = services["knowledge_capture"] = Capturer(kb, brain, world=world, fetch=fetch_page, pdf_text=read_pdf)
+    from minty_core.knowledge.auto import AutoCapture
+    from minty_core.knowledge.research import make_hook as research_hook
+
+    auto = services["knowledge_auto"] = AutoCapture(kb, capturer, config=lambda: store.config.knowledge, is_private=is_private, history=lambda: agent.history, scanner=services.get("scanner"))
+    agent.turn_done.append(auto.observe)  # what the owner says that is worth keeping is filed without being asked
+    services["knowledge_research"] = research_hook(capturer, lambda: store.config.knowledge.auto_research)  # the research plugin calls this with each finished note
 
     def mind_hint(request: str) -> str:
         """What the world model and the second brain hold about what the request names: one short block, world and knowledge sharing the one 700-character budget."""

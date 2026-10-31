@@ -141,6 +141,25 @@ def test_the_hint_tells_the_model_to_use_what_is_there_and_does_not_say_a_title_
     assert "Answer from it" in hint and "never say you have no notes" in hint and "know_recall" in hint and hint.count("volume discount") == 1
 
 
+def test_two_claims_that_differ_only_in_a_number_or_a_negation_are_not_the_same_thing(parts):
+    store, _w, r = parts
+    store.add_item("finding", "The monthly rent for the office is 900 euros", "")
+    store.add_item("finding", "The shop is open on Sundays during the summer season", "")
+    assert r.find_duplicate("The monthly rent for the office is 950 euros") is None
+    assert r.find_duplicate("The shop is not open on Sundays during the summer season") is None
+    assert r.find_duplicate("the monthly rent for the office is 900 euros!") is not None  # punctuation and case still do not matter
+
+
+def test_a_suggested_contradiction_is_listed_as_a_guess_and_a_dismissed_one_is_not(parts):
+    store, _w, r = parts
+    a, b = store.add_item("finding", "Margin is 18 percent", ""), store.add_item("finding", "Margin is 40 percent", "")
+    link = store.link(ref(a), "contradicts", ref(b), why="the research cross-check found different numbers (18 vs 40)", status="suggested", by="auto", outside=True)
+    got = [c for c in r.conflicts() if {c["a"], c["b"]} == {a["id"], b["id"]}]
+    assert len(got) == 1 and got[0]["verified"] is False and "different numbers" in got[0]["why"] and "not confirmed" in got[0]["why"]
+    store.set_link(link["id"], "rejected")
+    assert not [c for c in r.conflicts() if {c["a"], c["b"]} == {a["id"], b["id"]}]
+
+
 def test_plural_and_singular_forms_of_a_word_are_the_same_subject(parts):
     store, _w, r = parts
     store.add_item("lesson", "always ask the supplier for a volume discount before agreeing a price.", "", authored="you")

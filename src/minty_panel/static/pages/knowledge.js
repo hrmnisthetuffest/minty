@@ -561,6 +561,8 @@ export default async function knowledge(main, events) {
       parts.push(h("div", { class: "kb-badges" }, badge(WHO[g.authored] || g.authored, `who-${g.authored}`), badge(g.status, `st-${g.status}`), g.archived ? badge("archived") : null, g.project ? badge(g.project) : null, ...(g.tags || []).map((t) => badge("#" + t)),
         h("span", { class: "muted" }, ` added ${ago(g.created)}${g.reviewed ? ` · reviewed ${ago(g.reviewed)}` : ""}`)));
       if (g.note) parts.push(h("p", { class: "kb-warn" }, g.note));
+      if (g.attrs && g.attrs.auto) parts.push(h("p", { class: "muted" }, "Filed automatically from something you said. Archive it if it was not worth keeping."));
+      if (g.attrs && g.attrs.research) parts.push(h("p", { class: "muted" }, "A point from a research Minty did: it rests on the pages below and nobody has checked it yet."));
       const show = h("div", { class: "kb-text" });
       const full = g.body || g.title;
       const setView = (summary) => { show.textContent = summary ? g.summary : full; sv.classList.toggle("on", summary); ov.classList.toggle("on", !summary); };

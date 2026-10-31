@@ -78,6 +78,9 @@ def register(ctx):
                         tracer=ctx.services.get("tracer"))
 
     def remember(note) -> None:
+        file_points = ctx.services.get("knowledge_research")  # the second brain: one point per claim, connected (never raises)
+        if file_points is not None and note.ref is not None:
+            file_points(note)
         gists = ctx.services.get("gists")
         if gists is None or note.ref is None:
             return

@@ -125,7 +125,7 @@ class Capturer:
         return await self.process(cap["id"]) if process else cap
 
     def add(self, kind: str, title: str, body: str = "", *, authored: str = "minty", summary: str = "", project: str = "", tags=(), private: bool = False, sources=(),
-            actor: str = "minty", outside: bool = False) -> dict:
+            actor: str = "minty", outside: bool = False, attrs: dict | None = None) -> dict:
         """Something already analysed (by Minty, or by the owner through the panel) goes in the same way a captured thought does: the same thing again is more evidence for the first copy,
         names the world model knows are linked, and similar knowledge is proposed (never confirmed). Returns {item, duplicate, about, similar}."""
         text = f"{title} {body}".strip()
@@ -136,7 +136,7 @@ class Capturer:
                 self.store.cite(dup["id"], sid, quote=quote or title[:200], actor=actor)
             return {"item": self.store.item(dup["id"]), "duplicate": True, "about": [], "similar": []}
         similar = self.reasoner.related(text, k=3, include_private=private)
-        item = self.store.add_item(kind, title, body, authored=authored, summary=summary, project=project, tags=tags, private=private, sources=sources, actor=actor, outside=outside)
+        item = self.store.add_item(kind, title, body, authored=authored, summary=summary, project=project, tags=tags, private=private, sources=sources, actor=actor, outside=outside, attrs=attrs)
         about = []
         if self.world is not None:
             for e in self.world.recall(text, include_private=True)["entities"]:
@@ -277,7 +277,7 @@ class Capturer:
                 continue
             tags = ["decision-candidate"] if atom["title"] in result.get("decisions", []) else []
             it = self.store.add_item(atom["kind"], atom["title"], atom["body"], authored=authored, summary=atom["summary"], private=cap["private"], sources=[(sid, atom["title"][:200])],
-                                     attrs={"summary_by": "minty", "capture": cid} if atom["summary"] else {"capture": cid}, actor=actor, outside=outside, tags=tags)
+                                     attrs={**({"summary_by": "minty"} if atom["summary"] else {}), "capture": cid, **({"auto": True} if cap["meta"].get("auto") else {})}, actor=actor, outside=outside, tags=tags)
             atom["item"] = it["id"]
             for rel, to in cap["meta"].get("refs", []):  # e.g. a finished mission this was drawn from
                 self.store.link(f"item:{it['id']}", rel, to, why="where it came from", by="auto", outside=outside)

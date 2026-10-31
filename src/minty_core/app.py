@@ -892,6 +892,19 @@ async def _harvest_missions(ctx) -> int:
     return made
 
 
+async def _file_waiting_auto(ctx) -> int:
+    """Captures the system made on its own that were left waiting (there was no event loop to file them in at the time): filed now."""
+    kb, cap = ctx.services.get("knowledge"), ctx.services.get("knowledge_capture")
+    if kb is None or cap is None:
+        return 0
+    n = 0
+    for c in kb.captures("pending", include_private=True)[:5]:
+        if c["meta"].get("auto"):
+            await cap.process(c["id"])
+            n += 1
+    return n
+
+
 async def _knowledge_loop(ctx, *, first_s: float = 120.0, every_s: float = 300.0, rounds: int | None = None, sleep=asyncio.sleep) -> None:
     """Every few minutes: finished missions become proposals in the second brain's inbox."""
     await sleep(first_s)
@@ -900,6 +913,7 @@ async def _knowledge_loop(ctx, *, first_s: float = 120.0, every_s: float = 300.0
         n += 1
         try:
             await _harvest_missions(ctx)
+            await _file_waiting_auto(ctx)
         except Exception:  # noqa: BLE001 — proposing knowledge must never be the thing that stops the app
             log.warning("knowledge round failed", exc_info=True)
         await sleep(every_s)
