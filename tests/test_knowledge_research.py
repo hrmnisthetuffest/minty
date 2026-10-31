@@ -59,6 +59,16 @@ def test_a_research_becomes_one_point_per_claim_under_one_hub_each_resting_on_it
     assert all((f"item:{i['id']}", "part of", f"item:{hub['id']}", "confirmed") in parts for t, i in items.items() if i["kind"] == "finding")
 
 
+def test_points_of_one_research_are_not_suggested_as_related_to_their_own_hub_or_to_each_other(ctx, tmp_path):
+    kb = ctx.services["knowledge"]
+    old = kb.add_item("lesson", "Wholesale margins matter", "Check wholesale margins per bag against retail margins before pricing.", authored="you")
+    run(ctx, note_for(tmp_path, "coffee wholesale margins", COFFEE, COFFEE_CLAIMS))
+    new_ids = {i["id"] for i in kb.items() if i["id"] != old["id"]}
+    sibling = [l for l in kb.links(statuses=("suggested",)) if l["rel"] == "relates to" and l["src"][5:] in new_ids and l["dst"][5:] in new_ids]
+    assert sibling == []  # they already belong together through the hub
+    assert [l for l in kb.links(statuses=("suggested",)) if l["rel"] == "relates to" and l["dst"] == f"item:{old['id']}"]  # but what was already known is still proposed
+
+
 def test_findings_are_not_marked_checked_just_because_several_sources_agree(ctx, tmp_path):
     claims = [claim("S1", "Cafes reorder monthly", "Volumes are higher and cafes reorder monthly.", corroborated_by=["S2"], support=2)]
     run(ctx, note_for(tmp_path, "cafe reorders", COFFEE, claims))

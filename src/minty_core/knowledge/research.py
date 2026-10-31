@@ -94,10 +94,12 @@ def harvest(capturer: Capturer, note) -> dict:
                        tags=tags, sources=[(original(s), "") for s in cited], actor="research", outside=True, attrs={"research": key, "confidence": str(note.confidence), "depth": str(note.depth)})
     hub_id = hub["item"]["id"]
     item_of: dict[int, str] = {}
+    together = {hub_id}  # the hub and the points already filed: they belong together through the hub, so they are not also proposed to each other
     for c in top:
         evidence = [(original(c.source), c.quote[:400])] + [(original(s), "") for s in c.corroborated_by if s in sources and s != c.source]
-        got = capturer.add("finding", _title(c.text), c.text, tags=tags, sources=evidence, actor="research", outside=True, attrs={"research": key, "support": c.support(), "flags": c.flags})
+        got = capturer.add("finding", _title(c.text), c.text, tags=tags, sources=evidence, actor="research", outside=True, attrs={"research": key, "support": c.support(), "flags": c.flags}, skip_related=together)
         item_id = got["item"]["id"]
+        together.add(item_id)
         item_of[id(c)] = item_id
         store.link(f"item:{item_id}", "part of", f"item:{hub_id}", why="found in this research", by="auto")
         if "contradicted" in c.flags:

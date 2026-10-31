@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Iterable
 
 from minty_core.knowledge.reason import Reasoner, stem
 from minty_core.knowledge.store import KnowledgeError, KnowledgeStore
@@ -125,7 +125,7 @@ class Capturer:
         return await self.process(cap["id"]) if process else cap
 
     def add(self, kind: str, title: str, body: str = "", *, authored: str = "minty", summary: str = "", project: str = "", tags=(), private: bool = False, sources=(),
-            actor: str = "minty", outside: bool = False, attrs: dict | None = None) -> dict:
+            actor: str = "minty", outside: bool = False, attrs: dict | None = None, skip_related: Iterable[str] = ()) -> dict:
         """Something already analysed (by Minty, or by the owner through the panel) goes in the same way a captured thought does: the same thing again is more evidence for the first copy,
         names the world model knows are linked, and similar knowledge is proposed (never confirmed). Returns {item, duplicate, about, similar}."""
         text = f"{title} {body}".strip()
@@ -135,7 +135,7 @@ class Capturer:
                 sid, quote = (src, "") if isinstance(src, str) else (src[0], src[1])
                 self.store.cite(dup["id"], sid, quote=quote or title[:200], actor=actor)
             return {"item": self.store.item(dup["id"]), "duplicate": True, "about": [], "similar": []}
-        similar = self.reasoner.related(text, k=3, include_private=private)
+        similar = self.reasoner.related(text, exclude=set(skip_related), k=3, include_private=private)
         item = self.store.add_item(kind, title, body, authored=authored, summary=summary, project=project, tags=tags, private=private, sources=sources, actor=actor, outside=outside, attrs=attrs)
         about = []
         if self.world is not None:
