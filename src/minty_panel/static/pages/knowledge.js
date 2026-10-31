@@ -43,7 +43,7 @@ function createUniverse(canvas, hooks) {
   let W = 0, H = 0, dpr = 1;
   let nodes = [], edges = [], clusters = [], byId = new Map(), adj = new Map(), anchors = new Map();
   let view = { x: 0, y: 0, k: 1 }, tween = null;
-  let busyUntil = 0, autoFit = false, alpha = 0, sel = null, hover = null, drag = null, hits = null, timeCut = null, dirty = true, frame = 0, alive = true;
+  let moved = false, busyUntil = 0, autoFit = false, alpha = 0, sel = null, hover = null, drag = null, hits = null, timeCut = null, dirty = true, frame = 0, alive = true;
   const filters = { hiddenKinds: new Set(), suggestions: true, sources: true };
   const pointers = new Map();
   let pinch = null;
@@ -60,6 +60,7 @@ function createUniverse(canvas, hooks) {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     W = Math.max(200, r.width); H = Math.max(200, r.height);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    if (!moved && nodes.length) fit(false);  // the pane reached its real size after the first fit: keep everything in view until the owner moves the map
     dirty = true;
   }
 
@@ -355,7 +356,7 @@ function createUniverse(canvas, hooks) {
   const pos = (ev) => { const r = canvas.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
   canvas.addEventListener("pointerdown", (ev) => {
     canvas.setPointerCapture(ev.pointerId);
-    autoFit = false;
+    autoFit = false; moved = true;
     const [px, py] = pos(ev);
     pointers.set(ev.pointerId, [px, py]);
     if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k: view.k }; drag = null; return; }
@@ -397,7 +398,7 @@ function createUniverse(canvas, hooks) {
   canvas.addEventListener("pointercancel", up);
   canvas.addEventListener("pointerleave", () => { if (hover && !drag) { hover = null; dirty = true; hooks.hover(null); } });
   canvas.addEventListener("dblclick", (ev) => { const n = pick(...pos(ev)); if (n) hooks.focus(n); });
-  canvas.addEventListener("wheel", (ev) => { ev.preventDefault(); autoFit = false; const [px, py] = pos(ev); zoomAt(px, py, Math.exp(-ev.deltaY * 0.0015)); }, { passive: false });
+  canvas.addEventListener("wheel", (ev) => { ev.preventDefault(); autoFit = false; moved = true; const [px, py] = pos(ev); zoomAt(px, py, Math.exp(-ev.deltaY * 0.0015)); }, { passive: false });
   const ro = new ResizeObserver(() => resize());
   ro.observe(canvas);
   resize();
