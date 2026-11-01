@@ -13,6 +13,7 @@ from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from typing import Iterator, Protocol
 
+from minty_core import osutil
 from rich.console import Console
 from rich.panel import Panel
 from rich.rule import Rule
@@ -59,7 +60,10 @@ class UI(Protocol):
 @contextmanager
 def cbreak_mode() -> Iterator[None]:
     """Keys arrive one at a time without Enter while a menu is open, and the terminal is put back after.
-    Held for the whole menu, not per key, so keys typed quickly are not lost between two reads."""
+    Held for the whole menu, not per key, so keys typed quickly are not lost between two reads. (Windows reads each key straight from the console: nothing to switch.)"""
+    if osutil.IS_WINDOWS:
+        yield
+        return
     import termios
     import tty
 
@@ -74,6 +78,8 @@ def cbreak_mode() -> Iterator[None]:
 
 def read_key() -> str:
     """One key press (the terminal must be in cbreak mode): 'up', 'down', 'enter', 'space', 'esc' or the character."""
+    if osutil.IS_WINDOWS:
+        return _read_key_windows()
     import select
 
     fd = sys.stdin.fileno()
@@ -92,13 +98,30 @@ def read_key() -> str:
     return ch
 
 
+def _read_key_windows() -> str:
+    import msvcrt
+
+    first = msvcrt.getwch()
+    text = osutil.windows_key_text(first, msvcrt.getwch() if first in ("\x00", "\xe0") else "")
+    if text in ("\r", "\n"):
+        return "enter"
+    if text == " ":
+        return "space"
+    if text == "\x03":
+        raise KeyboardInterrupt
+    if text == "\x1b":
+        return "esc"
+    return {"\x1b[A": "up", "\x1b[B": "down"}.get(text, text if len(text) == 1 else "")
+
+
 class RichUI:
     def __init__(self, console: Console | None = None, *, keys=None, interactive: bool | None = None):
         self.console = console or Console(highlight=False)
         self._keys, self._injected = keys or read_key, keys is not None
         if interactive is None:
             try:
-                import termios  # noqa: F401  (absent on Windows)
+                if not osutil.IS_WINDOWS:
+                    import termios  # noqa: F401
                 interactive = sys.stdin.isatty() and self.console.is_terminal and os.environ.get("TERM") != "dumb"
             except ImportError:
                 interactive = False

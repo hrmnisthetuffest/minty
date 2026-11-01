@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-import resource
 import time
 from pathlib import Path
 from typing import AsyncIterator, Callable
 
+from minty_core import osutil
 from minty_core.llm.types import Event, LLMError, Message, TextDelta, ToolSpec
 
 MIN_TOKENS_PER_S = 4.0
@@ -79,12 +79,12 @@ class LocalModel:
 
 def measure(model: LocalModel, clock: Callable[[], float] = time.perf_counter) -> tuple[float, float]:
     """(tokens per second, megabytes added by loading and running it). Words stand in for tokens (x1.3)."""
-    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    before = osutil.rss_mb()
     start = clock()
     text = model._complete([{"role": "user", "content": BENCH_PROMPT}])
     seconds = max(1e-6, clock() - start)
     tokens = max(1.0, len(text.split()) * 1.3)
-    after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    after = osutil.rss_mb()
     return tokens / seconds, max(0.0, after - before)
 
 

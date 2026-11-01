@@ -94,18 +94,18 @@ class BotAPI:
     async def send_message(self, chat_id: int, text: str, *, reply_markup: dict | None = None,
                            silent: bool = False) -> dict:
         return await self.call("sendMessage", chat_id=chat_id, text=text[:4096], reply_markup=reply_markup,
-                               disable_notification=True if silent else None)
+                               disable_notification=True if silent else None, encoding="utf-8", errors="replace")
 
     async def edit_message(self, chat_id: int, message_id: int, text: str, reply_markup: dict | None = None) -> dict:
         return await self.call("editMessageText", chat_id=chat_id, message_id=message_id, text=text[:4096],
-                               reply_markup=reply_markup)
+                               reply_markup=reply_markup, encoding="utf-8", errors="replace")
 
     async def typing(self, chat_id: int) -> None:
         await self.call("sendChatAction", chat_id=chat_id, action="typing")
 
     async def answer_callback(self, callback_id: str, text: str = "", alert: bool = False) -> None:
         await self.call("answerCallbackQuery", callback_query_id=callback_id, text=text[:200] or None,
-                        show_alert=True if alert else None)
+                        show_alert=True if alert else None, encoding="utf-8", errors="replace")
 
     async def set_commands(self, commands: list[tuple[str, str]]) -> None:
         await self.call("setMyCommands", commands=[{"command": c[:32], "description": d[:256]}

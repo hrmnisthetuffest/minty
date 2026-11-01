@@ -35,7 +35,7 @@ class SpeakerVerifier:
         self.threshold = 0.7
         if self.path and self.path.is_file():
             try:
-                data = json.loads(self.path.read_text("utf-8"))
+                data = json.loads(self.path.read_text("utf-8", encoding="utf-8"))
                 self._centroid, self.threshold = np.array(data["centroid"]), float(data["threshold"])
             except (OSError, ValueError, KeyError):
                 pass

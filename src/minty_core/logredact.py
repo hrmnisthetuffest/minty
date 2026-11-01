@@ -49,9 +49,10 @@ class PrivateRotatingFileHandler(RotatingFileHandler):
     for every file a rollover starts."""
 
     def _open(self):
-        fd = os.open(self.baseFilename, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+        fd = os.open(self.baseFilename, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o600)
         try:
-            os.fchmod(fd, 0o600)
+            if hasattr(os, "fchmod"):  # not on Windows, where the profile folder's own permissions keep the file private
+                os.fchmod(fd, 0o600)
             return os.fdopen(fd, self.mode, encoding=self.encoding, errors=self.errors)
         except BaseException:
             os.close(fd)

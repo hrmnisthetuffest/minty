@@ -69,11 +69,11 @@ def describe_project(path: Path) -> tuple[str, list[str], str]:
         name = cargo.get("package", {}).get("name") or name
         test = test or "cargo test"
     if (path / "go.mod").is_file():
-        first = (path / "go.mod").read_text(errors="replace").splitlines()[:1]
+        first = (path / "go.mod").read_text(errors="replace", encoding="utf-8").splitlines()[:1]
         name = first[0].replace("module", "").strip() if first else name
         test = test or "go test ./..."
     make = path / "Makefile"
-    if make.is_file() and re.search(r"^test:", make.read_text(errors="replace"), re.M):
+    if make.is_file() and re.search(r"^test:", make.read_text(errors="replace", encoding="utf-8"), re.M):
         test = test or "make test"
     return name, commands, test
 

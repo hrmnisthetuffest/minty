@@ -16,8 +16,9 @@ import os
 import re
 import shlex
 import shutil
-import signal
 from dataclasses import dataclass
+
+from minty_core import osutil
 
 MAX_COMMAND_CHARS = 2000
 DEFAULT_MAX_CHARS = 8000
@@ -207,8 +208,7 @@ class _Output:
 
 
 def _kill_group(proc) -> None:
-    with contextlib.suppress(ProcessLookupError, PermissionError):
-        os.killpg(proc.pid, signal.SIGKILL)  # the command was started as the head of its own group, so this is all of it
+    osutil.kill_tree(proc)  # the command was started as the head of its own group, so this is all of it
 
 
 async def _drain(proc, out: _Output, hard_bytes: int) -> bool:
@@ -241,7 +241,7 @@ async def run(command, *, cwd=None, timeout_s: float = 30.0, max_chars: int = DE
             return Result(127, f"{argv[0]} is not installed", missing=True)
         argv[0] = found
     proc = await asyncio.create_subprocess_exec(*argv, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE,
-                                                stderr=asyncio.subprocess.STDOUT, cwd=cwd, env=env, start_new_session=True)
+                                                stderr=asyncio.subprocess.STDOUT, cwd=cwd, env=env, **osutil.group_kwargs())
     out, timed_out, complete = _Output(max_chars), False, True
     try:
         try:

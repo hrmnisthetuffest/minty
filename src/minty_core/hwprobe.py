@@ -60,7 +60,7 @@ class Plan:
 
 def _run(cmd: list[str]) -> str:
     try:
-        done = subprocess.run(cmd, capture_output=True, text=True, timeout=2.0)
+        done = subprocess.run(cmd, capture_output=True, text=True, timeout=2.0, encoding="utf-8", errors="replace")
         return done.stdout if done.returncode == 0 else ""
     except (OSError, subprocess.SubprocessError):
         return ""

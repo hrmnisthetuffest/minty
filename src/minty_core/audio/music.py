@@ -21,7 +21,7 @@ TRACK_FORMAT = "{{artist}}|||{{title}}|||{{album}}|||{{mpris:length}}|||{{positi
 def _run(args: list[str]) -> str | None:
     """stdout of a successful command, '' when it failed, None when it did not answer in time."""
     try:
-        done = subprocess.run(args, capture_output=True, text=True, timeout=QUERY_TIMEOUT_S)
+        done = subprocess.run(args, capture_output=True, text=True, timeout=QUERY_TIMEOUT_S, encoding="utf-8", errors="replace")
         return done.stdout if done.returncode == 0 else ""
     except subprocess.TimeoutExpired:
         return None

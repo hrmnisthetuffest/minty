@@ -6,14 +6,14 @@ It refuses rather than run unsandboxed: no bubblewrap, or user namespaces switch
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import os
-import resource
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
+
+from minty_core import osutil
 
 SAFE_PATH = "/usr/local/bin:/usr/bin:/bin"
 
@@ -40,6 +40,8 @@ class Sandbox:
     # ---- is it possible here? ------------------------------------------------------------------
     def available(self) -> tuple[bool, str]:
         """(True, "") or (False, why). Probed once: a real, tiny sandbox must start."""
+        if self._probe is None and osutil.IS_WINDOWS:
+            self._probe = (False, "the sandbox needs Linux (bubblewrap), so what depends on it is switched off on Windows")  # refused, never run unsandboxed
         if self._probe is None:
             exe = shutil.which(self._bwrap) if os.sep not in self._bwrap else (
                 self._bwrap if os.access(self._bwrap, os.X_OK) else None)
@@ -87,25 +89,18 @@ class Sandbox:
             raise SandboxUnavailable(why)
         cmd = self.command(argv, network=network, ro=ro, rw=rw, cwd=cwd)
 
-        def limits() -> None:  # runs in the child before exec
-            resource.setrlimit(resource.RLIMIT_CPU, (int(timeout_s) + 5, int(timeout_s) + 5))
-            if mem_mb:
-                resource.setrlimit(resource.RLIMIT_AS, (mem_mb * 2**20, mem_mb * 2**20))
-
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-            env={"PATH": SAFE_PATH}, preexec_fn=limits, start_new_session=True)
+            env={"PATH": SAFE_PATH}, preexec_fn=osutil.limits_preexec(cpu_s=int(timeout_s) + 5, mem_mb=mem_mb), **osutil.group_kwargs())
         timed_out = False
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout_s)
         except asyncio.TimeoutError:
             timed_out = True
-            with contextlib.suppress(ProcessLookupError, PermissionError):
-                os.killpg(proc.pid, 9)
+            osutil.kill_tree(proc)
             out, err = await proc.communicate()
         except asyncio.CancelledError:
-            with contextlib.suppress(ProcessLookupError, PermissionError):
-                os.killpg(proc.pid, 9)
+            osutil.kill_tree(proc)
             raise
         text_out = out.decode(errors="replace")
         text_err = err.decode(errors="replace")

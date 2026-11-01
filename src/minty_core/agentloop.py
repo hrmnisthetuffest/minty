@@ -159,7 +159,7 @@ class Plan:
     @classmethod
     def load(cls, path: Path) -> "Plan | None":
         try:
-            return cls.from_json(Path(path).read_text())
+            return cls.from_json(Path(path).read_text(encoding="utf-8"))
         except (OSError, ValueError, KeyError, TypeError):
             return None
 

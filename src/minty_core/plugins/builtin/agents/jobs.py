@@ -2,15 +2,14 @@ import asyncio
 import atexit
 import contextlib
 import json
-import os
 import re
-import signal
 import shutil
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable
 
+from minty_core import osutil
 from minty_core.fsutil import atomic_write_text
 from minty_core.plugins.builtin.agents import adapters as agent_adapters
 from minty_core.plugins.builtin.agents import verify
@@ -170,11 +169,6 @@ class JobManager:
         return job
 
     @staticmethod
-    def _signal_group(proc, sig) -> None:
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.killpg(proc.pid, sig)
-
-    @staticmethod
     async def _exited(proc, timeout: float) -> bool:
         """Poll for the direct child's exit. proc.wait() also waits for stdout to close,
         which grandchildren holding the pipe would block."""
@@ -187,9 +181,9 @@ class JobManager:
 
     async def _terminate(self, proc) -> None:
         """SIGTERM the whole process group, escalating to SIGKILL after 3 s."""
-        self._signal_group(proc, signal.SIGTERM)
+        osutil.terminate_tree(proc)
         await self._exited(proc, 3)
-        self._signal_group(proc, signal.SIGKILL)  # also reaps any grandchildren
+        osutil.kill_tree(proc)  # also reaps any grandchildren
         await self._exited(proc, 3)
 
     @staticmethod
@@ -320,7 +314,7 @@ class JobManager:
         proc = await asyncio.create_subprocess_exec(
             *argv, cwd=invocation.cwd, stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
-            start_new_session=True, env=env,
+            env=env, **osutil.group_kwargs(),
         )
         self._procs[job.id] = proc
         if job.status == "stopped":  # stop() landed while the process was spawning
@@ -343,7 +337,7 @@ class JobManager:
                     await asyncio.wait_for(asyncio.shield(reader), 1)
                 except asyncio.TimeoutError:
                     pass
-                self._signal_group(proc, signal.SIGKILL)
+                osutil.kill_tree(proc)
         finally:
             await cancel_and_wait(watcher)
             await cancel_and_wait(reader)
@@ -456,7 +450,7 @@ class JobManager:
     def shutdown(self) -> None:
         """SIGKILL every live job's process group (jobs run in their own sessions)."""
         for proc in list(self._procs.values()):
-            self._signal_group(proc, signal.SIGKILL)
+            osutil.kill_tree(proc)
 
     async def stop(self, job_id: int) -> str:
         job, proc = self._jobs.get(job_id), self._procs.get(job_id)

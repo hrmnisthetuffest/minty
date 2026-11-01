@@ -19,7 +19,7 @@ KEY_MAX_AGE_DAYS = 90
 
 
 def run(argv: list[str], cwd: Path) -> tuple[int, str]:
-    done = subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
+    done = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return done.returncode, (done.stdout + done.stderr)[-4000:]
 
 

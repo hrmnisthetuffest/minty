@@ -103,6 +103,6 @@ class SystemProvider:
 
     def pacman_log(self) -> str:
         try:
-            return self._pacman_log.read_text(errors="replace")[-400_000:]
+            return self._pacman_log.read_text(errors="replace", encoding="utf-8")[-400_000:]
         except OSError:
             return ""

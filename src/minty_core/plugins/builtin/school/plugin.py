@@ -38,7 +38,7 @@ def register(ctx):
         url = str(settings.get("portal_url") or "").strip()
         if not url:
             try:
-                url = str(json.loads(saved.read_text()).get("portal_url") or "")
+                url = str(json.loads(saved.read_text(encoding="utf-8")).get("portal_url") or "")
             except (OSError, ValueError):
                 url = ""
         return url
@@ -122,7 +122,7 @@ def register(ctx):
         parts = urlsplit(url if "://" in url else "https://" + url)
         if parts.scheme not in ("http", "https") or not parts.hostname or parts.username or parts.password:
             return "Error: give the web address of the SchoolPad login page, without a username or password."
-        saved.write_text(json.dumps({"portal_url": parts.geturl()}))
+        saved.write_text(json.dumps({"portal_url": parts.geturl()}), encoding="utf-8")
         saved.chmod(0o600)
         return f"Saved. I'll check {parts.hostname} for school news."
 

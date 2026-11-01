@@ -111,7 +111,7 @@ class Research:
         out = []
         for p in sorted(self._dir.glob("*/state.json")):
             try:
-                st = json.loads(p.read_text())
+                st = json.loads(p.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
             if st.get("stage") != "done":

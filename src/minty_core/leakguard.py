@@ -13,6 +13,8 @@ from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
+from minty_core import osutil
+
 
 @dataclass(frozen=True)
 class Sample:
@@ -25,21 +27,11 @@ class Sample:
 
 
 def read_rss_mb() -> float:
-    try:
-        for line in Path("/proc/self/status").read_text().splitlines():
-            if line.startswith("VmRSS:"):
-                return int(line.split()[1]) / 1024.0
-    except OSError:
-        pass
-    import resource
-    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+    return osutil.rss_mb()
 
 
 def take(directory: Path | None = None, queue: int = 0, clock=time.time) -> Sample:
-    try:
-        fds = len(os.listdir("/proc/self/fd"))
-    except OSError:
-        fds = 0
+    fds = osutil.open_handles()
     wal = 0.0
     if directory is not None:
         wal = sum(p.stat().st_size for p in Path(directory).rglob("*-wal") if p.is_file()) / 2**20

@@ -103,7 +103,9 @@ class FishTTS:
 
 
 def voices_dir() -> Path:
-    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "minty" / "voices"
+    from minty_core.paths import data_dir
+
+    return data_dir() / "voices"
 
 
 def _load_kokoro(model: str, voices: str):

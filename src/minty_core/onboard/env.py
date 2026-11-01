@@ -38,7 +38,9 @@ VOICE_SHA256 = {
 
 
 def data_dir() -> Path:
-    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "minty"
+    from minty_core.paths import data_dir as _data_dir
+
+    return _data_dir()
 
 
 def checkout_root() -> Path | None:
@@ -49,7 +51,7 @@ def checkout_root() -> Path | None:
 
 def run_command(cmd: list[str], *, timeout: int = 1800) -> tuple[bool, str]:
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, encoding="utf-8", errors="replace")
     except (OSError, subprocess.TimeoutExpired) as e:
         return False, f"{type(e).__name__}: {e}"
     tail = "\n".join((out.stdout + out.stderr).strip().splitlines()[-6:])

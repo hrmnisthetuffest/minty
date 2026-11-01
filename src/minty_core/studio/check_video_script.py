@@ -17,7 +17,7 @@ MIN_S, MAX_S, MIN_WIDTH, MIN_VOLUME, MAX_MB, MIN_BLACK = 3.0, 90.0, 720, -45.0, 
 
 
 def run(*argv):
-    done = subprocess.run(list(argv), capture_output=True, text=True)
+    done = subprocess.run(list(argv), capture_output=True, text=True, encoding="utf-8", errors="replace")
     return done.returncode, done.stdout + done.stderr
 
 

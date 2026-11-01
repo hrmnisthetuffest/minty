@@ -54,7 +54,7 @@ class Vault:
         return subprocess.run(
             ["git", "-C", str(self.root), "-c", "user.name=Minty", "-c", "user.email=minty@localhost",
              "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
-            capture_output=True, text=True, timeout=30)
+            capture_output=True, text=True, timeout=30, encoding="utf-8", errors="replace")
 
     def _init_git(self) -> None:
         if shutil.which("git") is None:
@@ -65,7 +65,7 @@ class Vault:
             self.git_ok = True
             ignore = self.root / ".gitignore"
             if not ignore.exists():
-                ignore.write_text("_minty/index.db*\n_minty/changes.log\n")
+                ignore.write_text("_minty/index.db*\n_minty/changes.log\n", encoding="utf-8")
                 self._commit("start the notes repository")
         except (OSError, subprocess.SubprocessError):
             self.git_ok = False

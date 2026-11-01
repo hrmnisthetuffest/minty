@@ -19,7 +19,7 @@ from minty_core.jobs import interrupted_notice
 from minty_core.safemode import SAFE_PLUGINS, BootLog, is_deliberate_stop, start_in_safe_mode
 from minty_core.supervisor import VoiceSupervisor
 from minty_core.keyimport import extract_keys
-from minty_core import instance
+from minty_core import instance, osutil
 from minty_core.keystore import SecretsDamaged, SecretsStore
 from minty_core.logredact import install_uvicorn_redaction
 from minty_core.paths import config_dir
@@ -442,12 +442,12 @@ async def _finance_loop(ctx, directory: Path) -> None:
         if cfg.enabled and cfg.bill_reminders and not (lock is not None and lock.active) and \
                 datetime.now().hour >= 9:
             try:
-                done = json.loads(state_path.read_text()) if state_path.exists() else {}
+                done = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
                 texts, new = pending_notices(ledger, datetime.now().date(), done, insights=cfg.insights)
                 for text in texts:
                     ctx.bus.publish("notify", text=text)
                 if new != done:
-                    state_path.write_text(json.dumps(new))
+                    state_path.write_text(json.dumps(new), encoding="utf-8")
             except Exception:  # noqa: BLE001 — a missed reminder is retried at the next check
                 log.warning("bill reminder check failed", exc_info=True)
         await asyncio.sleep(3600)
@@ -1164,7 +1164,7 @@ def _reexec() -> None:
 
     atexit._run_exitfuncs()  # stops coding-agent jobs the same way a normal exit does
     logging.shutdown()
-    os.execv(sys.executable, [sys.executable, *_without_safe_flag(sys.argv)])
+    osutil.replace_process([sys.executable, *_without_safe_flag(sys.argv)])  # POSIX: exec. Windows: a child on the same console that this one waits for
 
 
 def _without_safe_flag(argv: list[str]) -> list[str]:
@@ -1493,8 +1493,8 @@ _MAX_KEY_FILE = 1 << 20
 
 def _read_keys_file(path: str) -> str:
     try:
-        # O_NONBLOCK so opening a FIFO cannot hang; only regular files are read.
-        fd = os.open(Path(path).expanduser(), os.O_RDONLY | os.O_NONBLOCK)
+        # O_NONBLOCK (where it exists) so opening a FIFO cannot hang; only regular files are read.
+        fd = os.open(Path(path).expanduser(), os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0))
     except OSError as e:
         sys.exit(f"minty-core: cannot read {path}: {e.strerror or type(e).__name__}")
     if not stat.S_ISREG(os.fstat(fd).st_mode):
@@ -1533,7 +1533,7 @@ def _notes_lock_command(action: str, store) -> int:
     import httpx
 
     directory = config_dir()
-    token = (directory / "api_token").read_text().strip() if (directory / "api_token").exists() else ""
+    token = (directory / "api_token").read_text(encoding="utf-8").strip() if (directory / "api_token").exists() else ""
     base = f"http://127.0.0.1:{store.config.api_port}"
     headers = {"Authorization": f"Bearer {token}"}
     try:
@@ -1563,7 +1563,7 @@ def _run_overlay() -> None:
     directory = config_dir()
     store = ConfigStore(directory)
     cfg = store.load()
-    token = (directory / "api_token").read_text().strip() if (directory / "api_token").exists() else ""
+    token = (directory / "api_token").read_text(encoding="utf-8").strip() if (directory / "api_token").exists() else ""
     reader = ActiveWindowReader()
     if not reader.available():
         sys.exit("minty overlay: it needs an X11 session with xprop (Wayland has no active-window query).")
@@ -1583,6 +1583,7 @@ def _run_overlay() -> None:
 
 
 def main(argv=None) -> None:
+    osutil.prepare_console()  # Windows: UTF-8 and ANSI colours on, before anything is printed; nothing on other systems
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     install_uvicorn_redaction()  # request lines never carry a secret-looking query value into the console, journal or log file
     logging.getLogger("faster_whisper").setLevel(logging.WARNING)  # one line per transcription otherwise

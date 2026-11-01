@@ -12,15 +12,19 @@ its own layer behind the text and is only sent when it changes or moves.
 from __future__ import annotations
 
 import base64
-import fcntl
 import itertools
 import os
 import select
 import struct
 import sys
-import termios
 from dataclasses import dataclass, field
 from typing import Callable
+
+try:  # the terminal can only be questioned through these, which Windows does not have: there, only what the terminal says about itself (or MINTY_IMAGES) is used
+    import fcntl
+    import termios
+except ImportError:  # pragma: no cover — exercised by the simulated-Windows test
+    fcntl = termios = None  # type: ignore[assignment]
 
 ESC = "\x1b"
 KITTY_ID = 4242  # the one picture Minty keeps on screen
@@ -50,6 +54,8 @@ def env_protocol(env) -> str | None:
 
 def _ask_terminal(timeout: float = 0.6) -> bytes:
     """Send the two questions and collect the answer (the device-attributes reply always comes last)."""
+    if termios is None:
+        return b""
     try:
         fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
     except OSError:
@@ -99,8 +105,12 @@ def detect(env=None, ask: Callable[[], bytes] | None = None, is_tty: bool | None
     return parse_reply((ask or _ask_terminal)())
 
 
-def cell_pixels(fd: int, ioctl=fcntl.ioctl) -> tuple[int, int]:
+def cell_pixels(fd: int, ioctl=None) -> tuple[int, int]:
     """Width and height of one character cell in pixels, from the window size when the terminal reports it."""
+    if ioctl is None:
+        if fcntl is None:
+            return DEFAULT_CELL
+        ioctl = fcntl.ioctl
     try:
         rows, cols, xpixel, ypixel = struct.unpack("HHHH", ioctl(fd, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0)))
     except (OSError, struct.error):

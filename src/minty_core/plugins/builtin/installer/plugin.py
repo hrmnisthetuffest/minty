@@ -1,16 +1,15 @@
 import asyncio
-import contextlib
 import logging
 import os
 import re
 import shlex
 import shutil
-import signal
 import sys
 import time
 from importlib import metadata
 from pathlib import Path
 
+from minty_core import osutil
 from minty_core.plugins.host import Tool
 from minty_core.policy import R3
 from minty_core.tasks import cancel_and_wait
@@ -102,11 +101,6 @@ def validate(manager: str, package, *, bare: bool) -> str:
     return package
 
 
-def _signal_group(proc, sig) -> None:
-    with contextlib.suppress(ProcessLookupError, PermissionError):
-        os.killpg(proc.pid, sig)
-
-
 async def _exited(proc, timeout: float) -> bool:
     """Poll for the direct child's exit (proc.wait() would also wait for the pipe to close)."""
     deadline = time.monotonic() + timeout
@@ -122,7 +116,7 @@ async def run_command(argv: list[str]) -> tuple[int | None, str, bool]:
     env = dict(os.environ, PIP_NO_INPUT="1")
     proc = await asyncio.create_subprocess_exec(
         *argv, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT, start_new_session=True, env=env,
+        stderr=asyncio.subprocess.STDOUT, env=env, **osutil.group_kwargs(),
     )
     chunks = bytearray()
 
@@ -138,16 +132,16 @@ async def run_command(argv: list[str]) -> tuple[int | None, str, bool]:
             try:
                 await asyncio.wait_for(asyncio.shield(reader), 1)
             except asyncio.TimeoutError:  # a grandchild kept the pipe open
-                _signal_group(proc, signal.SIGKILL)
+                osutil.kill_tree(proc)
         else:
             timed_out = True
-            _signal_group(proc, signal.SIGTERM)
+            osutil.terminate_tree(proc)
             await _exited(proc, GRACE_S)
-            _signal_group(proc, signal.SIGKILL)  # even if the leader exited: stragglers in its group must die
+            osutil.kill_tree(proc)  # even if the leader exited: stragglers in its group must die
             await _exited(proc, GRACE_S)
     finally:
         if proc.returncode is None:  # cancelled or escalation failed: don't leave it running
-            _signal_group(proc, signal.SIGKILL)
+            osutil.kill_tree(proc)
         await cancel_and_wait(reader)
     tail = chunks.decode("utf-8", "replace").strip()[-TAIL_CHARS:]
     return proc.returncode, tail, timed_out

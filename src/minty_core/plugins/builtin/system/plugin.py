@@ -68,7 +68,7 @@ def register(ctx):
                 raise ValueError("Which program, by name or number?")
             procs = await asyncio.to_thread(read_procs, *( [provider._proc_root] if provider._proc_root else []))
             try:
-                uptime = float(Path("/proc/uptime").read_text().split()[0])
+                uptime = float(Path("/proc/uptime").read_text(encoding="utf-8").split()[0])
             except (OSError, ValueError):
                 uptime = 0.0
             text = explain_process(procs, query, uptime)

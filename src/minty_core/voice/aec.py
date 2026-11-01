@@ -19,7 +19,7 @@ def _run(argv: list[str]) -> tuple[int, str]:
     if shutil.which(argv[0]) is None:
         return 127, f"{argv[0]} is not installed"
     try:
-        done = subprocess.run(argv, capture_output=True, text=True, timeout=10)
+        done = subprocess.run(argv, capture_output=True, text=True, timeout=10, encoding="utf-8", errors="replace")
     except (OSError, subprocess.TimeoutExpired) as e:
         return 1, str(e)
     return done.returncode, (done.stdout or done.stderr).strip()

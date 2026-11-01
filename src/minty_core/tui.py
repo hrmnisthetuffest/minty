@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import NamedTuple
 
+from minty_core import osutil
+
 from rich import box
 from rich.console import Console, Group
 from rich.layout import Layout
@@ -1046,8 +1048,13 @@ class _KeyReader:
         self._fd = -1
         self._decoder = None
         self._mouse_on = False
+        self._stopping = False
+        self._thread = None
 
     def start(self) -> None:
+        if osutil.IS_WINDOWS:
+            self._start_windows()
+            return
         import codecs
         import sys
         import termios
@@ -1063,6 +1070,31 @@ class _KeyReader:
             self._mouse_on = True
         atexit.register(self._restore_terminal)  # if Minty dies before the display's own clean-up, the terminal is still put back
         asyncio.get_running_loop().add_reader(self._fd, self._read)
+
+    def _start_windows(self) -> None:
+        """The Windows console has no raw mode to switch on and its event loop cannot watch a keyboard, so a small thread waits for keys and hands what was typed over. Arrow and
+        function keys arrive as the same text a Linux terminal sends. Mouse clicks are not reported there (the keyboard does everything the mouse does). Ctrl-C is a key here, not a
+        signal, so it is turned into one."""
+        import _thread
+        import threading
+
+        loop = asyncio.get_running_loop()
+        self._stopping = False
+
+        def pump() -> None:
+            while not self._stopping:
+                try:
+                    text = osutil.windows_read_keys(block=True)
+                except (OSError, ValueError, EOFError):  # the console went away
+                    return
+                if "\x03" in text:
+                    _thread.interrupt_main()  # what Ctrl-C does on Linux
+                    text = text.replace("\x03", "")
+                if text and not self._stopping:
+                    loop.call_soon_threadsafe(self.feed, text)
+
+        self._thread = threading.Thread(target=pump, name="keys", daemon=True)
+        self._thread.start()
 
     def _read(self) -> None:
         import os
@@ -1104,7 +1136,6 @@ class _KeyReader:
     def _restore_terminal(self) -> None:
         """Mouse reporting off and the keyboard mode back as it was. Safe to run twice and with no event loop (it is also an exit handler)."""
         import sys
-        import termios
 
         if self._mouse_on:
             self._mouse_on = False
@@ -1116,11 +1147,14 @@ class _KeyReader:
         if self._fd >= 0 and self._old is not None:
             old, self._old = self._old, None
             try:
+                import termios
+
                 termios.tcsetattr(self._fd, termios.TCSADRAIN, old)
-            except (OSError, termios.error, ValueError):
+            except Exception:  # noqa: BLE001 — the terminal may already be gone; nothing here may raise (it is an exit handler)
                 pass
 
     def stop(self) -> None:
+        self._stopping = True  # Windows: the key thread is a daemon blocked in a read; it ends with the process and is ignored from here
         if self._fd >= 0:
             try:
                 asyncio.get_running_loop().remove_reader(self._fd)

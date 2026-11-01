@@ -71,7 +71,7 @@ def run(words: list[str], clock: Callable[[], datetime] | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv == ["--write"]:
-        DOC.write_text(catalog_markdown())
+        DOC.write_text(catalog_markdown(), encoding="utf-8")
         print(f"wrote {DOC}")
         return 0
     return run(argv)

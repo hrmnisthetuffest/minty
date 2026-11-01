@@ -18,6 +18,7 @@ import time
 
 import httpx
 
+from minty_core import osutil
 from minty_core.plugins.host import Tool
 
 log = logging.getLogger(__name__)
@@ -107,7 +108,7 @@ async def launch_spotify() -> bool:
                 continue
         await asyncio.create_subprocess_exec(
             *cmd, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL, start_new_session=True)
+            stderr=asyncio.subprocess.DEVNULL, **osutil.group_kwargs())
         return True
     return False
 

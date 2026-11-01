@@ -122,7 +122,7 @@ class Library:
             return "Error: a note with that name is already there."
         dest.parent.mkdir(exist_ok=True)
         shutil.move(str(src), str(dest))
-        meta = json.loads((dest / "meta.json").read_text())
+        meta = json.loads((dest / "meta.json").read_text(encoding="utf-8"))
         meta["category"] = category
         atomic_write_text(dest / "meta.json", json.dumps(meta, ensure_ascii=False, indent=1))
         with self._lock:
@@ -157,7 +157,7 @@ class Library:
     def meta(self, slug: str) -> dict | None:
         folder = self._find(slug)
         try:
-            return json.loads((folder / "meta.json").read_text()) if folder else None
+            return json.loads((folder / "meta.json").read_text(encoding="utf-8")) if folder else None
         except (OSError, ValueError):
             return None
 
@@ -169,7 +169,7 @@ class Library:
         out = []
         for meta in sorted(self.root.glob("*/*/meta.json")):
             try:
-                m = json.loads(meta.read_text())
+                m = json.loads(meta.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
             if category is None or m.get("category", "").lower() == category.lower():

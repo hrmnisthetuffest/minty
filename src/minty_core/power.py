@@ -18,7 +18,7 @@ THERMAL = "/sys/class/thermal"
 
 def _read(path: str) -> str:
     try:
-        return Path(path).read_text().strip()
+        return Path(path).read_text(encoding="utf-8").strip()
     except OSError:
         return ""
 
