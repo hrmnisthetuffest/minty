@@ -569,7 +569,7 @@ when it is good enough.
 - **Plainer wording.** The README, package description and getting-started guide describe Minty generally (Linux, the AI providers you choose) instead of naming distributions or free tiers.
 - **Tests that fit any release.** The version smoke test and the title test no longer assume an `alpha` version; the fake Slack token in the secret-scanner test is built at run time so GitHub's push protection does not flag it.
 
-## Unreleased
+## 1.1.0 (2026-11-01)
 
 - **The installers no longer refuse the published repository.** `install.sh` (when run from the web with `curl ... | bash`) refused its own default address with "Set MINTY_REPO", a guard from before the repository was published; it now clones it. `install.ps1` has the same default and no such guard.
 - **Windows, step 3: starting other programs safely.** A program Minty starts with a trimmed environment now keeps what Windows needs to run it (`SystemRoot`, `USERPROFILE`, `APPDATA` ...: without them Node does not start and Claude Code cannot find its login), for the Claude provider, coding agents and MCP servers. Programs are launched by their full path, so npm's `claude.cmd` and `npx.cmd` are found; because `cmd.exe` would read `& | < > ^ % ! "` in a request as commands when it runs a `.cmd` file, Minty refuses (and says why) instead. Coding agents run only in a sandbox unless the owner sets the sandbox to `off`: on Windows, where there is no sandbox, the default `auto` now refuses instead of running them with your keys in reach.
