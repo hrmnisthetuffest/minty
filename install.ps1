@@ -94,9 +94,6 @@ function Get-Root {
   # Where the code is: this checkout when the script was run from one, else a copy downloaded to the home folder.
   $here = if ($PSScriptRoot) { $PSScriptRoot } else { "" }
   if ($here -and (Test-Path (Join-Path $here "pyproject.toml")) -and (Test-Path (Join-Path $here "src\minty_core"))) { return $here }
-  if ($Repo -like "*hrmnisthetuffest*") {
-    Stop-Install "Set MINTY_REPO to the repository address, for example: `$env:MINTY_REPO = 'https://github.com/you/minty.git'"
-  }
   $root = Join-Path $script:HomeDir "src"
   New-Item -ItemType Directory -Force -Path $script:HomeDir -ErrorAction Stop | Out-Null
   if (Get-Command git -ErrorAction SilentlyContinue) {

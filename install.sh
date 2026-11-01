@@ -10,7 +10,7 @@
 #   --no-onboard   install only        --relink   replace a different `minty` command in ~/.local/bin        --help   show this text
 set -euo pipefail
 
-REPO="${MINTY_REPO:-https://github.com/hrmnisthetuffest/minty.git}"   # set MINTY_REPO, or edit this line after you publish
+REPO="${MINTY_REPO:-https://github.com/hrmnisthetuffest/minty.git}"   # set MINTY_REPO to install from a fork
 HOME_DIR="${MINTY_HOME:-$HOME/.minty}"
 BIN_DIR="${MINTY_BIN:-$HOME/.local/bin}"
 ONBOARD=1
@@ -47,7 +47,6 @@ if [ -n "$here" ] && [ -f "$here/pyproject.toml" ] && [ -d "$here/src/minty_core
   root="$here"
 else
   command -v git >/dev/null 2>&1 || fail "git is needed to download Minty (sudo apt install git)"
-  case "$REPO" in *hrmnisthetuffest*) fail "Set MINTY_REPO to the repository address, for example: MINTY_REPO=https://github.com/you/minty.git" ;; esac
   root="$HOME_DIR/src"
   if [ -d "$root/.git" ]; then say "Updating $root"; git -C "$root" pull --ff-only
   else say "Downloading Minty into $root"; mkdir -p "$HOME_DIR"; git clone --depth 1 "$REPO" "$root"; fi

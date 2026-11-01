@@ -20,10 +20,10 @@ You do not need administrator rights, and nothing outside your own user account 
 .\install.ps1
 ```
 
-**Without downloading anything first** (needs the repository's public address; see "Sharing it" below):
+**Without downloading anything first:**
 
 ```powershell
-irm https://raw.githubusercontent.com/<you>/minty/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/hrmnisthetuffest/minty/main/install.ps1 | iex
 ```
 
 What it does, and nothing more:
@@ -97,8 +97,8 @@ Minty starts Claude Code, MCP servers (`npx`, `uvx`) and similar programs with a
 
 ## Sharing it with friends
 
-1. Publish the repository and put its address in `install.ps1` (the `$Repo` default, the same place `install.sh` has `REPO`), or have them set `MINTY_REPO`. Until then the installer refuses to download.
-2. Send them one of: the link to the repository plus "download the zip, unzip, double-click `install.cmd`"; or the `irm ... | iex` line above.
+1. The repository is public at https://github.com/hrmnisthetuffest/minty (a fork installs with `MINTY_REPO` set to its address).
+2. Send them one of: the link plus "download the zip, unzip, double-click `install.cmd`"; or the `irm ... | iex` line above.
 3. They need their own free API key (the setup links to each) or a Claude Code login; nothing of yours is shared.
 4. Ask them to run `scripts\windows_check.ps1` if anything looks wrong and send you `minty-check.txt`.
 

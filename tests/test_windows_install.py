@@ -71,7 +71,7 @@ def test_the_installer_offers_what_install_sh_offers():
     assert "Tls12" in text and "$ProgressPreference" in text  # GitHub rejects old TLS; 5.1 downloads crawl with the progress bar
     assert "WindowsApps" in text or "9009" in text  # the Microsoft Store python stub is recognised and ignored
     assert "winget" in text and "Read-Host" in text  # Python is offered and asked about, never installed silently
-    assert "hrmnisthetuffest" in text  # the same unpublished-address guard as install.sh
+    assert "https://github.com/hrmnisthetuffest/minty.git" in text and "Set MINTY_REPO" not in text  # the published repository is the default: no "unpublished" refusal
 
 
 def test_the_installer_never_asks_for_administrator_rights_or_changes_the_machine():
