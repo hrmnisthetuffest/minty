@@ -41,7 +41,7 @@ backup = ["cryptography>=42"]  # encrypted backups (AES-GCM + scrypt); also inst
 ptt = ["pynput>=1.7"]  # a global push-to-talk key (506); without it the panel button and the API still work
 documents = ["pypdf>=4"]  # read text PDFs sent through Telegram (544); pictures need tesseract (system package)
 local-llm = ["llama-cpp-python>=0.2.90; sys_platform != 'win32'"]  # optional, experimental: a small local model for titles/summaries (531). Not on Windows: it publishes no Windows wheels and needs a C++ compiler there
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "pytest-xdist>=3"]  # xdist: optional, `pytest -n auto` runs in parallel
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "pytest-xdist>=3", "pyyaml>=6"]  # xdist: optional, `pytest -n auto` runs in parallel
 
 [project.scripts]
 minty = "minty_core.app:main"

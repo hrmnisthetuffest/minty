@@ -53,7 +53,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install with install.ps1
         shell: powershell
-        run: .\install.ps1 -NoOnboard
+        run: .\install.ps1 -NoOnboard -Python (Get-Command python).Source
       - name: The minty command works
         shell: cmd
         run: '"%LOCALAPPDATA%\Minty\bin\minty.cmd" --version'

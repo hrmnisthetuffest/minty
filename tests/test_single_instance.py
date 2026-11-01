@@ -1,6 +1,5 @@
 """One Minty per settings folder. A second `minty` used to load the voice models, start a second Telegram poller on the same bot and open the
 microphone, and only then died on the busy port with a traceback (leaving the terminal in mouse-reporting mode). It now says so at once."""
-import fcntl
 import os
 import signal
 import stat
@@ -9,6 +8,8 @@ import sys
 import time
 
 import pytest
+
+fcntl = pytest.importorskip("fcntl")  # Windows has no fcntl; its lock (msvcrt) is tested in test_osutil.py
 
 from minty_core import app, instance
 

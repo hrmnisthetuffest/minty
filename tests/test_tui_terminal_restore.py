@@ -5,9 +5,12 @@ import asyncio
 import atexit
 import io
 import os
-import pty
 import sys
-import termios
+
+import pytest
+
+pty = pytest.importorskip("pty")  # a terminal emulator: Windows has neither pty nor termios
+termios = pytest.importorskip("termios")
 
 from minty_core.tui import TuiModel, _KeyReader
 

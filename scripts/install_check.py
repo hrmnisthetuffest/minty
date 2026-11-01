@@ -185,7 +185,7 @@ def timezones() -> tuple[str, str]:
 def brain() -> tuple[str, str]:
     from minty_core.context import build_context
 
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:  # Windows cannot delete a database file that is still open (WinError 32); the check is about the second brain, not the cleanup
         ctx = build_context(Path(tmp))
         services = ctx.services
 

@@ -4,6 +4,10 @@ import importlib.util
 import tomllib
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip("resource")  # scripts/perf.py measures memory with it; Windows has no such module
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("perf_script", ROOT / "scripts" / "perf.py")
 perf = importlib.util.module_from_spec(spec)

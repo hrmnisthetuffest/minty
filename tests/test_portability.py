@@ -207,3 +207,10 @@ def test_the_application_builds_and_the_command_line_starts_with_the_posix_only_
     """)
     done = run_python(code, tmp_path)
     assert done.returncode == 0 and "started" in done.stdout, done.stdout + done.stderr
+
+
+def test_the_whole_test_suite_can_be_collected_with_the_posix_only_modules_missing(tmp_path):
+    # On Windows a test file that does `import fcntl` (or pty, termios, resource) at its top is an error that stops the whole run before one test has started.
+    code = "import sys\n" + BLOCK + "import pytest\nraise SystemExit(pytest.main(['--collect-only', '-q', '-p', 'no:cacheprovider', str(" + repr(str(ROOT / "tests")) + ")]))\n"
+    done = run_python(code, tmp_path, timeout=600)
+    assert done.returncode == 0, "\n".join(line for line in (done.stdout + done.stderr).splitlines() if "ERROR" in line or "Error" in line)[-3000:]

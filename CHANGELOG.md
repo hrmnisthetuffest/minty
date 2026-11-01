@@ -915,3 +915,7 @@ when it is good enough.
   unchecked, to do; blocker; next; "done" only when all verified; `missions_contract`), `/api/control/overview` and a Mission Control page (needs you first, missions with contracts, running work with Stop, workflows, recent
   outcomes, decisions). Tests: `tests/test_mind_self.py`, `test_mind_world.py`, `test_mind_watchdog.py`, `test_mind_rehearse.py`, `test_mind_control.py`. Not done: amending a running mission, a skills library,
   forecasting and follow-through commitments, anomaly detection beyond the watchdog, cost accounting (see the backlog in `docs/jarvis-gaps.md`).
+
+## Unreleased
+
+- **The first run on a real Windows PC (GitHub Actions) found three things, all fixed.** The installer, the `minty` command and starting Minty for real all worked there. (1) The install check's second-brain step failed on Windows only because its scratch folder could not be deleted while a database file was still open (WinError 32); the folder cleanup now tolerates that. (2) The Windows jobs named "3.10" and "3.12" both ran Python 3.13, because `install.ps1` picks the newest Python it finds; the jobs now pass the Python they are named after. (3) The test suite could not even start on Windows: three test files imported `fcntl`, `pty`, `termios` or `resource` at the top, and two needed PyYAML, which the `dev` extra did not install (this also broke the Linux job). The three files now skip where the module does not exist, `dev` includes `pyyaml`, and a test collects the whole suite with those modules missing so it cannot come back.

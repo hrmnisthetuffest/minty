@@ -252,3 +252,28 @@ def test_the_setup_tells_a_windows_user_what_works_and_looks_for_chrome_where_wi
     monkeypatch.setenv("PROGRAMFILES(X86)", str(tmp_path / "none"))
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "none"))
     assert steps._windows_chrome() is True
+
+
+# ---- what the first real Windows run (GitHub Actions) found --------------------------------------------------------------------------------
+def test_the_second_brain_check_survives_a_database_file_that_windows_still_holds_open():
+    # Windows cannot delete a file another handle has open (WinError 32), and the check's scratch folder held jobs.sqlite open: the check failed on a cleanup, not on the second brain.
+    import inspect
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("install_check", REPO / "scripts" / "install_check.py")
+    check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check)
+    assert "ignore_cleanup_errors=True" in inspect.getsource(check.brain)
+
+
+def test_the_test_extra_installs_everything_the_tests_import_from_outside_the_standard_library():
+    import tomllib
+
+    extra = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))["project"]["optional-dependencies"]["dev"]
+    assert any(item.lower().startswith("pyyaml") for item in extra)  # tests/test_docker_files.py and test_release_workflow.py read YAML
+
+
+def test_each_windows_job_installs_with_the_python_it_is_named_after():
+    # install.ps1 picks the newest Python it finds, so the "3.10" job tested 3.13 until it was told which one to use.
+    text = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert re.search(r"install\.ps1 -NoOnboard -Python \(Get-Command python\)\.Source", text)
