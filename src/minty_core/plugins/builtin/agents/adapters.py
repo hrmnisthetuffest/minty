@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from minty_core import osutil
+
 log = logging.getLogger(__name__)
 _AGENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 DEFAULT_TOOLS = ["Read", "Edit", "Write", "Glob", "Grep", "Bash(git:*)", "Bash(python:*)", "Bash(python3:*)",
@@ -33,7 +35,8 @@ def job_env(environ=None, extra="") -> dict[str, str]:
     """The environment for a coding agent: the allowlist above, plus any names the user listed in the `claude_env` setting."""
     environ = os.environ if environ is None else environ
     wanted = {n for n in re.split(r"[,;\s]+", str(extra or "")) if _ENV_NAME.fullmatch(n)}
-    return {k: v for k, v in environ.items() if k in ENV_PASS or k in wanted or k.startswith(ENV_PREFIXES)}
+    system = set(osutil.system_env_names())  # Windows: what a program needs to start at all
+    return {k: v for k, v in environ.items() if k in ENV_PASS or k in wanted or k in system or k.startswith(ENV_PREFIXES)}
 
 
 # Folders and files an agent has no business reading or writing. A guard rail for the agent's own Read/Edit/Write tools; the

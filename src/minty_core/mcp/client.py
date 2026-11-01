@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
+from minty_core import osutil
 from minty_core.safefetch import FetchFailed, safe_fetch
 from minty_core.tasks import cancel_and_wait
 
@@ -72,9 +73,9 @@ class McpSession(_Calls):
 
     async def __aenter__(self) -> "McpSession":
         try:
-            self._proc = await self._spawn(*self.argv, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+            self._proc = await self._spawn(*osutil.resolve_command(self.argv), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                                            stderr=asyncio.subprocess.DEVNULL, env=self.env, cwd=self.cwd, limit=self.max_line)
-        except (OSError, ValueError) as e:
+        except (OSError, ValueError) as e:  # (osutil.UnsafeCommand is a ValueError)
             raise McpError(f"The server could not start ({type(e).__name__}).") from None
         self._reader = asyncio.get_running_loop().create_task(self._read_loop())
         return self

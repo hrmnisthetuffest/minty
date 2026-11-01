@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import urlsplit
 
+from minty_core import osutil
 from minty_core.fsutil import atomic_write_text
 from minty_core.provenance import looks_like_injection
 
@@ -71,6 +72,9 @@ def build_env(name: str, server: dict, secret: Callable[[str], str | None]) -> d
     """The only environment a server ever sees: a plain path/home/language plus the secrets you declared for it."""
     env = {"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": os.environ.get("HOME", "/tmp"),
            "LANG": os.environ.get("LANG", "C.UTF-8")}
+    for name in osutil.system_env_names():  # Windows: a server cannot start (Node) or find its files without these
+        if name in os.environ:
+            env[name] = os.environ[name]
     for key in server.get("env_keys", []):
         value = secret(f"plugin.mcp.{name}.{key}")
         if value:

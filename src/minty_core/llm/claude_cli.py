@@ -24,6 +24,7 @@ import uuid
 from pathlib import Path
 from typing import AsyncIterator
 
+from minty_core import osutil
 from minty_core.config import ProviderConfig
 from minty_core.llm.types import (Event, LLMError, Message, TextDelta, ToolCall, ToolCallEvent, ToolNotOffered,
                                   ToolSpec, Usage)
@@ -165,7 +166,8 @@ class ClaudeCliProvider:
 
     @staticmethod
     def _env() -> dict[str, str]:
-        return {k: v for k, v in os.environ.items() if k in ENV_KEEP and not k.startswith("ANTHROPIC")}
+        keep = ENV_KEEP + osutil.system_env_names()  # Windows: SystemRoot, USERPROFILE, APPDATA ... or the program cannot start or find its login
+        return {k: v for k, v in os.environ.items() if k in keep and not k.startswith("ANTHROPIC")}
 
     def _spare(self) -> None:
         """Do not spend what is nearly gone: your own Claude Code use needs room (cfg.extra reserve, 0.9)."""
@@ -196,8 +198,12 @@ class ClaudeCliProvider:
         splitter, result, info = _Splitter(), None, None
         proc = None
         try:
+            try:
+                argv = osutil.resolve_command(self._argv(system_file))
+            except osutil.UnsafeCommand as e:
+                raise LLMError(f"{self.name}: {e}", kind="other") from e
             proc = await asyncio.create_subprocess_exec(
-                *self._argv(system_file), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+                *argv, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL, cwd=str(self._workdir), env=self._env(),
                 limit=1 << 20)
             proc.stdin.write(transcript(messages).encode("utf-8"))

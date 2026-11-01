@@ -14,6 +14,7 @@ import logging
 import shutil
 from pathlib import Path
 
+from minty_core import osutil
 from minty_core.sandbox import SAFE_PATH, Sandbox, SandboxUnavailable
 
 log = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ class Isolation:
             return True, ""
         if self.mode == "required":
             raise SandboxUnavailable(why)
+        if osutil.IS_WINDOWS:  # mode "auto": on Windows there is never a sandbox, so "run as before and say so" would run every agent with your keys in reach
+            raise SandboxUnavailable(why + ". On Windows, set the agents plugin's sandbox setting to off to run agents anyway (they can then read your keys and files)")
         log.warning("coding agent runs without a sandbox: %s", why)
         return False, why
 

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -61,6 +63,40 @@ def kill_tree(proc) -> None:
                            creationflags=CREATE_NO_WINDOW)
         else:
             os.killpg(proc.pid, signal.SIGKILL)
+
+
+# What a program started on Windows needs to find its own files and start at all. Without SystemRoot Node will not start and Python's networking fails, without USERPROFILE or
+# APPDATA a program cannot find its own sign-in; a filtered environment that keeps only HOME, PATH and XDG_* (the Linux basics) therefore breaks things there in confusing ways.
+WINDOWS_ENV = ("SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP", "USERPROFILE", "USERNAME", "APPDATA", "LOCALAPPDATA", "PROGRAMDATA", "PROGRAMFILES",
+               "PROGRAMFILES(X86)", "COMMONPROGRAMFILES", "HOMEDRIVE", "HOMEPATH", "COMPUTERNAME", "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "OS")
+
+
+def system_env_names() -> tuple[str, ...]:
+    """The variables a filtered environment must keep on this system to let a program start: none beyond the usual on Linux, `WINDOWS_ENV` on Windows."""
+    return WINDOWS_ENV if IS_WINDOWS else ()
+
+
+class UnsafeCommand(ValueError):
+    """An argument that a Windows batch file would read as a command."""
+
+
+_BATCH_META = re.compile(r'[&|<>^%!"\r\n]')
+
+
+def resolve_command(argv: list[str]) -> list[str]:
+    """`argv` with the program replaced by the full path the system would run, so Windows finds `claude.cmd` or `npx.cmd` (a bare name reaches only `.exe`). Unchanged elsewhere.
+    A `.cmd` or `.bat` file is run by cmd.exe, which reads `& | < > ^ % ! "` in the arguments as commands: if the text of a request would reach one, this refuses instead of letting
+    a prompt become a command (Windows' own `claude.exe` and `node.exe` take their arguments as they are)."""
+    if not IS_WINDOWS or not argv:
+        return list(argv)
+    found = shutil.which(argv[0])
+    if found is None:
+        return list(argv)  # the caller reports "not installed"
+    if found.lower().endswith((".cmd", ".bat")):
+        for arg in argv[1:]:
+            if _BATCH_META.search(str(arg)):
+                raise UnsafeCommand(f"{os.path.basename(found)} is a batch file, and cmd.exe would read part of this request as commands. Install the program's native .exe version instead.")
+    return [found, *argv[1:]]
 
 
 def limits_preexec(cpu_s: float | None = None, mem_mb: int | None = None) -> Callable[[], None] | None:

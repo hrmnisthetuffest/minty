@@ -48,7 +48,7 @@ label = "More tools Claude Code may run, e.g. Bash(npx:*) Bash(ffprobe:*) for vi
 
 [settings.sandbox]
 type = "string"
-label = "Run coding agents (and the tests they wrote) in a bubblewrap sandbox with your keys and home folder out of reach: auto (default; says so when it cannot), required (never run without it) or off"
+label = "Run coding agents (and the tests they wrote) in a bubblewrap sandbox with your keys and home folder out of reach: auto (default; says so when it cannot, and on Windows, where there is no sandbox, refuses), required (never run without it) or off"
 
 [settings.agent_env]
 type = "string"

@@ -307,3 +307,57 @@ def test_the_research_library_and_the_vault_use_it_so_a_topic_called_con_still_g
     vault = Vault(tmp_path / "v", git=False)
     note = vault.create("Anything", "body", filename="nul.md")
     assert not note.path.split("/")[-1].lower().startswith("nul")
+
+
+# ---- launching programs and what they are given on Windows -------------------------------------------------------------------------------
+def test_on_windows_a_program_is_found_by_its_full_path_so_npm_shims_work(monkeypatch):
+    monkeypatch.setattr(osutil, "IS_WINDOWS", True)
+    monkeypatch.setattr(osutil.shutil, "which", lambda name: {"claude": r"C:\Users\me\AppData\Roaming\npm\claude.CMD", "node": r"C:\Program Files\nodejs\node.exe"}.get(name))
+    assert osutil.resolve_command(["node", "server.js"]) == [r"C:\Program Files\nodejs\node.exe", "server.js"]
+    assert osutil.resolve_command(["claude", "-p", "--model", "haiku"]) == [r"C:\Users\me\AppData\Roaming\npm\claude.CMD", "-p", "--model", "haiku"]
+    assert osutil.resolve_command(["not-installed", "x"]) == ["not-installed", "x"]  # the caller says "not installed"
+
+
+@pytest.mark.parametrize("text", ["fix this & delete everything", "a | b", "100%", "say \"hi\"", "line one\nline two", "x ^ y", "wow!", "a > file", "a < file"])
+def test_a_request_that_cmd_would_read_as_commands_is_refused_when_the_program_is_a_batch_file(monkeypatch, text):
+    monkeypatch.setattr(osutil, "IS_WINDOWS", True)
+    monkeypatch.setattr(osutil.shutil, "which", lambda name: r"C:\npm\claude.cmd" if name == "claude" else r"C:\Program Files\claude.exe")
+    with pytest.raises(osutil.UnsafeCommand):
+        osutil.resolve_command(["claude", "-p", text])
+    assert osutil.resolve_command(["claude.exe", "-p", text])[1:] == ["-p", text]  # a real .exe takes its arguments as they are
+
+
+def test_nothing_changes_on_linux(monkeypatch):
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
+    argv = ["claude", "-p", "a & b | c"]
+    assert osutil.resolve_command(argv) == argv and osutil.resolve_command(argv) is not argv and osutil.system_env_names() == ()
+
+
+def test_a_filtered_environment_keeps_what_windows_needs_to_start_a_program(monkeypatch):
+    from minty_core.llm.claude_cli import ClaudeCliProvider as ClaudeCli
+    from minty_core.mcp.registry import build_env
+    from minty_core.plugins.builtin.agents.adapters import job_env
+
+    fake = {"SYSTEMROOT": r"C:\Windows", "USERPROFILE": r"C:\Users\me", "APPDATA": r"C:\Users\me\AppData\Roaming", "PATH": r"C:\Windows\System32", "OPENAI_KEY": "secret", "ANTHROPIC_API_KEY": "secret"}
+    monkeypatch.setattr(osutil, "IS_WINDOWS", True)
+    monkeypatch.setattr(os, "environ", fake)
+    assert {"SYSTEMROOT", "USERPROFILE", "APPDATA", "PATH"} <= set(job_env()) and "OPENAI_KEY" not in job_env()
+    assert {"SYSTEMROOT", "USERPROFILE", "APPDATA"} <= set(ClaudeCli._env()) and "ANTHROPIC_API_KEY" not in ClaudeCli._env()
+    assert {"SYSTEMROOT", "USERPROFILE", "APPDATA"} <= set(build_env("x", {}, lambda k: None)) and "OPENAI_KEY" not in build_env("x", {}, lambda k: None)
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
+    assert "SYSTEMROOT" not in job_env() and "USERPROFILE" not in ClaudeCli._env()  # Linux: unchanged
+
+
+def test_on_windows_coding_agents_are_refused_in_auto_mode_because_there_is_no_sandbox_and_run_only_when_the_owner_says_off(monkeypatch):
+    from minty_core.plugins.builtin.agents.isolation import Isolation
+    from minty_core.sandbox import SandboxUnavailable
+
+    monkeypatch.setattr(osutil, "IS_WINDOWS", True)
+    none = types.SimpleNamespace(available=lambda: (False, "the sandbox needs Linux"))
+    with pytest.raises(SandboxUnavailable, match="set the agents plugin's sandbox setting to off"):
+        Isolation("auto", sandbox=none).prepare()
+    with pytest.raises(SandboxUnavailable):
+        Isolation("required", sandbox=none).prepare()
+    assert Isolation("off", sandbox=none).prepare() == (False, "switched off in the settings")
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
+    assert Isolation("auto", sandbox=none).prepare() == (False, "the sandbox needs Linux")  # Linux keeps "run as before and say so"

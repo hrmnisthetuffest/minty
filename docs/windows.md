@@ -86,10 +86,14 @@ by Windows' own permissions, not by anything Minty adds.
 | Encrypted backups, `minty update` (when installed with git) | yes |
 | The terminal tool (`shell_*`), system help (`system_*`), the package installer (`installer_*`), Spotify control, song recognition | **no**: switched off, and never offered to the model (their safety rules, and the tools they call, are for Linux) |
 | Echo cancellation for speakers, turning other programs down while Minty listens, pausing music while you talk | **no** (PipeWire / D-Bus). Use headphones, or say the wake word to interrupt |
-| The sandbox that isolates coding agents | **no** (bubblewrap is Linux only). Anything that requires it is refused, never run unsandboxed |
+| The sandbox that isolates coding agents | **no** (bubblewrap is Linux only). Anything that requires it is refused, never run unsandboxed. **Coding agents (Claude Code and the others) are therefore refused on Windows by default**: with no sandbox they could read your keys and files. If you want them anyway, set the agents plugin's `sandbox` setting to `off` (a choice, said out loud every time) |
 | Scanning the home network, app scenes ("open app X"), the X11 overlay | no (web-address scenes work) |
 
 Ask Minty "what can you do right now?" (`self_can`) or open the **Plugins** page: a plugin that cannot work on this system says "not available on this system" and why.
+
+### Programs Minty starts
+
+Minty starts Claude Code, MCP servers (`npx`, `uvx`) and similar programs with a trimmed environment, to which it adds what Windows needs for a program to start (`SystemRoot`, `USERPROFILE`, `APPDATA` ...). Programs installed with npm are `.cmd` files on Windows, and `cmd.exe` reads `&`, `|`, `%`, `^`, `!` and quotes in the arguments as commands: when the text of a request would reach one, Minty refuses and says so instead of letting a request become a command. Install the program's native `.exe` version (for Claude Code, its own Windows installer) to avoid it.
 
 ## Sharing it with friends
 

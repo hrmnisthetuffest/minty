@@ -311,6 +311,7 @@ class JobManager:
         argv = invocation.argv
         if self._boxed.get(job.id):
             argv = self._iso.agent_command(argv, invocation.cwd, adapter, env)
+        argv = osutil.resolve_command(argv)  # Windows: the full path (npm's agents are .cmd files); raises UnsafeCommand rather than let a prompt become a command
         proc = await asyncio.create_subprocess_exec(
             *argv, cwd=invocation.cwd, stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
