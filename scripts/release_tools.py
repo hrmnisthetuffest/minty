@@ -38,7 +38,7 @@ def next_version(current: str, bump: str) -> str:
 
 
 def set_version(root: Path, version: str) -> None:
-    """Write the version into the package and into pyproject.toml (the `version = ...` line of [project] only)."""
+    """Write the version into the package, into pyproject.toml (the `version = ...` line of [project] only) and into the identity file's generated facts."""
     root = Path(root)
     init = root / "src" / "minty_core" / "__init__.py"
     text = init.read_text(encoding="utf-8")
@@ -52,6 +52,10 @@ def set_version(root: Path, version: str) -> None:
     if n != 1:
         raise ValueError("no version line in pyproject.toml")
     meta.write_text(new, encoding="utf-8")
+    identity = root / "src" / "minty_core" / "MINTY_IDENTITY.md"  # its generated facts begin "Version X." and a test fails when that is not the package's version
+    if identity.exists():
+        text = identity.read_text(encoding="utf-8")
+        identity.write_text(re.sub(r"^Version [^\s]+?\. (?=\d+ built-in plugins)", lambda m: f"Version {version}. ", text, count=1, flags=re.M), encoding="utf-8")
 
 
 def _sections(text: str) -> list[tuple[int, int, str]]:

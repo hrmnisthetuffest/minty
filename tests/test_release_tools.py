@@ -50,6 +50,19 @@ def test_set_version_writes_the_package_and_the_packaging_metadata(tmp_path):
     assert 'version = "1.0.1"' in meta and 'other = "1.0.0a27"' in meta  # only the project version line
 
 
+def test_set_version_also_updates_the_version_in_the_generated_identity_facts(tmp_path):
+    # MINTY_IDENTITY.md states the version; a test fails when it disagrees with the package, so every release used to ship with that test red.
+    (tmp_path / "src" / "minty_core").mkdir(parents=True)
+    (tmp_path / "src" / "minty_core" / "__init__.py").write_text('"""x"""\n__version__ = "1.0.2"\n')
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "minty-core"\nversion = "1.0.2"\n')
+    identity = tmp_path / "src" / "minty_core" / "MINTY_IDENTITY.md"
+    identity.write_text("Version 1.0.2 is mentioned in prose too.\n\n<!-- facts:begin (generated) -->\nVersion 1.0.2. 58 built-in plugins, 39 tool groups.\n\n**Tool groups** a, b\n<!-- facts:end -->\n", encoding="utf-8")
+    tools.set_version(tmp_path, "1.1.1")
+    text = identity.read_text(encoding="utf-8")
+    assert "Version 1.1.1. 58 built-in plugins, 39 tool groups." in text
+    assert "Version 1.0.2 is mentioned in prose too." in text  # only the generated line
+
+
 # ---- changelog ---------------------------------------------------------------------------------------
 CHANGELOG = "# Changelog\n\n## 1.0.0-alpha.27 (2026-10-20)\n\n- old\n\n## Unreleased\n\n### Faster\n- a new thing\n"
 
