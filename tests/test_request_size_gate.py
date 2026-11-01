@@ -1,7 +1,7 @@
 """What every request carries (system prompt + tool schemas, the follow-up after page readings) may not grow past scripts/perf_budget.toml.
 These are counts of characters, not timings: they do not flicker. The timing budgets are checked by scripts/perf.py."""
 import importlib.util
-import tomllib
+from minty_core._toml import tomllib
 from pathlib import Path
 
 import pytest

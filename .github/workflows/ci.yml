@@ -20,7 +20,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libportaudio2 ffmpeg
           python -m pip install --upgrade pip
-          python -m pip install -e '.[dev]'
+          python -m pip install -e '.[dev,voice,browser,backup,documents]'
+          python -m playwright install chromium
       - name: Tests
         run: python -m pytest -q
       - name: Shell script syntax
@@ -65,7 +66,7 @@ jobs:
         continue-on-error: true  # informational until this list has been run on Windows once; the two steps above are what must pass
         run: |
           .venv\Scripts\python.exe -m pip install --quiet pytest pytest-asyncio
-          .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider tests/test_osutil.py tests/test_portability.py tests/test_platform_gating.py tests/test_autostart.py tests/test_knowledge_store.py tests/test_knowledge_capture.py tests/test_knowledge_reason.py tests/test_knowledge_research.py tests/test_knowledge_auto.py tests/test_mind_world.py tests/test_mind_control.py tests/test_flows_engine.py
+          .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider tests/test_osutil.py tests/test_portability.py tests/test_platform_gating.py tests/test_knowledge_store.py tests/test_knowledge_capture.py tests/test_knowledge_reason.py tests/test_knowledge_research.py tests/test_knowledge_auto.py tests/test_mind_world.py tests/test_mind_control.py tests/test_flows_engine.py
 
   windows-full-suite:
     # Discovery, not a gate: the suite was written on Linux, so some tests assume bash, chmod, /tmp or a sound server. Read what fails here to see what still needs a Windows branch.

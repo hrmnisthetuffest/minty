@@ -206,8 +206,8 @@ function Install-Minty {
   & $venvPy -m pip install --quiet --disable-pip-version-check --upgrade pip
   & $venvPy -m pip install --quiet --disable-pip-version-check -e $root
   if ($LASTEXITCODE -ne 0) { Stop-Install "Installing Minty's Python packages failed (the lines above say why). Check your internet connection and run the installer again." }
-  & $venvPy -c "import minty_core.app" 2>$null
-  if ($LASTEXITCODE -ne 0) { Stop-Install "Minty was installed but does not start. Run scripts\windows_check.ps1 and send me what it prints." }
+  $startError = & $venvPy -c "import minty_core.app" 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) { Stop-Install ("Minty was installed but does not start. Run scripts\windows_check.ps1 and send me what it prints. What Python said:" + [Environment]::NewLine + $startError.Trim()) }
   Test-CppRuntime
 
   # 4. The `minty` command

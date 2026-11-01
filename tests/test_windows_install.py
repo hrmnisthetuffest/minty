@@ -267,7 +267,7 @@ def test_the_second_brain_check_survives_a_database_file_that_windows_still_hold
 
 
 def test_the_test_extra_installs_everything_the_tests_import_from_outside_the_standard_library():
-    import tomllib
+    from minty_core._toml import tomllib
 
     extra = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))["project"]["optional-dependencies"]["dev"]
     assert any(item.lower().startswith("pyyaml") for item in extra)  # tests/test_docker_files.py and test_release_workflow.py read YAML
@@ -277,3 +277,19 @@ def test_each_windows_job_installs_with_the_python_it_is_named_after():
     # install.ps1 picks the newest Python it finds, so the "3.10" job tested 3.13 until it was told which one to use.
     text = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert re.search(r"install\.ps1 -NoOnboard -Python \(Get-Command python\)\.Source", text)
+
+
+def test_the_installer_shows_what_python_said_when_minty_does_not_start_after_installing():
+    # the first 3.10 run on Windows said only "does not start": the reason (no tomllib) was thrown away by `2>$null`
+    text = (REPO / "install.ps1").read_text(encoding="ascii")
+    assert 'import minty_core.app" 2>$null' not in text
+    assert re.search(r'import minty_core\.app" 2>&1 \| Out-String', text) and "What Python said" in text
+
+
+def test_the_linux_ci_job_installs_the_optional_packages_the_tests_exercise():
+    # the first green-field CI run: 131 failures, all "No module named playwright / faster_whisper / cryptography ..." because only `.[dev]` was installed
+    text = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    first_job = text.split("windows:")[0]
+    for extra in ("voice", "browser", "backup", "documents"):
+        assert re.search(r"pip install -e '\.\[[^\]]*\b" + extra + r"\b", first_job), extra
+    assert "playwright install chromium" in first_job

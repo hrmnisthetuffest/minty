@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import time
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 import tomli_w
 from pydantic import ValidationError
+from minty_core._toml import tomllib
 
 
 @dataclass(frozen=True)

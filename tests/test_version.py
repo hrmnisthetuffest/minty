@@ -3,7 +3,7 @@
 Before the first release the version is 1.0.0-alpha.N. From the first release on it is a plain MAJOR.MINOR.PATCH (1.0.1), changed
 only when a release is made (scripts/release_tools.py): day-to-day changes are logged under "Unreleased" in CHANGELOG.md."""
 import re
-import tomllib
+from minty_core._toml import tomllib
 from pathlib import Path
 
 from minty_core import __version__

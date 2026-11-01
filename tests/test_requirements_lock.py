@@ -2,7 +2,7 @@
 nothing newer or swapped. It must cover every direct dependency and respect the floors in pyproject.toml (made by:
 `uv pip compile pyproject.toml --generate-hashes --python-version 3.12 --no-header -o requirements.lock`)."""
 import re
-import tomllib
+from minty_core._toml import tomllib
 from pathlib import Path
 
 from packaging.requirements import Requirement

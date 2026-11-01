@@ -87,7 +87,7 @@ def test_the_capability_registry_says_not_available_on_this_system_and_why(tmp_p
 
 
 def test_the_built_in_plugins_that_only_work_on_linux_are_marked_and_the_cross_platform_ones_are_not():
-    import tomllib
+    from minty_core._toml import tomllib
 
     marked = {}
     for toml in BUILTIN_PLUGIN_DIR.glob("*/plugin.toml"):
@@ -120,7 +120,7 @@ def test_the_generated_docs_and_identity_say_which_plugins_are_linux_only():
 
 @pytest.mark.parametrize("system", ["linux", "windows"])
 def test_the_manifest_of_every_built_in_plugin_names_only_known_systems(system):
-    import tomllib
+    from minty_core._toml import tomllib
 
     for toml in BUILTIN_PLUGIN_DIR.glob("*/plugin.toml"):
         for name in tomllib.loads(toml.read_text(encoding="utf-8")).get("platforms", []):

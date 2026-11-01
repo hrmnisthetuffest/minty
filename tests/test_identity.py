@@ -1,7 +1,7 @@
 """The package, commands, wake word and prompt all say Minty."""
 import subprocess
 import sys
-import tomllib
+from minty_core._toml import tomllib
 from pathlib import Path
 
 from minty_core.config import Config

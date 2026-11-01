@@ -16,9 +16,9 @@ import sqlite3
 import tarfile
 import tempfile
 import time
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+from minty_core._toml import tomllib
 
 MAGIC = b"MINTYBK1"
 SCRYPT = dict(n=2**14, r=8, p=1)

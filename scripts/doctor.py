@@ -172,11 +172,10 @@ def main() -> int:
     print(f"  [{ok(keys.is_file())}] API keys           minty import-keys <file>   or   minty set-key <name>")
     print(f"  [{ok((CONFIG / 'panel_auth.toml').is_file())}] panel password    minty set-password")
     try:
-        import tomllib
-
+        tomllib = importlib.import_module("tomllib" if sys.version_info >= (3, 11) else "tomli")  # Python 3.10 has no tomllib
         data = tomllib.loads(keys.read_text(encoding="utf-8")) if keys.is_file() else {}
         names = set(data.get("keys", data))  # key names only; values are never read out
-    except (OSError, ValueError):
+    except (OSError, ValueError, ImportError):
         names = set()
     spotify = {"plugin.spotify.client_id", "plugin.spotify.client_secret"} <= names
     signed_in = "plugin.spotify.refresh_token" in names

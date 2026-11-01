@@ -12,6 +12,7 @@ from typing import AsyncIterator, Callable
 
 import httpx
 
+from minty_core import pycompat
 from minty_core.config import ConfigStore, ProviderConfig
 from minty_core.fsutil import atomic_write_text
 from minty_core.httpclient import get_client
@@ -537,7 +538,7 @@ class ProviderRouter:
                             if emitted or not deadline:
                                 event = await anext(events)
                             else:
-                                async with asyncio.timeout(deadline - (time.monotonic() - t_start)) as budget:
+                                async with pycompat.timeout(deadline - (time.monotonic() - t_start)) as budget:
                                     event = await anext(events)
                         except StopAsyncIteration:
                             break
