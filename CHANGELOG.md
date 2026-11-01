@@ -837,7 +837,7 @@ when it is good enough.
   up, or a tool you allowed as read-only. For those, reading first is no longer a reason to ask; content that gave orders still is, and a send or any
   other server keeps the old caution. Replayed against a copy of your real settings: the search and the Gmail fetch after it are both allowed without a
   question. Tests: `tests/test_policy_mandate.py`, `tests/test_mcp_remote.py`.
-- Fix (found running a real "check my webhrmn gmail" turn with Claude on a copy of the settings): Claude called the Gmail action by its own name
+- Fix (found running a real "check my work gmail" turn with Claude on a copy of the settings): Claude called the Gmail action by its own name
   (`mcp_call(server=composio, tool=GMAIL_FETCH_EMAILS, arguments={account_id, ...})`), which Composio does not offer as a tool: it was asked about and
   would have failed. Such a call is now routed as one step of `COMPOSIO_MULTI_EXECUTE_TOOL` (account moved onto the step, `sync_response_to_workbench`
   filled in) before it is judged and run, so a read is a read and a send is still a send. The hint tells the model it may name the action directly.

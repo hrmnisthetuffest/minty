@@ -802,7 +802,7 @@ async def test_an_app_action_named_directly_is_run_through_composios_execute_too
         asked.append(q)
         return False
 
-    d = await Guard(Store()).authorize(spec, "mcp_call", direct, confirm, request="check my webhrmn gmail", known={"composio.dev"})
+    d = await Guard(Store()).authorize(spec, "mcp_call", direct, confirm, request="check my work gmail", known={"composio.dev"})
     assert d.allowed and asked == []
     out = await host.call("mcp_call", direct)
     assert out.startswith("[untrusted MCP server output")
