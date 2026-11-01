@@ -1,5 +1,6 @@
 name = "music_id"
 description = "Tells you what song is playing: from your music apps, the computer's sound, or by listening to the room (Shazam)."
+platforms = ["linux"]
 default_enabled = true
 
 [settings.listen_seconds]

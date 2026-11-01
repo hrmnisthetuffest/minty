@@ -2,8 +2,11 @@
 gets words, never a guessed command. Package names are kept in their Debian spelling and translated for the others."""
 from __future__ import annotations
 
+import platform
 from dataclasses import dataclass
 from pathlib import Path
+
+from minty_core import osutil
 
 OS_RELEASE = Path("/etc/os-release")
 _ARCH_LIKE = {"arch", "manjaro", "endeavouros", "cachyos", "garuda", "artix"}
@@ -23,6 +26,9 @@ PACKAGES: dict[str, dict[str, str]] = {
     "usbutils": {"pacman": "usbutils", "dnf": "usbutils"},
     "gh": {"pacman": "github-cli", "dnf": "gh"},
 }
+# Windows: winget ids for what Minty's tools may ask for (a package missing here is installed by its own name)
+WINGET = {"ffmpeg": "Gyan.FFmpeg", "git": "Git.Git", "nodejs": "OpenJS.NodeJS.LTS", "gh": "GitHub.cli", "tesseract-ocr": "UB-Mannheim.TesseractOCR", "yt-dlp": "yt-dlp.yt-dlp",
+          "uv": "astral-sh.uv", "python3": "Python.Python.3.12"}
 # only some families have these
 ARCH_ONLY = {"pacman-contrib"}
 
@@ -31,7 +37,7 @@ ARCH_ONLY = {"pacman-contrib"}
 class OS:
     id: str = ""
     pretty: str = "this computer"
-    manager: str = "unknown"  # pacman | apt | dnf | zypper | unknown
+    manager: str = "unknown"  # pacman | apt | dnf | zypper | winget | unknown
 
 
 def _parse(text: str) -> dict[str, str]:
@@ -44,6 +50,8 @@ def _parse(text: str) -> dict[str, str]:
 
 
 def detect(path: Path = OS_RELEASE) -> OS:
+    if osutil.IS_WINDOWS and path == OS_RELEASE:  # there is no /etc/os-release; winget is the package manager every Windows 10 and 11 has
+        return OS("windows", f"Windows {platform.release()}", "winget")
     try:
         fields = _parse(Path(path).read_text(encoding="utf-8"))
     except OSError:
@@ -57,15 +65,17 @@ def detect(path: Path = OS_RELEASE) -> OS:
 
 
 def local_name(os_: OS, package: str) -> str:
+    if os_.manager == "winget":
+        return WINGET.get(package, package)
     return PACKAGES.get(package, {}).get(os_.manager, package)
 
 
 def _verb(os_: OS, package: str, action: str) -> str:
     name = local_name(os_, package)
     table = {"install": {"pacman": "sudo pacman -S {p}", "apt": "sudo apt install {p}", "dnf": "sudo dnf install {p}",
-                         "zypper": "sudo zypper install {p}"},
+                         "zypper": "sudo zypper install {p}", "winget": "winget install -e --id {p}"},
              "remove": {"pacman": "sudo pacman -R {p}", "apt": "sudo apt remove {p}", "dnf": "sudo dnf remove {p}",
-                        "zypper": "sudo zypper remove {p}"}}[action]
+                        "zypper": "sudo zypper remove {p}", "winget": "winget uninstall -e --id {p}"}}[action]
     template = table.get(os_.manager)
     if template is None:
         return f"{action.capitalize()} {package} with your system's package manager."
@@ -83,6 +93,8 @@ def install_many(os_: OS, packages: list[str]) -> str:
         return f"sudo pacman -S --needed {names}"
     if os_.manager == "apt":
         return f"sudo apt install {names}"
+    if os_.manager == "winget":
+        return "; ".join(f"winget install -e --id {local_name(os_, p)}" for p in packages)
     raise ValueError("I do not know this system's package manager.")
 
 
@@ -92,7 +104,7 @@ def remove_command(os_: OS, package: str) -> str:
 
 def update_command(os_: OS) -> str:
     return {"pacman": "sudo pacman -Syu", "apt": "sudo apt update && sudo apt upgrade", "dnf": "sudo dnf upgrade",
-            "zypper": "sudo zypper update"}.get(os_.manager, "Update with your system's package manager.")
+            "zypper": "sudo zypper update", "winget": "winget upgrade --all"}.get(os_.manager, "Update with your system's package manager.")
 
 
 def hint_for(os_: OS, package: str) -> str:

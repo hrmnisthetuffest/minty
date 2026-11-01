@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
+from minty_core import osutil
 from minty_core.integrations.db import IntegrationsDB
 from minty_core.system.runner import Runner
 
@@ -84,6 +85,8 @@ class Lan:
         self.r, self.db, self._clock, self.min_gap = runner, db, clock, max(600.0, float(min_gap_s))
 
     async def scan(self, ranges: list[str]) -> ScanResult:
+        if osutil.IS_WINDOWS:  # it runs `ping -c` and `ip neigh`, which Windows does not have in that form
+            raise ValueError("Scanning the home network works on Linux only for now.")
         nets = parse_ranges(ranges)
         now = self._clock()
         last = float(self.db.meta("lan_last", "0") or 0)

@@ -25,3 +25,62 @@ jobs:
         run: python -m pytest -q
       - name: Shell script syntax
         run: bash -n install.sh bin/minty
+      - name: PowerShell and batch scripts parse
+        shell: pwsh
+        run: |
+          foreach ($f in "install.ps1", "scripts/windows_check.ps1") {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errors)
+            if ($errors) { $errors | ForEach-Object { Write-Error "$f : $($_.Message)" }; exit 1 }
+          }
+      - name: Windows dependencies can be installed (resolves only, installs nothing)
+        run: |
+          python -m pip install packaging
+          python scripts/check_windows_deps.py
+
+  windows:
+    # The first real Windows run of everything: the installer (Windows PowerShell 5.1, as a friend has it), the install check that starts Minty for real,
+    # and the tests that do not depend on Linux. Python 3.10 is the oldest supported.
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install with install.ps1
+        shell: powershell
+        run: .\install.ps1 -NoOnboard
+      - name: The minty command works
+        shell: cmd
+        run: '"%LOCALAPPDATA%\Minty\bin\minty.cmd" --version'
+      - name: Install check (starts Minty for real)
+        shell: powershell
+        run: .\scripts\windows_check.ps1
+      - name: Tests that do not depend on Linux
+        shell: powershell
+        continue-on-error: true  # informational until this list has been run on Windows once; the two steps above are what must pass
+        run: |
+          .venv\Scripts\python.exe -m pip install --quiet pytest pytest-asyncio
+          .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider tests/test_osutil.py tests/test_portability.py tests/test_platform_gating.py tests/test_autostart.py tests/test_knowledge_store.py tests/test_knowledge_capture.py tests/test_knowledge_reason.py tests/test_knowledge_research.py tests/test_knowledge_auto.py tests/test_mind_world.py tests/test_mind_control.py tests/test_flows_engine.py
+
+  windows-full-suite:
+    # Discovery, not a gate: the suite was written on Linux, so some tests assume bash, chmod, /tmp or a sound server. Read what fails here to see what still needs a Windows branch.
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Whole suite
+        shell: powershell
+        run: python -m pytest -q -p no:cacheprovider -rfE --maxfail=300

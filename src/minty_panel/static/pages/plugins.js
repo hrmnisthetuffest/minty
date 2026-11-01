@@ -71,6 +71,7 @@ function showMasks(rows, masked) {
 
 function pluginCard(plugin, saved, masked) {
   const enabled = checkbox(plugin.enabled);
+  if (plugin.unavailable) enabled.disabled = true;  // a plugin that does not work on this system cannot be switched on
   const rows = Object.entries(plugin.settings_schema || {}).map(([key, spec]) => makeRow(plugin, key, spec, saved));
   showMasks(rows, masked);
 
@@ -78,6 +79,7 @@ function pluginCard(plugin, saved, masked) {
   const status = h("div");
   const showStatus = (current) => status.replaceChildren(
     ...[
+      current.unavailable ? h("p", { class: "muted" }, `Not available on this system: ${current.unavailable}.`) : null,
       current.error ? h("p", { class: "error" }, `Failed to load: ${current.error}`) : null,
       current.tools?.length ? h("p", { class: "muted" }, `Tools: ${current.tools.join(", ")}`) : null,
     ].filter(Boolean));

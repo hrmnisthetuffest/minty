@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from minty_core import osutil
 from minty_core.destinations import plugin_scope
 from minty_core._toml import tomllib
 from minty_core.config import ConfigStore
@@ -99,6 +100,8 @@ class _Loaded:
     error: str | None = None
     tools: dict[str, Tool] = field(default_factory=dict)
     context: list = field(default_factory=list)
+    platforms: list[str] = field(default_factory=list)  # the systems it works on; empty: all of them
+    unavailable: str = ""  # why it is not loaded on this system (not an error: it was never meant to run here)
 
 
 class PluginHost:
@@ -141,7 +144,14 @@ class PluginHost:
             description=manifest.get("description", ""),
             enabled=bool(entry.get("enabled", manifest.get("default_enabled", True))),
             schema=manifest.get("settings", {}),
+            platforms=[str(x).lower() for x in manifest.get("platforms", []) if isinstance(x, str)],
         )
+        here = osutil.current_platform()
+        if item.platforms and here not in item.platforms:  # never loaded, never offered to the model, whatever the settings say
+            names = " or ".join(osutil.PLATFORM_NAMES.get(x, x) for x in item.platforms)
+            item.enabled = False
+            item.unavailable = f"it needs {names}; this is {osutil.PLATFORM_NAMES.get(here, here)}"
+            return item
         if not _NAME.fullmatch(name):
             item.enabled, item.error = False, f"invalid plugin name {name!r}"
             return item
@@ -266,6 +276,8 @@ class PluginHost:
                 "enabled": p.enabled,
                 "settings_schema": p.schema,
                 "error": p.error,
+                "platforms": p.platforms,
+                "unavailable": p.unavailable,
                 "tools": sorted(p.tools),
             }
             for p in self._plugins.values()

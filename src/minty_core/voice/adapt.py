@@ -21,7 +21,7 @@ class Pronunciations:
     def __init__(self, path: Path):
         self.path = Path(path)
         try:
-            self._entries = {str(k).lower(): str(v) for k, v in json.loads(self.path.read_text("utf-8", encoding="utf-8")).items()}
+            self._entries = {str(k).lower(): str(v) for k, v in json.loads(self.path.read_text(encoding="utf-8")).items()}
         except (OSError, ValueError, AttributeError):
             self._entries = {}
 

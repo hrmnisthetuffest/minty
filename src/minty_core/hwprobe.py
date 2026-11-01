@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+from minty_core import osutil
+
 T0_MAX_RAM_MB = 5500
 T2_MIN_RAM_MB = 12000
 T2_MIN_THREADS = 8
@@ -97,8 +99,9 @@ def probe(root: Path = Path("/"), run: Callable[[list[str]], str] = _run) -> Har
         elif key in ("flags", "features") and not flags:
             flags = frozenset(value.split())
     mem = _read(root / "proc/meminfo")
-    return Hardware(cpu_model=model, threads=processors or os.cpu_count() or 1, flags=flags,
-                    ram_mb=_kb(mem, "MemTotal") // 1024, available_mb=_kb(mem, "MemAvailable") // 1024,
+    windows = osutil.windows_hardware() if osutil.IS_WINDOWS and not (root / "proc").exists() else {}  # no /proc to read: ask Windows
+    return Hardware(cpu_model=model, threads=processors or os.cpu_count() or 1, flags=flags or windows.get("flags", frozenset()),
+                    ram_mb=_kb(mem, "MemTotal") // 1024 or windows.get("total_mb", 0), available_mb=_kb(mem, "MemAvailable") // 1024 or windows.get("available_mb", 0),
                     swap_mb=_kb(mem, "SwapTotal") // 1024, rotational=_rotational(root), gpus=_gpus(root, run),
                     on_battery=_battery(root))
 

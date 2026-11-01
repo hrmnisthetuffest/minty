@@ -1,6 +1,7 @@
 """What Linux can prove about Windows: the source never reaches for a POSIX-only name outside the OS layer, always says which encoding it reads and writes, and imports (and starts)
 with every POSIX-only module missing, which is exactly what Windows is. None of this replaces running on Windows: the Windows CI job and `scripts/windows_check.ps1` do that."""
 import ast
+import os
 import pathlib
 import subprocess
 import sys
@@ -62,8 +63,13 @@ def missing_encoding(source: str) -> list[str]:
         kw = {k.arg: k.value for k in n.keywords}
         f = n.func
         name = f.attr if isinstance(f, ast.Attribute) else f.id if isinstance(f, ast.Name) else ""
+        if name == "read_text" and n.args and "encoding" in kw:
+            found.append(f"read_text() with the encoding twice, positionally and by name (line {n.lineno})")  # a TypeError at run time
+            continue
         if "encoding" in kw or any(k.arg is None for k in n.keywords):
             continue
+        if name == "read_text" and n.args:
+            continue  # read_text("utf-8"): the encoding is the first argument
         if name in ("read_text", "write_text"):
             found.append(f"{name}() (line {n.lineno})")
         elif name == "open":
@@ -106,6 +112,8 @@ def test_the_encoding_lint_sees_what_it_is_meant_to_see():
         subprocess.run(["x"], capture_output=True, text=True)
     """)
     assert len(missing_encoding(bad)) == 6
+    assert len(missing_encoding('from pathlib import Path\nPath("a").read_text("utf-8", encoding="utf-8")\n')) == 1  # passing it twice is a bug of its own
+    assert missing_encoding('from pathlib import Path\nPath("a").read_text("utf-8")\n') == []
     good = textwrap.dedent("""
         from pathlib import Path
         import subprocess, os, webbrowser
@@ -160,7 +168,7 @@ BLOCK = "for m in ('fcntl', 'termios', 'tty', 'pty', 'resource', 'pwd', 'grp', '
 
 
 def run_python(code: str, tmp_path, timeout: int = 180):
-    env = {"PATH": "/usr/bin:/bin", "PYTHONPATH": str(SRC), "MINTY_CONFIG_DIR": str(tmp_path / "cfg"), "HOME": str(tmp_path), "PYTHONUTF8": "1"}
+    env = dict(os.environ, PYTHONPATH=str(SRC), MINTY_CONFIG_DIR=str(tmp_path / "cfg"), HOME=str(tmp_path), USERPROFILE=str(tmp_path), PYTHONUTF8="1")
     return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, encoding="utf-8", env=env, timeout=timeout, cwd=str(tmp_path))
 
 

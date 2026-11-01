@@ -7,6 +7,7 @@ was made: after any step, `check_video` says what is really there. A half-made f
 from __future__ import annotations
 
 import json
+import os
 import random
 import re
 import shutil
@@ -14,7 +15,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from minty_core import shellkit
+from minty_core import osutil, shellkit
 from minty_core.studio.sniff import sniff  # noqa: F401  (re-exported: media.sniff)
 from minty_core.studio.captions import Caption, to_ass
 
@@ -161,8 +162,16 @@ async def check_video(path: Path, *, min_s: float = 3.0, max_s: float = 90.0, mi
 
 
 # ---- font for captions ---------------------------------------------------------------------------------------------------
+def filter_path(path) -> str:
+    """A folder as ffmpeg's filter syntax wants it: forward slashes, and the colon after a Windows drive letter escaped (`C\\:/Windows/Fonts`)."""
+    return Path(path).as_posix().replace(":", "\\:")
+
+
 async def _font() -> tuple[str, str | None]:
-    """(family, folder) of a bold sans font on this computer, from fontconfig; never a guessed path."""
+    """(family, folder) of a bold sans font on this computer: from fontconfig on Linux, the system fonts folder on Windows; never a guessed path."""
+    if osutil.IS_WINDOWS:
+        fonts = Path(os.environ.get("WINDIR") or os.environ.get("SystemRoot") or "C:/Windows") / "Fonts"
+        return ("Arial", filter_path(fonts)) if (fonts / "arialbd.ttf").is_file() else ("Arial", None)
     try:
         text = await _run(["fc-match", "-f", "%{family}|%{file}", "sans:bold"], timeout=10)
         family, _, file = text.partition("|")

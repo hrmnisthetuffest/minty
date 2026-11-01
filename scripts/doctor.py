@@ -12,8 +12,14 @@ import sys
 from pathlib import Path
 
 HOME = Path.home()
-DATA = Path(os.environ.get("XDG_DATA_HOME") or HOME / ".local/share") / "minty" / "voices"
-CONFIG = Path(os.environ.get("MINTY_CONFIG_DIR") or HOME / ".config/minty")
+WINDOWS = sys.platform == "win32"
+try:  # the same folders Minty itself uses on this system (Linux: ~/.config/minty; Windows: %LOCALAPPDATA%\\Minty)
+    from minty_core.paths import config_dir, data_dir
+
+    CONFIG, DATA = config_dir(), data_dir() / "voices"
+except Exception:  # noqa: BLE001 — run without Minty installed: fall back to the Linux places
+    DATA = Path(os.environ.get("XDG_DATA_HOME") or HOME / ".local/share") / "minty" / "voices"
+    CONFIG = Path(os.environ.get("MINTY_CONFIG_DIR") or HOME / ".config/minty")
 
 # (module, pip name, needed for)
 PYTHON = [
@@ -28,7 +34,7 @@ PYTHON = [
     ("shazamio", "shazamio", "what song is this (pip install -e '.[music]')"),
 ]
 # development only, never needed to run Minty: (module, pip name, what for)
-DEV = [("pynput", "pynput", "global push-to-talk key (pip install -e '.[ptt]'); needs an X11 session"),
+DEV = [("pynput", "pynput", "global push-to-talk key (pip install -e '.[ptt]'); on Linux needs an X11 session, on Windows it just works"),
        ("cryptography", "cryptography", "encrypted backups of your memory and settings (pip install -e '.[backup]')"),
        ("xdist", "pytest-xdist", "run the tests in parallel: pytest -n auto (pip install -e '.[dev]')"),
        ("pypdf", "pypdf", "read text PDFs sent through Telegram (pip install -e '.[documents]')"),
@@ -69,6 +75,20 @@ BINARIES = [
     ("dbus-monitor", "the notification reader (system.notifications)", "dbus-bin", "dbus", True),
     ("gsettings", "night light on Cinnamon", "libglib2.0-bin", "glib2", True),
 ]
+# Windows: (command, what for, winget id, optional?). Everything is optional there: Minty runs without any of it, each line only says what a feature needs.
+WINDOWS_BINARIES = [
+    ("ffmpeg", "videos (the studio plugin), clip trim/merge and lecture notes from audio", "Gyan.FFmpeg", True),
+    ("ffprobe", "what is really in a video, for the studio checks (comes with ffmpeg)", "Gyan.FFmpeg", True),
+    ("git", "a history of every change to your notes folder (vault.git)", "Git.Git", True),
+    ("node", "n8n, Claude Code", "OpenJS.NodeJS.LTS", True),
+    ("npx", "MCP servers from the directory that are npm packages (Node)", "OpenJS.NodeJS.LTS", True),
+    ("uvx", "MCP servers from the directory that are Python packages (uv)", "astral-sh.uv", True),
+    ("claude", "Claude Code plugin", "Anthropic.ClaudeCode", True),
+    ("gh", "CI status and the CI watcher (dev.ci_watch); then run: gh auth login", "GitHub.cli", True),
+    ("tesseract", "read text in pictures sent through Telegram", "UB-Mannheim.TesseractOCR", True),
+    ("yt-dlp", "YouTube captions summary (web.helpers)", "yt-dlp.yt-dlp", True),
+]
+VCREDIST = "Microsoft.VCRedist.2015+.x64"  # onnxruntime (wake word, voices) needs it; most PCs have it, a fresh Windows may not
 FILES = [
     (DATA / "kokoro-v1.0.onnx", "Kokoro model (scripts/install_voice.sh)"),
     (DATA / "voices-v1.0.bin", "Kokoro voices (scripts/install_voice.sh)"),
@@ -82,11 +102,11 @@ def ok(flag: bool) -> str:
 
 def main() -> int:
     missing = 0
-    print(f"Python {platform.python_version()} on {platform.machine()}  (needs 3.10+)")
+    print(f"Python {platform.python_version()} on {platform.platform()} ({platform.machine()})  (needs 3.10+)")
     if sys.version_info < (3, 10):
         missing += 1
     try:
-        flags = set(next(l for l in open("/proc/cpuinfo") if l.startswith("flags")).split(":")[1].split())
+        flags = set(next(l for l in open("/proc/cpuinfo", encoding="utf-8") if l.startswith("flags")).split(":")[1].split())
         print(f"CPU: avx={'avx' in flags} avx2={'avx2' in flags}  "
               f"{'(no AVX2: prefer classic voice mode with Piper, expect Kokoro to be slow)' if 'avx2' not in flags else ''}")
     except (OSError, StopIteration):
@@ -100,6 +120,8 @@ def main() -> int:
             found = False
         missing += not found
         print(f"  [{ok(found)}] {pip_name:16} {why}")
+        if WINDOWS and module == "onnxruntime" and not found:
+            print(f"            -> on Windows this is usually the Visual C++ runtime:  winget install {VCREDIST}")
     for module, pip_name, why in DEV:  # informational: never counted as missing
         found = importlib.util.find_spec(module) is not None
         print(f"  [{'OK     ' if found else 'dev    '}] {pip_name:16} {why}")
@@ -129,11 +151,17 @@ def main() -> int:
     missing += not vad
     print(f"  [{ok(vad)}] {'silero VAD':16} speech detector (inside faster-whisper; noise is never transcribed)")
     print("\nPrograms:")
-    for command, why, apt, pacman, optional in BINARIES:
-        found = shutil.which(command) is not None
-        missing += (not found) and not optional
-        tag = ok(found) if found or not optional else "optional"
-        print(f"  [{tag:7}] {command:22} {why}" + ("" if found else f"   -> apt: {apt} | pacman: {pacman}"))
+    if WINDOWS:
+        for command, why, winget, optional in WINDOWS_BINARIES:
+            found = shutil.which(command) is not None
+            print(f"  [{'OK     ' if found else 'optional'}] {command:22} {why}" + ("" if found else f"   -> winget install {winget}"))
+        print("  (Linux-only tools such as playerctl, pactl and PipeWire echo cancellation are not used on Windows.)")
+    else:
+        for command, why, apt, pacman, optional in BINARIES:
+            found = shutil.which(command) is not None
+            missing += (not found) and not optional
+            tag = ok(found) if found or not optional else "optional"
+            print(f"  [{tag:7}] {command:22} {why}" + ("" if found else f"   -> apt: {apt} | pacman: {pacman}"))
     print("\nModel files:")
     for path, why in FILES:
         found = path.is_file()
@@ -146,7 +174,7 @@ def main() -> int:
     try:
         import tomllib
 
-        data = tomllib.loads(keys.read_text()) if keys.is_file() else {}
+        data = tomllib.loads(keys.read_text(encoding="utf-8")) if keys.is_file() else {}
         names = set(data.get("keys", data))  # key names only; values are never read out
     except (OSError, ValueError):
         names = set()

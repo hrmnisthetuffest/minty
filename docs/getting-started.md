@@ -12,6 +12,8 @@ You need Python 3.10 or newer. Install Python, its `venv` module and git with yo
 (for example `sudo apt install python3 python3-venv git`, or `sudo pacman -S python git`). The installer creates `.venv` inside the checkout, links `~/.local/bin/minty`, and starts the setup.
 Use `./install.sh --no-onboard` to install without starting the setup.
 
+**On Windows** use `install.cmd` (double-click) or `.\install.ps1` instead: see [windows.md](windows.md).
+
 Doing it by hand:
 
 ```bash
@@ -191,7 +193,7 @@ while you work in other windows (turn the HUD on with `overlay.hud`; `voice.note
 turns the feature off). Note: with the default cloud speech recognition everything you say while noting is sent to Groq; set
 `stt.provider = "local"` to keep it on your computer.
 
-Keep it running in the background and start it at login (Linux, systemd): `scripts/install_service.sh`.
+Keep it running in the background and start it at login (Linux, systemd): `scripts/install_service.sh`. On Windows: `minty autostart on` (and `off`).
 
 Docker: see [docker.md](docker.md).
 

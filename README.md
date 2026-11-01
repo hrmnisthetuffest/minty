@@ -19,12 +19,15 @@ Talk to it, type to it, or message it from your phone. It keeps your data on you
 </div>
 
 > **Alpha.** Minty is built and used daily on Linux. Text chat, the panel, Telegram and the tools are the
-> most tested parts. Voice depends on your microphone, room and CPU. macOS and Windows are untested. Expect rough edges and please
-> report them in the issue tracker.
+> most tested parts. Voice depends on your microphone, room and CPU. **Windows 10 and 11 are supported** through their own installer
+> ([Windows guide](docs/windows.md)), written and checked on Linux, with a CI job set up to run the installer on a clean Windows machine for every change; it has not been
+> used on a real Windows PC by its author yet. macOS is untested. Expect rough edges and please report them in the issue tracker.
 
 ## Quick start
 
 Prefer a container? `docker compose up -d --build`, then open http://127.0.0.1:7778 ([Docker guide](docs/docker.md)).
+
+**Linux**
 
 ```bash
 git clone https://github.com/hrmnisthetuffest/minty.git
@@ -34,6 +37,17 @@ cd minty
 
 The installer makes a private Python environment, installs Minty, puts a `minty` command in `~/.local/bin` and starts the
 **guided setup**. It never uses `sudo`.
+
+**Windows 10 / 11** (no administrator rights needed): download the repository, then double-click **`install.cmd`**, or in PowerShell:
+
+```powershell
+git clone https://github.com/hrmnisthetuffest/minty.git
+cd minty
+.\install.ps1
+```
+
+It does the same things: a private Python environment, a `minty` command (added to your PATH only) and the guided setup. If Python is missing it
+asks before installing it with `winget`. Details, what works on Windows, and what to do if something fails: [docs/windows.md](docs/windows.md).
 
 The setup asks one thing at a time. Press Enter to skip anything, `Ctrl+C` to stop and carry on later:
 
@@ -50,7 +64,7 @@ The setup asks one thing at a time. Press Enter to skip anything, `Ctrl+C` to st
 
 Run one step again any time: `minty onboard --step voice`. Start Minty with `minty`; say **"Minty"** to wake it.
 
-No installer? Everything it does is `python -m venv .venv && .venv/bin/pip install -e . && bin/minty onboard`.
+No installer? Everything it does is `python -m venv .venv && .venv/bin/pip install -e . && bin/minty onboard` (Windows: `python -m venv .venv`, `.venv\Scripts\pip install -e .`, `bin\minty.cmd onboard`).
 
 ## What it does
 

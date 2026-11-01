@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from minty_core.fsutil import atomic_write_text
+from minty_core.fsutil import atomic_write_text, safe_stem
 from minty_core.vault.index import Index
 from minty_core.vault.note import CONFIDENCE, Note, dump, parse
 
@@ -204,7 +204,7 @@ class Vault:
                 else TRUSTED_ORIGINS[origin]
         with self._lock:
             ident = note_id or self._new_id()
-            stem = Path(filename).name if filename else f"{slug(title)}-{ident[-4:]}"
+            stem = safe_stem(Path(filename).name) if filename else f"{slug(title)}-{ident[-4:]}"
             rel = f"{folder}/{stem}.md"
             while (self.root / rel).exists():
                 rel = f"{folder}/{stem}-{secrets.token_hex(1)}.md"

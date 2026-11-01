@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from minty_core.fsutil import atomic_write_text
+from minty_core.fsutil import atomic_write_text, safe_stem
 from minty_core.gists import words as content_words
 
 CATEGORIES = {
@@ -42,7 +42,7 @@ def categorise(text: str) -> str:
 
 
 def slugify(text: str) -> str:
-    return _SLUG.sub("-", text.lower()).strip("-")[:48] or "research"
+    return safe_stem(_SLUG.sub("-", text.lower()).strip("-")[:48] or "research")  # "con" is a device name on Windows: not a folder there
 
 
 @dataclass

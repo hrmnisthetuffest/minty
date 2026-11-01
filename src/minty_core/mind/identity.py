@@ -40,12 +40,15 @@ def static_facts() -> str:
             data = tomllib.loads(toml.read_text(encoding="utf-8"))
         except (OSError, tomllib.TOMLDecodeError):
             continue
-        plugins.append((data.get("name", toml.parent.name), _first_sentence(data.get("description", "")), bool(data.get("default_enabled", True))))
+        plugins.append((data.get("name", toml.parent.name), _first_sentence(data.get("description", "")), bool(data.get("default_enabled", True)),
+                        [str(x).capitalize() for x in data.get("platforms", [])]))
     loops = sorted(n.strip("_").removesuffix("_loop").replace("_", " ") for n in dir(app_module) if n.startswith("_") and n.endswith("_loop"))
     lines = [f"Version {__version__}. {len(plugins)} built-in plugins, {len(KITS)} tool groups, {len(model.CATALOGUE)} workflow node types, {len(loops)} background loops.", "",
              "**Tool groups** (offered when a request is about them): " + ", ".join(f"{k} ({v[1]})" for k, v in sorted(KITS.items())) + ".", "",
              "**Workflow node types:** " + ", ".join(sorted(model.CATALOGUE)) + ".", "", "**Background loops:** " + ", ".join(loops) + ".", "", "**Built-in plugins:**", ""]
-    lines += [f"- `{name}`: {what}{'' if on else ' (off by default)'}" for name, what, on in plugins]
+    for name, what, on, only in plugins:
+        notes = ([" (off by default)"] if not on else []) + ([" (" + " and ".join(only) + " only)"] if only else [])
+        lines.append(f"- `{name}`: {what}{''.join(notes)}")
     return "\n".join(lines)
 
 

@@ -116,6 +116,8 @@ def parse_args(argv):
     notes.add_argument("rest", nargs=argparse.REMAINDER)
     aec = sub.add_parser("aec", help="PipeWire echo cancellation for speakers: on, off or status")
     aec.add_argument("action", choices=["on", "off", "status"])
+    autostart_cmd = sub.add_parser("autostart", help="Windows: start Minty when you log in (a per-user scheduled task): on, off or status")
+    autostart_cmd.add_argument("action", choices=["on", "off", "status"])
     sub.add_parser("telegram-pair", help="print a one-time code that pairs your Telegram chat with your bot")
     sub.add_parser("telegram-passphrase", help="set the passphrase that allows class-3 approvals from Telegram")
     brain = sub.add_parser("claude-brain", help="use Claude (your Claude Code login) as the main brain: on, off or status")
@@ -1244,7 +1246,10 @@ async def _start_voice(ctx: AppContext) -> None:
         pipeline.focus = Holds(ctx.services.get("focus"), recorder)
     else:
         pipeline.focus = ctx.services.get("focus")
-    if ctx.store.config.audio.aec:
+    if ctx.store.config.audio.aec and osutil.IS_WINDOWS:
+        ctx.bus.publish("notice", message="audio.aec is on, but echo cancellation uses PipeWire and works on Linux only. On Windows use headphones, "
+                                          "or say the wake word to interrupt Minty; the setting is ignored.")
+    elif ctx.store.config.audio.aec:
         from minty_core.voice.aec import EchoCancel
 
         if not EchoCancel().apply_environment():
@@ -1641,9 +1646,24 @@ def main(argv=None) -> None:
         if args.rest[:1] in (["unlock"], ["lock"]):
             sys.exit(_notes_lock_command(args.rest[0], store))
         sys.exit(run_notes(args.rest, VaultProvider(config=lambda: store.config)))
+    if args.command == "autostart":
+        from minty_core import autostart
+        from minty_core.onboard import env as onboard_env
+
+        if args.action == "status":
+            print("Minty starts at login." if autostart.status() else "Minty does not start at login." + ("" if osutil.IS_WINDOWS else " (This command is for Windows; on Linux use scripts/install_service.sh.)"))
+            return
+        root = onboard_env.checkout_root() or Path(__file__).resolve().parents[2]
+        result = autostart.enable(root) if args.action == "on" else autostart.disable()
+        print(result.message)
+        if not result.ok:
+            sys.exit(1)
+        return
     if args.command == "aec":
         from minty_core.voice.aec import SINK, SOURCE, EchoCancel
 
+        if osutil.IS_WINDOWS:
+            sys.exit("Echo cancellation uses PipeWire and works on Linux only. On Windows use headphones, or say the wake word to interrupt Minty.")
         aec = EchoCancel()
         if args.action == "status":
             st = aec.status()

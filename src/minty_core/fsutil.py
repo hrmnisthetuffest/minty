@@ -9,6 +9,17 @@ _REPLACE_TRIES = 8  # Windows only: an antivirus scan or the indexer can hold th
 _REPLACE_WAIT_S = 0.05
 
 
+_DEVICE_NAMES = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
+
+
+def safe_stem(name: str) -> str:
+    """A file or folder name that Windows accepts as well as Linux: not one of its device names (CON, NUL, COM1 ... with or without an extension), and no trailing dot or space."""
+    name = str(name).rstrip(". ")
+    if name.split(".")[0].lower() in _DEVICE_NAMES:
+        name = "_" + name
+    return name or "_"
+
+
 def replace_file(src, dst) -> None:
     """`os.replace`, patient on Windows (where it can fail while something else has either file open) and plain on other systems."""
     for attempt in range(_REPLACE_TRIES):

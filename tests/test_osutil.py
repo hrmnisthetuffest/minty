@@ -11,15 +11,19 @@ import pytest
 
 from minty_core import fsutil, instance, osutil, paths
 
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="uses real POSIX process groups and signals (on Windows `os.kill(pid, 0)` would terminate the process)")
+
 
 # ---- processes ---------------------------------------------------------------------------------------------------------------------------
 def test_a_child_gets_its_own_group_on_linux_and_its_own_group_without_a_console_window_on_windows(monkeypatch):
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
     assert osutil.group_kwargs() == {"start_new_session": True}
     monkeypatch.setattr(osutil, "IS_WINDOWS", True)
     assert osutil.group_kwargs() == {"creationflags": osutil.CREATE_NEW_PROCESS_GROUP | osutil.CREATE_NO_WINDOW}
     assert osutil.group_kwargs(show_window=True) == {"creationflags": osutil.CREATE_NEW_PROCESS_GROUP}
 
 
+@posix_only
 def test_stopping_a_child_stops_what_it_started_too(tmp_path):
     marker = tmp_path / "grandchild.pid"
     code = f"import subprocess, sys, time; p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); open({str(marker)!r}, 'w').write(str(p.pid)); time.sleep(60)"
@@ -36,6 +40,7 @@ def test_stopping_a_child_stops_what_it_started_too(tmp_path):
         os.kill(grandchild, 0)  # the grandchild went with it
 
 
+@posix_only
 def test_a_polite_stop_reaches_the_child_and_never_raises_for_one_that_is_gone():
     proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], **osutil.group_kwargs())
     osutil.terminate_tree(proc)
@@ -58,6 +63,7 @@ def test_on_windows_the_tree_is_stopped_with_taskkill_and_the_polite_stop_is_a_b
     osutil.kill_tree(proc)  # a failing helper does not raise
 
 
+@posix_only
 def test_resource_limits_are_a_function_on_linux_and_nothing_on_windows(monkeypatch):
     assert callable(osutil.limits_preexec(cpu_s=5, mem_mb=512))
     monkeypatch.setattr(osutil, "IS_WINDOWS", True)
@@ -66,6 +72,7 @@ def test_resource_limits_are_a_function_on_linux_and_nothing_on_windows(monkeypa
 
 def test_the_new_process_replaces_this_one_on_linux_and_is_waited_for_on_windows(monkeypatch):
     exec_calls = []
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
     monkeypatch.setattr(osutil.os, "execv", lambda exe, argv: exec_calls.append((exe, argv)))
     osutil.replace_process(["/usr/bin/python", "-m", "minty_core"])
     assert exec_calls == [("/usr/bin/python", ["/usr/bin/python", "-m", "minty_core"])]
@@ -78,7 +85,7 @@ def test_the_new_process_replaces_this_one_on_linux_and_is_waited_for_on_windows
 
 
 # ---- this process ------------------------------------------------------------------------------------------------------------------------
-def test_memory_and_open_handles_are_real_numbers_on_linux():
+def test_memory_and_open_handles_are_real_numbers():
     assert osutil.rss_mb() > 10
     keep = [open(__file__, "rb") for _ in range(5)]
     assert osutil.open_handles() >= 5
@@ -88,6 +95,8 @@ def test_memory_and_open_handles_are_real_numbers_on_linux():
 
 def test_opening_a_file_or_address_uses_the_systems_own_opener(monkeypatch):
     seen = []
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
+    monkeypatch.setattr(osutil, "IS_MAC", False)
     monkeypatch.setattr(osutil.subprocess, "Popen", lambda argv, **kw: seen.append(argv))
     assert osutil.open_with_default_app("https://example.test") and seen == [["xdg-open", "https://example.test"]]
     monkeypatch.setattr(osutil, "IS_WINDOWS", True)
@@ -100,6 +109,7 @@ def test_opening_a_file_or_address_uses_the_systems_own_opener(monkeypatch):
 
 def test_the_console_is_left_alone_on_linux_and_set_to_utf8_on_windows(monkeypatch):
     before = dict(os.environ)
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
     osutil.prepare_console()
     assert dict(os.environ) == before
     monkeypatch.setattr(osutil, "IS_WINDOWS", True)
@@ -193,6 +203,7 @@ def test_on_windows_a_file_someone_else_has_open_is_retried_briefly_then_the_err
 
 
 def test_on_linux_a_permission_error_is_not_retried(tmp_path, monkeypatch):
+    monkeypatch.setattr(osutil, "IS_WINDOWS", False)
     attempts = []
     monkeypatch.setattr(fsutil.os, "replace", lambda s, d: (attempts.append(1), (_ for _ in ()).throw(PermissionError(13, "denied")))[1])
     with pytest.raises(PermissionError):
@@ -203,6 +214,7 @@ def test_on_linux_a_permission_error_is_not_retried(tmp_path, monkeypatch):
 # ---- where things live --------------------------------------------------------------------------------------------------------------------
 def test_linux_keeps_its_xdg_folders_and_the_override_wins_everywhere(tmp_path, monkeypatch):
     monkeypatch.delenv("MINTY_CONFIG_DIR", raising=False)
+    monkeypatch.setattr(paths.sys, "platform", "linux")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     assert paths.config_dir() == tmp_path / "cfg" / "minty" and paths.data_dir() == tmp_path / "data" / "minty"
@@ -278,3 +290,20 @@ def test_the_onboarding_ui_is_interactive_on_a_windows_terminal(monkeypatch):
     monkeypatch.delenv("TERM", raising=False)
     console = Console(force_terminal=True)
     assert ui.RichUI(console).interactive is True
+
+
+# ---- names Windows will not accept ------------------------------------------------------------------------------------------------------------
+@pytest.mark.parametrize("name, want", [("con", "_con"), ("NUL", "_NUL"), ("aux.txt", "_aux.txt"), ("Com1", "_Com1"), ("lpt9", "_lpt9"), ("notes", "notes"), ("console", "console"),
+                                        ("report.", "report"), ("trailing ", "trailing"), ("", "_")])
+def test_a_file_or_folder_name_is_never_a_windows_device_name(name, want):
+    assert fsutil.safe_stem(name) == want
+
+
+def test_the_research_library_and_the_vault_use_it_so_a_topic_called_con_still_gets_a_folder(tmp_path):
+    from minty_core.research.library import slugify
+    from minty_core.vault.store import Vault
+
+    assert slugify("con") == "_con" and slugify("Coral reefs") == "coral-reefs"
+    vault = Vault(tmp_path / "v", git=False)
+    note = vault.create("Anything", "body", filename="nul.md")
+    assert not note.path.split("/")[-1].lower().startswith("nul")

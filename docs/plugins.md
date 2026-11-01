@@ -295,7 +295,7 @@ On by default: yes.
 
 Install or remove software on command with pip, pipx or npm, without root. System package managers (apt, dnf, pacman, flatpak, snap) are never run: I give you the command to run yourself.
 
-On by default: no.
+On by default: no. Works on: Linux only.
 Settings: `allowed_managers`.
 
 | Tool | What it does | Flags |
@@ -448,7 +448,7 @@ Settings: `max_concurrent`, `max_runtime_s`, `max_steps`, `approval_wait_s`.
 
 Tells you what song is playing: from your music apps, the computer's sound, or by listening to the room (Shazam).
 
-On by default: yes.
+On by default: yes. Works on: Linux only.
 Settings: `listen_seconds`.
 
 | Tool | What it does | Flags |
@@ -673,7 +673,7 @@ On by default: yes.
 
 Run a command in the terminal. A few read-only commands (and a web search) run at once; everything else is asked first, with the exact command read out.
 
-On by default: yes.
+On by default: yes. Works on: Linux only.
 
 | Tool | What it does | Flags |
 |---|---|---|
@@ -699,7 +699,7 @@ Settings: `url`, `token`.
 
 Plays and controls Spotify by voice: play a song, artist, album or playlist, pause, skip, volume, what is playing.
 
-On by default: yes.
+On by default: yes. Works on: Linux only.
 Settings: `player`, `playlist`.
 
 | Tool | What it does | Flags |
@@ -766,7 +766,7 @@ Settings: `max_concurrent`, `max_runtime_s`.
 
 Linux help: processes, files, updates, crashes, services, volume and outputs, brightness, USB, notifications, setup scripts.
 
-On by default: yes.
+On by default: yes. Works on: Linux only.
 
 | Tool | What it does | Flags |
 |---|---|---|

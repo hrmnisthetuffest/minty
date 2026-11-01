@@ -20,6 +20,14 @@ IS_WINDOWS = sys.platform == "win32"
 IS_LINUX = sys.platform.startswith("linux")
 IS_MAC = sys.platform == "darwin"
 
+def current_platform() -> str:
+    """"windows", "linux" or "macos" (what a plugin's `platforms` list is written in)."""
+    return "windows" if IS_WINDOWS else "macos" if IS_MAC else "linux" if IS_LINUX else sys.platform
+
+
+PLATFORM_NAMES = {"windows": "Windows", "linux": "Linux", "macos": "macOS"}
+
+
 # Windows process-creation flags (the constants exist in `subprocess` only on Windows, so they are written out)
 CREATE_NEW_PROCESS_GROUP = 0x00000200
 CREATE_NO_WINDOW = 0x08000000
@@ -132,6 +140,29 @@ def _windows_process_info() -> tuple[float, int]:
         return mb, handles
     except Exception:  # noqa: BLE001 — a monitor must never be what fails
         return 0.0, 0
+
+
+def windows_hardware() -> dict:
+    """What the tuning needs to know about a Windows PC: {"total_mb", "available_mb", "flags"} (the CPU features the speech models care about); {} when it cannot be asked."""
+    if not IS_WINDOWS:
+        return {}
+    try:
+        import ctypes
+
+        class MemoryStatus(ctypes.Structure):
+            _fields_ = [("dwLength", ctypes.c_uint32), ("dwMemoryLoad", ctypes.c_uint32), ("ullTotalPhys", ctypes.c_uint64), ("ullAvailPhys", ctypes.c_uint64),
+                        ("ullTotalPageFile", ctypes.c_uint64), ("ullAvailPageFile", ctypes.c_uint64), ("ullTotalVirtual", ctypes.c_uint64),
+                        ("ullAvailVirtual", ctypes.c_uint64), ("ullAvailExtendedVirtual", ctypes.c_uint64)]
+
+        kernel = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        status = MemoryStatus()
+        status.dwLength = ctypes.sizeof(MemoryStatus)
+        if not kernel.GlobalMemoryStatusEx(ctypes.byref(status)):
+            return {}
+        flags = {name for feature, name in ((39, "avx"), (40, "avx2"), (41, "avx512f")) if kernel.IsProcessorFeaturePresent(feature)} | {"sse2"}  # sse2: every 64-bit PC
+        return {"total_mb": int(status.ullTotalPhys // 2**20), "available_mb": int(status.ullAvailPhys // 2**20), "flags": frozenset(flags)}
+    except Exception:  # noqa: BLE001 — the tuning falls back to the middle tier when it is not told
+        return {}
 
 
 # ---- opening things -------------------------------------------------------------------------------------------------------------------------

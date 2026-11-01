@@ -222,7 +222,8 @@ def plugin_docs(folders: list[Path]) -> str:
                 continue
             name = manifest.get("name", folder.name)
             lines += [f"## {name}", "", str(manifest.get("description", "")),
-                      "", f"On by default: {'yes' if manifest.get('default_enabled', True) else 'no'}."]
+                      "", f"On by default: {'yes' if manifest.get('default_enabled', True) else 'no'}."
+                      + (f" Works on: {', '.join(str(x).capitalize() for x in manifest['platforms'])} only." if manifest.get("platforms") else "")]
             settings = manifest.get("settings") or {}
             if settings:
                 lines.append("Settings: " + ", ".join(f"`{k}`" for k in settings) + ".")

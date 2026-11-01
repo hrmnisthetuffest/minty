@@ -1,5 +1,6 @@
 name = "spotify"
 description = "Plays and controls Spotify by voice: play a song, artist, album or playlist, pause, skip, volume, what is playing."
+platforms = ["linux"]
 default_enabled = true
 
 [settings.player]

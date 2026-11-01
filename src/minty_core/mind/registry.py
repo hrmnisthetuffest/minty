@@ -78,7 +78,9 @@ def snapshot(host, services: dict, config, config_dir: Path | None = None, route
     caps = []
     for p in host.list_plugins():
         need = NEEDS.get(p["name"])
-        if p["error"]:
+        if p.get("unavailable"):
+            status, why = "not available on this system", str(p["unavailable"])
+        elif p["error"]:
             status, why = "unavailable right now", f"it failed to load: {str(p['error'])[:100]}"
         elif not p["enabled"]:
             status, why = "needs configuration", "it is switched off (the Switches page, or plugins.<name>.enabled)"

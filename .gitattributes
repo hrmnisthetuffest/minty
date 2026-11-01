@@ -1,1 +1,7 @@
 CHANGELOG.md merge=union
+# Everything is stored with LF and checked out as LF, so a file is the same on Windows and Linux.
+* text=auto eol=lf
+# Later lines win: the Windows launchers keep their CRLF line ends exactly as committed (a batch file with bare LF can misbehave,
+# and a zip downloaded from GitHub is not converted).
+*.cmd -text
+*.bat -text

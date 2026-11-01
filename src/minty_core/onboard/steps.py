@@ -14,6 +14,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from minty_core import osutil
 from minty_core.claude_brain import claude_brain
 from minty_core.config import CLAUDE_BRAIN, ConfigStore
 from minty_core.fsutil import atomic_write_text
@@ -56,6 +57,16 @@ SKILLS = (  # config section, label, what it does
     ("system", "Computer help", "read-only: what is this process, updates, crashes, logs"),
     ("vault", "Second brain", "an encrypted notes vault you can search by voice"),
 )
+
+
+def _windows_chrome() -> bool:
+    """Chrome is not on PATH on Windows: look where it installs."""
+    if not osutil.IS_WINDOWS:
+        return False
+    import os as _os
+
+    roots = [_os.environ.get(v) for v in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA")]
+    return any(Path(r, "Google", "Chrome", "Application", "chrome.exe").is_file() for r in roots if r)
 
 
 class SetupError(Exception):
@@ -163,13 +174,17 @@ class Onboarding:
         ui.ok(f"Python {'.'.join(map(str, e.python))}")
         if e.system == "Linux":
             ui.ok("Linux")
+        elif e.system == "Windows":
+            ui.ok("Windows")
+            ui.say("  · Text chat, the panel, Telegram, the second brain, research, workflows and voice work on Windows. The Linux desktop tools "
+                   "(system help, the terminal, Spotify control, song recognition) are switched off here.")
         else:
             ui.warn(f"{e.system or 'This system'}: Minty is built and tested on Linux. Text chat should work; voice and "
                     "system tools may not.")
         f.voice_libs = e.has_module("sounddevice") and e.has_module("onnxruntime")
         f.ffmpeg, f.claude = bool(e.which("ffmpeg")), bool(e.which("claude"))
         f.browser_lib = e.has_module("playwright")
-        f.chrome = any(e.which(b) for b in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"))
+        f.chrome = any(e.which(b) for b in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser")) or _windows_chrome()
         f.git = bool(e.which("git"))
 
         def hint(pkg: str) -> str:
@@ -451,7 +466,13 @@ class Onboarding:
         ui.note("Next", "• Start Minty any time with:  minty\n• The web panel is at http://127.0.0.1:7778 (set its PIN "
                         "with: minty set-pin)\n• Change anything later in the panel, or re-run one step: "
                         "minty onboard --step voice\n• Help: docs/getting-started.md")
-        if e.root is not None and e.which("systemctl") and (e.root / ".venv" / "bin" / "python").exists():
+        if osutil.IS_WINDOWS and e.root is not None and (e.root / ".venv" / "Scripts" / "python.exe").exists():
+            if ui.confirm("Start Minty in the background when you log in to Windows?", default=False):
+                from minty_core import autostart
+
+                result = autostart.enable(e.root)
+                (ui.ok if result.ok else ui.fail)(result.message)
+        elif e.root is not None and e.which("systemctl") and (e.root / ".venv" / "bin" / "python").exists():
             if ui.confirm("Keep Minty running in the background and start it when you log in?", default=False):
                 ok, tail = e.run(["bash", str(e.root / "scripts" / "install_service.sh")])
                 (ui.ok if ok else ui.fail)("Minty will start at login." if ok else f"That did not work:\n{tail}")

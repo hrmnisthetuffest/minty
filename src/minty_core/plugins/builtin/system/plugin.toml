@@ -1,3 +1,4 @@
 name = "system"
 description = "Linux help: processes, files, updates, crashes, services, volume and outputs, brightness, USB, notifications, setup scripts."
+platforms = ["linux"]
 default_enabled = true

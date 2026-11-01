@@ -1,3 +1,4 @@
 name = "shell"
 description = "Run a command in the terminal. A few read-only commands (and a web search) run at once; everything else is asked first, with the exact command read out."
+platforms = ["linux"]
 default_enabled = true
