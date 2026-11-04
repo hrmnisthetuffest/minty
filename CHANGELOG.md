@@ -927,7 +927,7 @@ when it is good enough.
 - **The Windows installer shows why Minty does not start.** When the start check after installing fails, it now prints what Python said instead of discarding it.
 - **CI on Linux installs the optional packages the tests use.** Only `.[dev]` was installed, so 131 tests failed with "No module named playwright / faster_whisper / cryptography". The job now installs the `voice`, `browser`, `backup` and `documents` extras and the Chromium browser.
 
-## Unreleased
+## 1.1.3 (2026-11-04)
 
 - **Dates and times no longer fail on Windows.** `strftime("%-d")` and `%-I` (a day or an hour without a leading zero) are rejected by Windows with "Invalid format string", and seven places used them: the alarm and morning brief, the offline "what time is it" and "what is the date" answers, the follow-up wording in the butler, the Sunday self-check report and day card, and the system-updates list. They now go through `osutil.strftime`, and a test fails if a module uses such a code directly. Found by the informational Windows run of the whole test suite.
 - **Two tests no longer depend on the machine that runs them.** "What is my time zone" expected the author's zone (IST) and failed on any other machine; it now sets the zone it asks about. The captions tool looked up `yt-dlp` through a default argument bound at import time, so a test that replaces `shutil.which` was ignored and only passed where yt-dlp happened to be installed; it is now looked up when asked.
