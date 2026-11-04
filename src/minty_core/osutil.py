@@ -36,6 +36,16 @@ CREATE_NO_WINDOW = 0x08000000
 
 
 # ---- child processes ------------------------------------------------------------------------------------------------------------------------
+_UNPADDED = {"d": lambda w: w.day, "m": lambda w: w.month, "H": lambda w: w.hour, "I": lambda w: w.hour % 12 or 12, "M": lambda w: w.minute,
+             "S": lambda w: w.second, "j": lambda w: w.timetuple().tm_yday, "y": lambda w: w.year % 100}
+
+
+def strftime(when, pattern: str) -> str:
+    """`when.strftime(pattern)` where `%-d`, `%-I`, `%-H`, `%-m`, `%-M`, `%-S`, `%-j` and `%-y` (no leading zero) work everywhere: Linux and macOS understand them, Windows'
+    C library refuses them with "Invalid format string"."""
+    return when.strftime(re.sub(r"(?<!%)%-([dmHIMSjy])", lambda m: str(_UNPADDED[m.group(1)](when)), pattern))
+
+
 def group_kwargs(*, show_window: bool = False) -> dict:
     """Arguments for `subprocess.Popen` / `asyncio.create_subprocess_exec` so the child heads its own process group (POSIX: its own session). Stopping it with
     `terminate_tree` / `kill_tree` then stops everything it started. On Windows a child also gets no console window of its own unless `show_window`."""

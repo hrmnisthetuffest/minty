@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, time, timedelta
 
+from minty_core import osutil
 from minty_core.productivity.db import LifeDB
 
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -33,7 +34,7 @@ def ramp(steps: int = 5) -> list[float]:
 
 
 def alarm_brief(now: datetime, first_class: str = "", due=(), weather: str = "", occasions=()) -> str:
-    parts = [f"Good morning. It's {now:%-I:%M}."]
+    parts = [f"Good morning. It's {osutil.strftime(now, '%-I:%M')}."]
     if first_class:
         parts.append(f"First class: {first_class}.")
     if due:

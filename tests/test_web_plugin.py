@@ -207,3 +207,15 @@ async def test_the_form_log_hook_and_tool(tmp_path):
     assert "email: 1x" in await r.call("formlog", {"action": "seen", "host": "shop.example"})
     assert "Forgot 1 record" in await r.call("formlog", {"action": "forget", "host": "shop.example"})
     assert "not filled" in await r.call("formlog", {"action": "sites"})
+
+
+async def test_the_captions_tool_is_looked_up_when_asked_not_when_the_module_was_imported(tmp_path, monkeypatch):
+    # fetch_captions bound shutil.which as a default argument, so a machine without yt-dlp failed a test that patches shutil.which (and one with it passed by accident)
+    from minty_core.web.captions import CaptionsUnavailable, fetch_captions
+
+    async def run(cmd, cwd):
+        raise AssertionError("must not run without the tool")
+
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    with pytest.raises(CaptionsUnavailable):
+        await fetch_captions("https://youtu.be/abc123", run, tmp_path)

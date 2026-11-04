@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
+from minty_core import osutil
 from minty_core.butler.store import DAY, ButlerStore, Item
 from minty_core.butler.when import parse_when
 from minty_core.secretscan import mask_pii
@@ -62,7 +63,7 @@ def describe_due(ts: float | None, now: float) -> str:
     word = ("today" if days == 0 else "tomorrow" if days == 1 else "yesterday" if days == -1
             else when.strftime("%A %d %b") if 0 < days < 7 else when.strftime("%d %b %Y"))
     if (when.hour, when.minute) != (9, 0):
-        word += when.strftime(" at %-I:%M %p").replace(":00", "").lower()
+        word += osutil.strftime(when, " at %-I:%M %p").replace(":00", "").lower()
     return word
 
 

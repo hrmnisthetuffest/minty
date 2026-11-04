@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 
+from minty_core import osutil
 from minty_core.trace import read_events
 
 SLOW_TOTAL_MS, SLOW_FIRST_MS = 15000, 8000
@@ -91,7 +92,7 @@ def format_report(r: Report) -> str:
     if r.days_with_traces == 0:
         return f"No traces for the last {r.days} days, so there is no report to make."
     pct = round(100 * r.answered / r.turns) if r.turns else 0
-    lines = [f"Week to {r.end:%-d %b} ({r.days_with_traces} of {r.days} days have traces): {r.turns} turns, {pct}% answered."]
+    lines = [f"Week to {osutil.strftime(r.end, '%-d %b')} ({r.days_with_traces} of {r.days} days have traces): {r.turns} turns, {pct}% answered."]
     if not r.clusters:
         lines.append("No repeated problems this week.")
     for n, c in enumerate(r.clusters[:4], 1):

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Awaitable, Callable
 
+from minty_core import osutil
 from minty_core.system.osinfo import OS, update_command
 
 NEWS_URL = "https://archlinux.org/news/"
@@ -107,7 +108,7 @@ def advise(os_: OS, news: list[NewsItem], pending: list[Pending], db_note: str =
                 flag = ""
                 if "manual intervention" in n.title.lower() or "manual intervention" in n.summary.lower():
                     flag = " This needs manual intervention: do what it says BEFORE updating."
-                lines.append(f"{i}. {n.title} ({n.date:%-d %b}).{flag}" + (f" {n.summary}" if flag and n.summary else ""))
+                lines.append(f"{i}. {n.title} ({osutil.strftime(n.date, '%-d %b')}).{flag}" + (f" {n.summary}" if flag and n.summary else ""))
             parts.append(f"Arch news since your last full update: {len(news)} item{'s' * (len(news) != 1)}. Read these "
                          "before updating.\n" + "\n".join(lines))
         else:

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta
 
 import pytest
@@ -74,10 +75,24 @@ def test_clock_maths(said, reply):
     ("what time is it in tokyo", "It's 8:02 PM in Tokyo."), ("time in london", "It's 12:02 PM in London."),
     ("what's the time in new york", "It's 7:02 AM in New York."), ("dubai time", "It's 3:02 PM in Dubai."),
     ("what time is it in india", "It's 4:32 PM in India."), ("what time is it in utc", "It's 11:02 AM in UTC."),
-    ("what is my time zone", "Your time zone is IST (UTC+05:30)."),
 ])
 def test_other_places(said, reply):
     assert say(E, said) == reply
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="the zone of this machine is set through TZ, which only POSIX systems read")
+def test_my_time_zone_is_this_machines_zone(monkeypatch):
+    # it answered with the zone of whoever ran the test: IST on the author's laptop, UTC on a CI machine
+    monkeypatch.setenv("TZ", "Asia/Kolkata")
+    time.tzset()
+    try:
+        assert say(E, "what is my time zone") == "Your time zone is IST (UTC+05:30)."
+        monkeypatch.setenv("TZ", "America/New_York")
+        time.tzset()
+        assert say(E, "which time zone am i in").startswith("Your time zone is E") and "UTC-0" in say(E, "which time zone am i in")
+    finally:
+        monkeypatch.undo()
+        time.tzset()
 
 
 def test_a_place_on_the_other_side_of_the_date_line_says_which_day():

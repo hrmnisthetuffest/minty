@@ -41,9 +41,9 @@ def parse_vtt(text: str) -> str:
 
 
 async def fetch_captions(url: str, run: Callable[[list[str], Path], Awaitable[tuple[int, str]]], folder: Path,
-                         which: Callable[[str], str | None] = shutil.which) -> str:
+                         which: Callable[[str], str | None] | None = None) -> str:
     url = valid_video_url(url)
-    tool = which("yt-dlp")
+    tool = (which or shutil.which)("yt-dlp")  # looked up now, so a test (or a later install) is seen
     if not tool:
         raise CaptionsUnavailable("yt-dlp is not installed. It is a free tool you install yourself (for example "
                                   "'pipx install yt-dlp'); I will not install it without your yes.")

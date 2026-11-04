@@ -12,6 +12,8 @@ import time
 from datetime import datetime
 from typing import Awaitable, Callable
 
+from minty_core import osutil
+
 PROBE_TARGETS = (("1.1.1.1", 443), ("8.8.8.8", 53))
 CAN_STILL = "tell the time and date, set timers, take reminders and notes, and list what is waiting"
 
@@ -92,9 +94,9 @@ class OfflineHandler:
         if _ONLINE.match(phrase):
             return "I'm online." if await self.probe.online(refresh=True) else "I'm offline right now."
         if _TIME.match(phrase):
-            return f"It's {now.strftime('%-I:%M %p').lower().replace('am', 'a m').replace('pm', 'p m')}."
+            return f"It's {osutil.strftime(now, '%-I:%M %p').lower().replace('am', 'a m').replace('pm', 'p m')}."
         if _DATE.match(phrase):
-            return f"It's {now.strftime('%A, %-d %B')}."
+            return f"It's {osutil.strftime(now, '%A, %-d %B')}."
         m = _TIMER.match(phrase)
         if m:
             amount, unit = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))

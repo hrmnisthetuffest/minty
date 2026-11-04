@@ -361,3 +361,31 @@ def test_on_windows_coding_agents_are_refused_in_auto_mode_because_there_is_no_s
     assert Isolation("off", sandbox=none).prepare() == (False, "switched off in the settings")
     monkeypatch.setattr(osutil, "IS_WINDOWS", False)
     assert Isolation("auto", sandbox=none).prepare() == (False, "the sandbox needs Linux")  # Linux keeps "run as before and say so"
+
+
+# ---- dates without a leading zero: `%-d` and `%-I` are rejected by Windows' C library ("Invalid format string") ---------------------------
+def test_strftime_writes_day_and_hour_without_a_leading_zero_on_every_system():
+    from datetime import datetime
+
+    morning = datetime(2026, 11, 4, 9, 5)
+    assert osutil.strftime(morning, "%A, %-d %B") == "Wednesday, 4 November"
+    assert osutil.strftime(morning, "%-I:%M %p") == "9:05 AM"
+    assert osutil.strftime(datetime(2026, 11, 14, 0, 30), "%-I:%M %p") == "12:30 AM"
+    assert osutil.strftime(datetime(2026, 11, 14, 13, 0), "%-I:%M %p") == "1:00 PM"
+    assert osutil.strftime(datetime(2026, 11, 14, 13, 0), "%-d %b, %H:%M") == "14 Nov, 13:00"  # everything else is the ordinary strftime
+    assert osutil.strftime(morning, "100%% on %-d") == "100% on 4"
+
+
+def test_no_module_uses_a_format_code_that_windows_rejects():
+    import pathlib
+    import re
+
+    src = pathlib.Path(__file__).resolve().parents[1] / "src"
+    offenders = {}
+    for path in src.rglob("*.py"):
+        if path.name == "osutil.py":
+            continue
+        hits = [n + 1 for n, line in enumerate(path.read_text(encoding="utf-8").splitlines()) if re.search(r"%-[dmHIMSjy]", line) and "osutil.strftime(" not in line]
+        if hits:
+            offenders[str(path.relative_to(src))] = hits
+    assert not offenders, f"use osutil.strftime(when, pattern) (Windows rejects %-d / %-I): {offenders}"

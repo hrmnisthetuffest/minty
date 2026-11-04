@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
+from minty_core import osutil
 from minty_core.fsutil import atomic_write_text
 from minty_core.selfcheck.card import card_svg, gather, render_png
 from minty_core.selfcheck.proposals import Proposals
@@ -74,7 +75,7 @@ class SelfcheckProvider:
         if png is not None and push and self._config().selfcheck.card_push:
             publish = self._services.get("publish")
             if publish is not None:
-                publish("card", path=str(png), caption=f"Your day, {day:%A %-d %b}")
+                publish("card", path=str(png), caption=f"Your day, {osutil.strftime(day, '%A %-d %b')}")
         return png, str(folder)
 
     # ---- the loop ---------------------------------------------------------------------------------------
